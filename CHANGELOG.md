@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- The check of a rewrite compares video RAM too for a rewrite that names `kChecksVideo` (a routine
+  that writes a scroll screen's map or the row scroll table).
+- The code for three lines of 0.2.0's list, which was released without it: `kFeatureFirstPage`,
+  `Video::wide.rows` and `Video::objectsTaken`; and the board's own picture drawn by a form of the
+  renderer that knows its width.
+
+## 0.2.0 (2026-10-13)
+
 - A wider picture for a game's sources to ask for (`Video::wide`): up to 64 more columns on each side
   of the board's 384 (512 is the whole raster: 16:9), each scroll screen and each object drawn moved
   sideways as the sources say, and a scroll screen's tiles outside the board's own columns taken
