@@ -54,6 +54,12 @@ public:
     // of the objects alone can be laid over another picture, and one object's pixels told from another's.
     bool markObjects = false;
 
+    // For a game's own sources that draw something the game's list has not got (a thing the game stopped
+    // drawing because the board's picture would not show it): called when the board has taken the object
+    // list, with the copy the picture is made from, to change. `list` is 1024 entries of four words;
+    // `last` is where the last entry in use starts in it (-4: none), and is to be kept right.
+    void (*objectsTaken)(uint16_t *list, int &last) = nullptr;
+
     // A wider picture, for a game's own sources (a widescreen feature). The board draws 384 of the 512
     // columns its raster counts; the scroll screens and the object list reach further, and `side` more
     // columns (kMaxSide at most) are drawn on each side of the board's own. With 64, the picture is the

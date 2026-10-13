@@ -12,6 +12,8 @@
 - A feature's switch can be on the launcher's first page, under "Full screen", instead of on its
   Features page: the feature has `kFeatureFirstPage`, and the game's `game.cfg` names it in
   `display` (name | title | what it says). The launcher says at every start whether it is on.
+- `Video::objectsTaken`: the sources may change the object list the picture is made from, when
+  the board has taken it.
 - `Machine::ObjectsToCome`: the object list the next picture will be made from.
 - `CPS2RECOMP_WIDE=n`: n more columns on each side whatever the sources ask, to see what a game has
   beyond its picture's edges.
