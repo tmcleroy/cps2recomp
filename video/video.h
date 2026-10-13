@@ -60,7 +60,8 @@ public:
     // whole raster: 16:9 where the board's is 4:3.
     // What the game put beyond its picture's edges is not always what should be there, so each scroll
     // screen can be drawn moved to the right by `scroll` pixels, and each object by what `object` says of
-    // it (its tile's number and its attributes, as hideObject has them; none: not moved).
+    // it (its tile's number and its attributes, as hideObject has them, and which entry of the object
+    // list it is, 0-1023; none: not moved).
     // A game that fills a scroll screen's map as its camera moves has only kept up what its own picture
     // shows. `tile` is asked for every tile that is not wholly inside the board's own 384 columns: which
     // scroll screen (0-2), the tile's column and row in the map (0-63), and the picture's column its left
@@ -71,7 +72,7 @@ public:
     struct Wide {
         int side = 0;
         int scroll[3] = {0, 0, 0};
-        int (*object)(uint32_t tile, uint16_t attributes) = nullptr;
+        int (*object)(uint32_t tile, uint16_t attributes, int entry) = nullptr;
         bool (*tile)(int which, int column, int row, int at, uint16_t &code, uint16_t &attributes) = nullptr;
     } wide;
     int Width() const {
