@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 (2026-10-13)
+
 - A wider picture for a game's sources to ask for (`Video::wide`): up to 64 more columns on each side
   of the board's 384 (512 is the whole raster: 16:9), each scroll screen and each object drawn moved
   sideways as the sources say, and a scroll screen's tiles outside the board's own columns taken
