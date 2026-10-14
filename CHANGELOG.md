@@ -25,6 +25,10 @@
   the widest picture's shape again when it changes.
 - The launcher's Game page says how to open the in-game menu while playing.
 - `tools/at-once.sh`: a game's checks run a few at a time, their outputs in order.
+- Training aids work only in a training session: `kFeatureTraining` (a game's sources mark theirs with
+  `TrainingAids`; the dummy's are marked by `RegisterDummy`) and `Game::inTraining`. Outside a session
+  `FeatureValue` gives 0 for them, while the menu shows the player's setting (`FeatureSetting`) and
+  `settings.ini` keeps it.
 
 ## 0.2.0 (2026-10-13)
 
