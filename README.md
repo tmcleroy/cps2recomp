@@ -45,6 +45,9 @@ ports.
   crouches, jumps, guards, records and replays, and hit boxes drawn through the game's camera. A
   game's sources only say, from its own memory, what the players are doing
   ([docs/FIGHT.md](docs/FIGHT.md)).
+- **Players' own colours.** Text files a character, or a ROM file changed with PalMod, recolour the
+  characters, and a colour editor in the model viewer makes them; a game only says where its colours
+  are (`fight/colours.h`).
 - **Features players expect.** Save states, run-ahead (a press seen a frame or two sooner, with the
   game running exactly as without it), speed, pause and frame advance, slow motion, cheats and
   options a game declares once, and the in-game menu and launcher the recomp ports share
@@ -115,7 +118,7 @@ game's checks, commit. Anything about one game belongs in that game's `game.cfg`
 | `machine/` | The 68000, bus, interrupts, timing, settings EEPROM, ROM set and cipher |
 | `video/`, `sound/` | The picture; the Z80 and QSound; Capcom's sound driver (version 2.01b) as ordinary code (`driver.cpp`) |
 | `port/` | The frontend (SDL 3), putting the picture on the screen (`present.*`; shaders in `shaders/`, compiled into `shaders.inc` by `tools/gen_shaders.py`), the in-game menu adapter, the HUD, control bindings |
-| `fight/` | What a fighting game's training mode has in common ([docs/FIGHT.md](docs/FIGHT.md)) |
+| `fight/` | What a fighting game's training mode has in common, and the players' own colours ([docs/FIGHT.md](docs/FIGHT.md)) |
 | `recomp-common/` | A copy of [recomp-common](https://github.com/tmcleroy/recomp-common) (the in-game menu, the settings rules, the launcher), made by `tools/sync-common.sh`; never changed here |
 | `launcher/` | What this toolkit tells the shared launcher (`recomp-common/launcher`; SDL 3 + Dear ImGui): `src/description.cpp` has the words for a ROM set, the check of the player's, the game's arguments and the buttons that can be chosen |
 | `example/` | A stand-in for a game's repository, with no game: what `make check` here builds |

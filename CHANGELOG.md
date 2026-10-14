@@ -29,6 +29,12 @@
   `TrainingAids`; the dummy's are marked by `RegisterDummy`) and `Game::inTraining`. Outside a session
   `FeatureValue` gives 0 for them, while the menu shows the player's setting (`FeatureSetting`) and
   `settings.ini` keeps it.
+- Custom colours and a colour editor for a fighting game's characters (`fight/colours.h`): the
+  `custom_colours` feature (text files a character and a PalMod-changed copy of the ROM file in
+  `palettes/` beside settings.ini, written over the ROM image's colours), "Write the game's colours"
+  and "Load colour files again", and the editor (Alternative modes → Colour editor) in the game's
+  model viewer, with a library of saved sets. A game describes where its colours are and supplies its
+  viewer's hooks (`colours::Description`). From Vampire Savior's, with the same files and folders.
 
 ## 0.2.0 (2026-10-13)
 
