@@ -9,6 +9,22 @@
 - The code for three lines of 0.2.0's list, which was released without it: `kFeatureFirstPage`,
   `Video::wide.rows` and `Video::objectsTaken`; and the board's own picture drawn by a form of the
   renderer that knows its width.
+- `fight/`: what a fighting game's training mode has in common (frame data, its meter and a log of
+  every move, the input display in numpad notation, the combo readout, a dummy that guards, records
+  and replays, boxes on the picture); `docs/FIGHT.md`. `runtime/spare.*`: machines kept as save
+  states and run beside the port's, for a game's modes. `SettingsPath()`.
+- The dummy at random: what it does while guarding, the escape from a throw and the way up from a
+  knock-down; "Answers now and then" (one time in two, with any slot that has a recording).
+- Run-ahead for every game (the port's `run_ahead` feature: off, 1 or 2 frames): a press is seen a
+  frame or two sooner and the game runs exactly as without it. Not while stopped, stepped or slowed,
+  nor when the game says not (`Game::noRunAhead`); `RunningAhead()` for a game's sources. Listed in
+  the launcher (`RegisterPortFeatures`). The 68000's wait is kept in a save state (state version 5).
+- `Video::wide.fillHoles`, a game's choice: pixels of the added columns that nothing was drawn at
+  take the line's own picture, mirrored at the nearest drawn pixel.
+- A first-page switch changed in the in-game menu is changed in `launcher.ini` too; the window takes
+  the widest picture's shape again when it changes.
+- The launcher's Game page says how to open the in-game menu while playing.
+- `tools/at-once.sh`: a game's checks run a few at a time, their outputs in order.
 
 ## 0.2.0 (2026-10-13)
 
