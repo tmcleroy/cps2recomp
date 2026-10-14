@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `SetSlowMotion`: a game's sources can ask for the game to run slowly (a frame in every so many
+  pictures); the slower of that and the menu's speed is used.
 - The check of a rewrite compares video RAM too for a rewrite that names `kChecksVideo` (a routine
   that writes a scroll screen's map or the row scroll table).
 - The code for three lines of 0.2.0's list, which was released without it: `kFeatureFirstPage`,
