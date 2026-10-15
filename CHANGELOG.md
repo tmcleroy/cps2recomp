@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Colour editor: random colours (LK, or the Random row) only at a second press within a second and
+- Colour editor: random colours (the Random row: LK, left or right) only at a second press within a second and
   a half, and HK puts back the set from before them until the next change. The Line row goes to the
   animation that best shows the line when the game says which (`Description::animationForLine`).
   "Load colour files again" and "Write the game's colours" are on the editor's page, not Display.
