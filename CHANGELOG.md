@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Colour editor: random colours (LK, or the Random row) only at a second press within a second and
+  a half, and HK puts back the set from before them until the next change. The Line row goes to the
+  animation that best shows the line when the game says which (`Description::animationForLine`).
+  "Load colour files again" and "Write the game's colours" are on the editor's page, not Display.
+- The game's program started with no arguments (a double click on it, not on the launcher) starts
+  the launcher beside it instead: straight into the game (`--play`) once a ROM set has been chosen.
+  A start that fails says why in a message box too, unless headless. On Windows the game is a
+  windowed program (no console window beside it).
+- recomp-common 394d613: the menu leaves room for a page's longest description (it ran over the hint),
+  a value too long for its row is drawn small, and the panel is opaque.
 - Display options for every game (the port's features, on the Display page of the launcher and the
   in-game menu): Scaling (Sharp, as before; Whole pixels; Smooth), Picture shape (4:3, as before;
   Square pixels; Fill) and Window size (3x, as before; 2x to 6x). A window takes the new shape or
