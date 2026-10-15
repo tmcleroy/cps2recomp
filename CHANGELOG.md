@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The in-game menu's first page has a "Test menu" row: it presses the board's test switch (as F2
+  does), which opens the game's own operator menu, where its settings are (difficulty, rounds and the rest).
 - Colour editor: random colours (the Random row: LK, left or right) only at a second press within a second and
   a half, and HK puts back the set from before them until the next change. The Line row goes to the
   animation that best shows the line when the game says which (`Description::animationForLine`).
