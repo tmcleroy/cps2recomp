@@ -15,9 +15,9 @@ Box ReadBox(Machine &machine, uint32_t address) {
 }
 
 namespace {
-    // (a table's address has to be somewhere in the ROM's data)
+    // (a table's address has to be somewhere in the ROM's data, or in an extra set's program: game.cfg's extra_set)
     bool IsTable(uint32_t address) {
-        return address >= 0x1000 && address < 0x400000 && !(address & 1);
+        return ((address >= 0x1000 && address < 0x400000) || (address >= 0x400000 && InProgram(address))) && !(address & 1);
     }
 
     void Place(Machine &machine, uint32_t object, BoxKind kind, uint32_t boxAddress, bool thrown, std::vector<PlacedBox> &boxes) {
