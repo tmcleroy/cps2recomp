@@ -24,10 +24,13 @@ namespace {
     Description g_description;
 
     // The game's own colours, kept to put back: a copy of the ROM from the first of their places to the end of
-    // the last
+    // the last, in each program they are in (the game's, and an extra set's: game.cfg's extra_set)
     std::vector<Range> g_ranges;
-    std::vector<uint8_t> g_original;
-    uint32_t g_originalFrom = 0;
+    struct Original {
+        uint32_t from;
+        std::vector<uint8_t> bytes;
+    };
+    std::vector<Original> g_original;
     bool g_applied = false, g_wasOn = false;
 
     int Sets() {
@@ -244,19 +247,26 @@ namespace {
             return false; // (found wrong once: said then)
         }
         g_ranges = g_description.ranges();
-        uint32_t from = UINT32_MAX, to = 0;
+        // (the game's own program, then the extra set's)
+        uint32_t from[2] = {UINT32_MAX, UINT32_MAX}, to[2] = {0, 0};
+        bool expected = !g_ranges.empty();
         for (const Range &range : g_ranges) {
-            from = std::min(from, range.from);
-            to = std::max(to, range.to);
+            const int extra = range.from >= ProgramSize();
+            from[extra] = std::min(from[extra], range.from);
+            to[extra] = std::max(to[extra], range.to);
+            expected = expected && InProgram(range.from) && InProgram(range.to - 1) && extra == (range.to - 1 >= ProgramSize());
         }
         const Description &d = g_description;
-        if (g_ranges.empty() || (d.romFile && (from < d.romFileAt || to > d.romFileAt + d.romFileSize)) || to > ProgramSize()) {
+        if (!expected || (d.romFile && to[0] && (from[0] < d.romFileAt || to[0] > d.romFileAt + d.romFileSize))) {
             fprintf(stderr, "custom colours: the ROM is not as expected; left alone\n");
             g_ranges.push_back({0, 0});
             return false;
         }
-        g_originalFrom = from;
-        g_original.assign(Program(from), Program(to));
+        for (int n = 0; n < 2; n++) {
+            if (to[n]) {
+                g_original.push_back({from[n], std::vector<uint8_t>(Program(from[n]), Program(to[n] - 1) + 1)});
+            }
+        }
         return true;
     }
 
@@ -266,7 +276,9 @@ namespace {
         if (!Prepare()) {
             return;
         }
-        std::copy(g_original.begin(), g_original.end(), Program(g_originalFrom));
+        for (const Original &o : g_original) {
+            std::copy(o.bytes.begin(), o.bytes.end(), Program(o.from));
+        }
         g_wasOn = FeatureOn(kFeature);
         const std::string folder = FolderPath();
         if (!g_wasOn || folder.empty()) {
@@ -352,7 +364,13 @@ uint16_t GameColour(int number, int set, int line, int n) {
     if (!Prepare()) {
         return Colour(number, set, line, n);
     }
-    const uint8_t *p = &g_original[ColourAddress(number, set, line, n) - g_originalFrom];
+    const uint32_t address = ColourAddress(number, set, line, n);
+    const uint8_t *p = Program(address);
+    for (const Original &o : g_original) {
+        if (address >= o.from && address - o.from < o.bytes.size()) {
+            p = &o.bytes[address - o.from];
+        }
+    }
     return static_cast<uint16_t>(((p[0] << 8) | p[1]) & 0x0FFF);
 }
 
