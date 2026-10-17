@@ -69,8 +69,11 @@ def read_spec(path):
             at = re.search(r"read at ([0-9A-F]{6})", raw_line)
             # table <this game's address> <stride> <entry bytes> <data|pc> <kind> [other=<the other game's address>]
             other = [int(x[6:], 16) for x in line[6:] if x.startswith("other=")]
-            spec["tables"].append((int(line[1], 16), int(line[2]), int(line[3]), line[4], line[5], other[0] if other else None))
-            spec.setdefault("read", {})[int(line[1], 16)] = int(at.group(1), 16) if at else None
+            # (index=+N: where it is read, the index is the character's number and N more)
+            shift = [int(x[7:], 16) for x in line[6:] if x.startswith("index=+")]
+            spec["tables"].append((int(line[1], 16), int(line[2]), int(line[3]), line[4], line[5], other[0] if other else None,
+                                   int(at.group(1), 16) if at else None))
+            spec.setdefault("index", {})[(int(line[1], 16), int(at.group(1), 16) if at else None)] = shift[0] if shift else 0
     return spec
 
 
@@ -146,19 +149,19 @@ def main():
     other_code, _, _ = recomp.discover(other, sorted(set(imap.values())) + [0x400], limit, True)
     # The characters' entries of the tables, and their own code from there
     here_tables = []
-    for addr, stride, size, view, kind, given in spec["tables"]:
+    for addr, stride, size, view, kind, given, read in spec["tables"]:
         if given is not None:
-            here_tables.append((addr, given, stride, size, view, kind))
+            here_tables.append((addr, given, stride, size, view, kind, read))
             continue
         if addr not in named:
             print("graft: table %06X: not found in the other game" % addr, file=sys.stderr)
             continue
-        here_tables.append((addr, named[addr], stride, size, view, kind))
+        here_tables.append((addr, named[addr], stride, size, view, kind, read))
     roots = set()
     # (where a character taken in goes on in the other game's code: that code is theirs too)
     for _, there, _ in spec.get("divert", []):
         roots.add(there)
-    for addr, oaddr, stride, size, view, kind in here_tables:
+    for addr, oaddr, stride, size, view, kind, _ in here_tables:
         if kind not in ("code", "jump"):
             continue
         mem = other if view == "pc" else other_data
@@ -314,17 +317,17 @@ def main():
     # The tables' entries: bytes to put at a place of this game's program; and for the tables of offsets from
     # themselves, where the character's entry leads
     entries, targets = [], []
-    for addr, oaddr, stride, size, view, kind in here_tables:
+    for addr, oaddr, stride, size, view, kind, read in here_tables:
         mem = other if view == "pc" else other_data
         for number, _ in spec["characters"]:
             raw = mem[oaddr + number * stride:oaddr + number * stride + size]
             if kind == "entry":
-                targets.append((addr, number, base + oaddr + number * stride, kind, "data", spec["read"].get(addr)))
+                targets.append((addr, number + spec.get("index", {}).get((addr, read), 0), base + oaddr + number * stride, kind, "data", read))
                 continue
             if kind in ("jump", "selfrel"):
                 to = (oaddr + int.from_bytes(raw, "big", signed=True)) & 0xFFFFFF
                 h, how = place(to) if kind == "jump" else (base + to, "data")
-                targets.append((addr, number, h, kind, how, spec["read"].get(addr)))
+                targets.append((addr, number, h, kind, how, read))
                 continue
             if kind in ("code", "data") and size == 4:
                 v = int.from_bytes(raw, "big")
