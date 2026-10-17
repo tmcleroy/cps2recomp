@@ -148,9 +148,25 @@ namespace {
         c.pc = (c.pc & 0xFFFFFF) + 12; // (on to the lea of where they go: movea.l #, lsl.w #5, lea passed)
         return true;
     }
+
+    // 01A888 (019292 there): a thing thrown's kind of meeting another, by its type (D0), in a byte table after the
+    // routine (this game's has 40, theirs 50): the types Vampire Savior 2 added, theirs (3B on) by its table
+    constexpr uint8_t kTheirThrownTypes = 0x3B;
+    constexpr uint32_t kTheirMeetings = 0x019298;
+    bool ThrownMeeting(M68K &c) {
+        const uint8_t type = c.d[0] & 0xFF;
+        if (type < kTheirThrownTypes || !ExtraBase()) {
+            return false;
+        }
+        SetLow8(c.d[0], *ExtraOpcodes(kTheirMeetings + type));
+        c.cycles += 14;
+        c.pc = c.Pop32();
+        return true;
+    }
 } // namespace
 
 void definitive::RegisterRules() {
+    AddHook(At(0x01A888), "ThrownMeeting", ThrownMeeting);
     AddHook(At(0x01C6FA), "PictureColours", PictureColours);
     AddHook(At(0x01C712), "PictureColours", PictureColours);
     AddHook(At(0x00A446), "Winner", Winner);
