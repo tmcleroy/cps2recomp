@@ -5,12 +5,13 @@
 - **Vampire Savior Definitive** (beta; `games/vsav_definitive`; ROM sets `vsavj` and `vsav2`): Vampire Savior with
   Donovan, Phobos and Pyron taken from Vampire Savior 2 (its code, pictures and sounds), all eighteen characters
   by Vampire Savior's rules. Start on Gallon's, Aulbath's or Sasquatch's place at the character choice gives
-  Donovan, Pyron or Phobos (and the Definitive page of the in-game menu); the training mode, the modes and the
-  model viewer have them; the arcade goes to its end with them. The launcher gives it the `vsav2` set chosen on
-  Vampire Savior 2's page (recomp-common 568e39f, `Launch::file_of`; `--rom2`). How: an extra ROM set mapped from
-  A00000 (`game.cfg`'s `extra_set`), objects and scroll tiles drawn from its graphics, a second sound side with its
-  sound program and samples (`machine/sound_board.h`), and `tools/graft.py` with the game's `graft.cfg` (tables
-  by character, `extend`, `mask`, `divert`, `ram`, `patch`). Not yet: Donovan's stage and Vampire Savior 2's music.
+  Donovan, Pyron or Phobos, and the grid's faces there become theirs (and the Definitive page of the in-game menu);
+  the training mode, the modes and the model viewer have them; the arcade goes to its end with them. The launcher
+  gives it the `vsav2` set chosen on Vampire Savior 2's page (recomp-common 568e39f, `Launch::file_of`; `--rom2`).
+  How: an extra ROM set mapped from A00000 (`game.cfg`'s `extra_set`), objects and scroll tiles drawn from its
+  graphics, a second sound side with its sound program and samples (`machine/sound_board.h`), and `tools/graft.py`
+  with the game's `graft.cfg` (tables by character, `extend`, `mask`, `divert`, `ram`, `patch`). Not yet: Donovan's
+  stage and Vampire Savior 2's music.
 - Hooks are numbered in 16 bits (from the 256th on they went to the wrong hooks).
 
 - **Two more games: Vampire Savior 2 and Vampire Hunter 2** (`games/vsav2`, `games/vhunt2`; ROM sets `vsav2`, Japan

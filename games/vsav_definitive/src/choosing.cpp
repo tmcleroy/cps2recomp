@@ -53,6 +53,81 @@ namespace {
         SetRam8(me + kCharacter, second && theirs ? second->character : place);
     }
 
+    // The grid's faces: one picture of them all (the object at FFB800, its picture 2689FA's), this game's; where
+    // the cast shown is Vampire Savior 2's, the three places' faces are its three's, from its graphics (its grid has
+    // them in other places: each is put as that grid puts a face in the place here), in colours of their own
+    // (palettes the screen leaves free; the screen's 32 are at 3A3800 here, 3BAF3C there)
+    constexpr uint32_t kGrid = 0xFFB800, kGridPicture = 0x2689FA;
+    constexpr uint32_t kOurGridPalettes = 0x3A3800, kTheirGridPalettes = 0x3BAF3C, kPalettes = 0x90C000;
+    // Which cast the grid shows (a byte, 1 Vampire Savior 2's: kSecondCast's neighbour, for a save state too)
+    constexpr uint32_t kGridCast = 0xFFFFFC;
+    struct Face {
+        uint16_t ours;               // this game's face (its tile) at the place
+        uint16_t theirs, attributes; // Vampire Savior 2's: its tile, size and palette here
+        int16_t dx, dy;              // ... where, from this game's (as its own grid has a face in that place)
+        uint8_t theirPalette;        // its colours there
+    };
+    constexpr Face kFaces[] = {
+        {0xB4E3, 0xB10B, 0x1216, 6, 7, 0x05},  // Gallon's place: Donovan
+        {0xB509, 0xB0F5, 0x1217, -8, -1, 0x11}, // Aulbath's: Pyron
+        {0xB50B, 0xB108, 0x1219, -16, 0, 0x13}, // Sasquatch's: Phobos
+    };
+
+    // Which cast the grid shows: the player choosing's; with both choosing, of different casts, each in turn
+    // (about a second each). A player is choosing while its frames come (the 68000's cycle of its last)
+    uint64_t g_choosingAt[2] = {};
+    constexpr uint64_t kStillChoosing = 0x100000; // (about four frames)
+    void ShowGrid(M68K &c, uint32_t me) {
+        if (!ExtraBase()) {
+            return;
+        }
+        const int player = Ram8(me + kNumber) & 1;
+        g_choosingAt[player] = c.cycles;
+        bool theirs = Ram8(kSecondCast + player) != 0;
+        const bool otherChoosing = c.cycles - g_choosingAt[player ^ 1] < kStillChoosing;
+        if (otherChoosing && (Ram8(kSecondCast + (player ^ 1)) != 0) != theirs) {
+            theirs = (c.cycles >> 24) & 1;
+        }
+        SetRam8(kGridCast, theirs ? 1 : 0);
+        // Their colours, once the screen has faded in (a face's palette, Demitri's, as the screen's are)
+        const uint8_t *demitri = Program(kOurGridPalettes + 0x06 * 32 + 2);
+        if (c.bus.Read16(kPalettes + 0x06 * 32 + 2) != (0xF000 | (demitri[0] << 8) | demitri[1])) {
+            return;
+        }
+        for (const Face &face : kFaces) {
+            const uint8_t *from = ExtraProgram(kTheirGridPalettes + face.theirPalette * 32);
+            const uint32_t to = (face.attributes & 0x1F) * 32;
+            for (uint32_t i = 0; i < 16; i++) {
+                const uint16_t colour = static_cast<uint16_t>(0xF000 | (from[i * 2] << 8) | from[i * 2 + 1]);
+                c.bus.Write16(kPalettes + to + i * 2, colour);
+            }
+        }
+    }
+
+    // 01B2BE (the pictures' drawing: an object's four words, D0-D3, to A2): the grid's pieces at the three places
+    // are Vampire Savior 2's faces, where it shows that cast. An object is drawn from that game's graphics when its
+    // program was read just before it is written (Machine::ObjectWritten).
+    uint16_t Moved(uint32_t place, int by) {
+        return static_cast<uint16_t>((place & 0xFC00) | ((place + by) & 0x3FF));
+    }
+    bool GridFace(M68K &c) {
+        if ((c.a[6] & 0xFFFFFF) != kGrid || Ram32(kGrid + 0x1C) != kGridPicture || !Ram8(kGridCast) || !ExtraBase()) {
+            return false;
+        }
+        for (const Face &face : kFaces) {
+            if ((c.d[2] & 0xFFFF) != face.ours) {
+                continue;
+            }
+            SetLow16(c.d[0], Moved(c.d[0], face.dx));
+            SetLow16(c.d[1], Moved(c.d[1], face.dy));
+            SetLow16(c.d[2], face.theirs);
+            SetLow16(c.d[3], face.attributes);
+            c.bus.Read16(ExtraBase()); // (so that the object is drawn from their graphics)
+            return false;
+        }
+        return false;
+    }
+
     // 0209E0: the choice begins at the character chosen last; a character taken in is at its place, the cast its
     bool ChoiceBegins(M68K &c) {
         const uint32_t me = c.a[6] & 0xFFFFFF;
@@ -72,6 +147,7 @@ namespace {
             SetRam8(cast, Ram8(cast) ? 0 : 1);
         }
         SetCharacter(me);
+        ShowGrid(c, me);
         return false;
     }
 
@@ -96,6 +172,7 @@ void definitive::RegisterChoosing() {
     AddHook(At(0x0209E0), "ChoiceBegins", ChoiceBegins);
     AddHook(At(0x020A84), "ChoiceFrame", ChoiceFrame);
     AddHook(At(0x020A90), "ChoiceMade", ChoiceMade);
+    AddHook(At(0x01B2BE), "GridFace", GridFace);
 }
 
 } // namespace cps2recomp
