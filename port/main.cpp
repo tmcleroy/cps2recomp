@@ -193,7 +193,8 @@ bool Port::Init(std::string &error) {
 #endif
     SetEeprom(&machine->eeprom);
     RegisterGame();
-    machine->cpu.pointerFrom = PointerLoads(machine->cpu.extraLow);
+    machine->cpu.pointerFrom = PointerLoads(machine->cpu.extraLow, machine->cpu.extraHigh);
+    machine->cpu.keepHistory = getenv("CPS2RECOMP_PC_HISTORY") != nullptr;
     RegisterPortFeatures();
     LoadFeatures(opt.settingsPath, opt.features);
     // The 68000 and the Z80 are run the same way; each falls back to its interpreter if the build has no
@@ -1267,6 +1268,17 @@ int main(int argc, char **argv) {
         if (FILE *data = fopen((p.opt.dumpProgram + ".data").c_str(), "wb")) {
             fwrite(p.roms.program.data(), 1, p.roms.program.size(), data);
             fclose(data);
+        }
+        // (and the extra set's, if the game reads one: FILE.extra, FILE.extra.data)
+        if (!p.extraRoms.opcodes.empty()) {
+            if (FILE *extra = fopen((p.opt.dumpProgram + ".extra").c_str(), "wb")) {
+                fwrite(p.extraRoms.opcodes.data(), 1, p.extraRoms.opcodes.size(), extra);
+                fclose(extra);
+            }
+            if (FILE *extra = fopen((p.opt.dumpProgram + ".extra.data").c_str(), "wb")) {
+                fwrite(p.extraRoms.program.data(), 1, p.extraRoms.program.size(), extra);
+                fclose(extra);
+            }
         }
         return 0;
     }

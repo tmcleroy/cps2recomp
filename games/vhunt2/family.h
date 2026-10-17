@@ -746,4 +746,7 @@ inline constexpr uint32_t kFirstLineOnly = 0xEF9AEF96;
 // (376C70-38FB30), so only the text files and the colour editor change them
 inline constexpr const char *kColoursFile = nullptr, *kColoursFileWhose = "Vampire Hunter 2's, 970929";
 
+// What this game's own sources add (none: Vampire Savior's sources are all it has)
+inline void RegisterOwnSources() {}
+
 } // namespace vsav::family

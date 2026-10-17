@@ -337,6 +337,7 @@ bool RunHook(M68K &c, uint32_t address) {
 #endif
     Hook &hook = Hooks()[g_hooked[address / 2] - 1];
     if (!hook.rewrite) {
+        c.pc = address; // (translated code does not keep it as it goes: a hook sees where it is)
         return hook.fn(c);
     }
     if (g_noRewrites) {
@@ -462,6 +463,9 @@ void M68K::Run(uint64_t until, Mode mode) {
             cycles = until;
             return;
         }
+        if (keepHistory) {
+            Remember(pc);
+        }
         if (mode == Mode::Native) {
             if (const NativeFn fn = tables.At(pc)) {
                 depth = 0;
@@ -477,6 +481,9 @@ void M68K::Run(uint64_t until, Mode mode) {
         do {
             m_cycles = 0;
             m_jumped = false;
+            if (keepHistory) {
+                Remember(pc);
+            }
             Execute(Fetch());
             cycles += m_cycles;
             interpreted++;

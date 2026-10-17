@@ -175,4 +175,7 @@ inline constexpr uint32_t kFirstLineOnly = 0xEF92EF96;
 // The ROM file whose colours PalMod changes, and which set it is
 inline constexpr const char *kColoursFile = "vm3j.10b", *kColoursFileWhose = "the Japanese set's, 970519";
 
+// What this game's own sources add (none: Vampire Savior's sources are all it has)
+inline void RegisterOwnSources() {}
+
 } // namespace vsav::family

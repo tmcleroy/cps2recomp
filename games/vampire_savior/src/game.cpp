@@ -104,6 +104,8 @@ void RegisterGame() {
     };
     // Its own, never set for the other games by the collection's launcher: the records, and the animations' numbers
     OwnFeatures({"survival_best", "ringout_best", "model_animation", "colours_animation"});
+    // (a game made from this one's program with sources of its own: family.h)
+    vsav::family::RegisterOwnSources();
 }
 
 } // namespace cps2recomp
