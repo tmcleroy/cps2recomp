@@ -157,12 +157,43 @@ bool Port::Init(std::string &error) {
     if (!LoadRomSet(opt.romPath, list, roms, error)) {
         return false;
     }
+#ifdef GAME_EXTRA_SET
+    // Another set the game reads (another game made from the same program, say): from --rom2, or beside --rom
+    {
+        const RomList extra = ParseRomList(GAME_EXTRA_PROGRAM, GAME_EXTRA_GRAPHICS, GAME_EXTRA_SOUND_PROGRAM, GAME_EXTRA_SAMPLES,
+                                           GAME_EXTRA_KEY, GAME_EXTRA_SET, GAME_EXTRA_SET);
+        std::string path = opt.extraRomPath;
+        if (path.empty()) {
+            std::string folder = opt.romPath;
+            while (!folder.empty() && folder.back() == '/') {
+                folder.pop_back();
+            }
+            const size_t slash = folder.find_last_of('/');
+            folder = slash == std::string::npos ? "." : folder.substr(0, slash);
+            path = folder + "/" + GAME_EXTRA_SET;
+        }
+        std::string extraError;
+        if (!LoadRomSet(path, extra, extraRoms, extraError) && !LoadRomSet(path + ".zip", extra, extraRoms, extraError)) {
+            error = std::string("the ROM set ") + GAME_EXTRA_SET + " is needed too: " + extraError;
+            return false;
+        }
+    }
+#endif
     machine = std::make_unique<Machine>(roms);
     machine->cpuSpeed = opt.cpuSpeed > 0 ? opt.cpuSpeed : 1;
     SetRam(machine->ram.data());
     SetProgram(roms.program.data(), static_cast<uint32_t>(roms.program.size()));
+    SetProgramOpcodes(roms.opcodes.data());
+#ifdef GAME_EXTRA_SET
+    {
+        const uint32_t base = static_cast<uint32_t>(strtoul(GAME_EXTRA_BASE, nullptr, 16));
+        machine->SetExtraProgram(&extraRoms, base);
+        SetExtraProgram(extraRoms.program.data(), extraRoms.opcodes.data(), static_cast<uint32_t>(extraRoms.program.size()), base);
+    }
+#endif
     SetEeprom(&machine->eeprom);
     RegisterGame();
+    machine->cpu.pointerFrom = PointerLoads(machine->cpu.extraLow);
     RegisterPortFeatures();
     LoadFeatures(opt.settingsPath, opt.features);
     // The 68000 and the Z80 are run the same way; each falls back to its interpreter if the build has no
@@ -963,6 +994,8 @@ void Usage() {
     fprintf(stderr,
             "%s\n"
             "  --rom PATH             the ROM set (%s): a folder with its files, or its zip\n"
+            "  --rom2 PATH            (a game that reads another set too) that set: a folder or zip (else\n"
+            "                         beside --rom, by the set's name)\n"
             "  --eeprom FILE          where the board's settings memory is kept\n"
             "  --cpu MODE             native (translated code), blocks (the interpreter run the same way),\n"
             "                         interp (the interpreter, an instruction at a time), check\n"
@@ -1017,6 +1050,8 @@ bool ParseArgs(int argc, char **argv, port::Options &o) {
         auto next = [&]() -> const char * { return i + 1 < argc ? argv[++i] : ""; };
         if (a == "--rom") {
             o.romPath = next();
+        } else if (a == "--rom2") {
+            o.extraRomPath = next();
         } else if (a == "--eeprom") {
             o.eepromPath = next();
         } else if (a == "--cpu") {

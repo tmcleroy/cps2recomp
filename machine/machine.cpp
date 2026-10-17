@@ -308,6 +308,9 @@ uint16_t Machine::Fetch16(uint32_t address) {
     if (address < m_roms.opcodes.size()) {
         return Word(&m_roms.opcodes[address]);
     }
+    if (InExtra(address)) {
+        return Word(&m_extra->opcodes[address - m_extraBase]);
+    }
     return Read16(address); // (code in RAM is not enciphered)
 }
 
@@ -326,6 +329,9 @@ uint16_t Machine::Read16(uint32_t address) {
     if (address >= 0x900000 && address < 0x930000) {
         return Word(&videoRam[address - 0x900000]);
     }
+    if (InExtra(address)) {
+        return Word(&m_extra->program[address - m_extraBase]);
+    }
     return ReadRegister(address);
 }
 
@@ -338,6 +344,9 @@ uint8_t Machine::Read8(uint32_t address) {
     }
     if (address >= 0x900000 && address < 0x930000) {
         return videoRam[address - 0x900000];
+    }
+    if (InExtra(address)) {
+        return m_extra->program[address - m_extraBase];
     }
     const uint16_t word = ReadRegister(address & ~1u);
     return static_cast<uint8_t>((address & 1) ? word : word >> 8);

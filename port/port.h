@@ -20,6 +20,7 @@ namespace port {
 
 struct Options {
     std::string romPath = "rom";
+    std::string extraRomPath;  // --rom2: the extra set (game.cfg's extra_set), if the game has one (default: beside --rom)
     std::string eepromPath;    // the board's settings memory (created when missing)
     std::string moviePlay;     // input movie to replay
     std::string movieRecord;   // input movie to write
@@ -71,6 +72,7 @@ struct Movie {
 struct Port {
     Options opt;
     cps2recomp::RomSet roms;
+    cps2recomp::RomSet extraRoms; // (game.cfg's extra_set: another set the game reads, if it has one)
     std::unique_ptr<cps2recomp::Machine> machine;
     uint64_t frame = 0;       // frames run
     uint16_t pad[2] = {};     // what the players hold (cps2recomp::Button bits), set by the window
