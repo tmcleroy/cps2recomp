@@ -264,6 +264,7 @@ void RegisterOwnSources() {
         AddHook(at, "GraftBranch", FarBranch);
     }
     definitive::RegisterRules(); // (first: where a rule's hook is, it reads the table itself)
+    definitive::RegisterChoosing();
     for (const graft::Divert &d : graft::kDiverts) {
         const uint32_t at = d.at; // (tools/recomp.py has these from graft_data_hooks.txt)
         if (!HasHook(at)) {
