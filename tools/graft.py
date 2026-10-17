@@ -209,6 +209,28 @@ def main():
             return base + v, "engine?"
         return base + v, "data"
 
+    # A record's fields that hold addresses: those some code of the other game's loads into an address register
+    # (movea.l 0x1C(a6),a0). A number of theirs that is not a place of code or of the work memory is an address only
+    # where it goes into an address register or such a field; elsewhere (move.l #$50000,d1: a speed) it is a number.
+    # Such a field holds numbers in other records (+44: a player's speed up), so a number among their code's places
+    # is a number there too (move.l #$60000,0x44(a6)).
+    pointer_fields = set()
+    for x in list(other_code) + list(reach):
+        insn = other_code.get(x) or reach.get(x)
+        m = re.match(r"movea\.l (-?0x[0-9A-F]+)\(a[0-6]\),a[0-7]$", insn.text)
+        if m:
+            pointer_fields.add(int(m.group(1), 16))
+
+    code_end = max(other_code)
+
+    def into_address(text):
+        dest = text.rsplit(",", 1)[-1]
+        if re.fullmatch(r"a[0-7]", dest) or text.startswith(("lea ", "pea ")):
+            return True
+        m = re.fullmatch(r"(-?0x[0-9A-F]+)\(a[0-6]\)", dest)
+        return bool(m) and int(m.group(1), 16) in pointer_fields and text.startswith("move.l ")
+    numbers = []
+
     # Each instruction of their code: what it names, moved
     patches, far, odd = [], [], []
     for x in sorted(own):
@@ -235,6 +257,13 @@ def main():
                 continue
             h, how = place(v)
             if h == v:
+                continue
+            # (and one among their code's places that is not an instruction's, or a whole number in the game's fixed
+            # point, 16.16, is a speed or the like wherever it goes but an address register: their tables are after
+            # their code, and none starts at a multiple of 0x10000)
+            number = v < code_end or v & 0xFFFF == 0
+            if immediate and how in ("data", "engine?") and (not into_address(text) or (number and not re.search(r",a[0-7]$", text))):
+                numbers.append((x, text))
                 continue
             for size in (4, 2):
                 enc = (v & 0xFFFFFFFF if size == 4 else v & 0xFFFF).to_bytes(size, "big")
@@ -359,11 +388,14 @@ def main():
     if not os.path.exists(args.out) or open(args.out).read() != content:
         open(args.out, "w").write(content)
     print("graft: %d characters; their code %d instructions in %d ranges; %d places moved, %d branches out, %d table "
-          "entries; %d places not understood, %d calls to the other game's code this one has not"
-          % (len(spec["characters"]), len(own), len(own_ranges), len(patches), len(far), len(entries) + len(targets), len(odd),
+          "entries; %d numbers left as numbers; %d places not understood, %d calls to the other game's code this one has not"
+          % (len(spec["characters"]), len(own), len(own_ranges), len(patches), len(far), len(entries) + len(targets), len(numbers), len(odd),
              len(unmapped_code)))
     for x, text in odd[:20]:
         print("graft: not understood: %06X %s" % (x, text), file=sys.stderr)
+    if os.environ.get("GRAFT_NUMBERS"):
+        for x, text in numbers:
+            print("graft: a number, left: %06X %s" % (x, text), file=sys.stderr)
     for v, n in unmapped_code.most_common(20):
         print("graft: the other game's code %06X, called %d times, is not this one's" % (v, n), file=sys.stderr)
 
