@@ -189,6 +189,7 @@ bool Port::Init(std::string &error) {
         const uint32_t base = static_cast<uint32_t>(strtoul(GAME_EXTRA_BASE, nullptr, 16));
         machine->SetExtraProgram(&extraRoms, base);
         SetExtraProgram(extraRoms.program.data(), extraRoms.opcodes.data(), static_cast<uint32_t>(extraRoms.program.size()), base);
+        SetExtraSound(machine->extraSound.get());
     }
 #endif
     SetEeprom(&machine->eeprom);

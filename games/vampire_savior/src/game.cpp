@@ -6,6 +6,9 @@
 #include "game.h"
 #include "modes.h"
 
+#include <cstdlib>
+#include <cstring>
+
 namespace cps2recomp {
 
 void RegisterBoard();    // board.cpp
@@ -76,6 +79,15 @@ void RegisterGame() {
     TheGame().inTraining = [] { return FeatureOn("training_mode"); };
     RegisterColours();
     TheGame().beforeFrame = [](Machine &machine) {
+        // (for tests: VSAV_CHARACTERS=13,-1 makes player 1 Donovan at the character choice outside the modes, whatever
+        // is chosen: a character's number in hex for each player, -1 the one chosen; so that two games of the family
+        // can be run with the same characters and controls)
+        static const char *characters = getenv("VSAV_CHARACTERS");
+        if (characters && !AttractMode() && !StageViewer() && !BattleMode() && !ModelViewer()) {
+            const char *comma = strchr(characters, ',');
+            Wanted().characters[0] = static_cast<int32_t>(strtol(characters, nullptr, 16));
+            Wanted().characters[1] = comma ? static_cast<int32_t>(strtol(comma + 1, nullptr, 16)) : -1;
+        }
         BoardBeforeFrame(machine);
         colours::BeforeFrame(machine);
         // (first: the modes below may run other machines' frames, which are never wide)

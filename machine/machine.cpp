@@ -116,6 +116,9 @@ void Machine::Reset() {
     video.Reset();
     qsound.Reset();
     soundCpu.Reset();
+    if (extraSound) {
+        extraSound->Reset();
+    }
     cpu.Reset(true);
 }
 
@@ -229,6 +232,14 @@ void Machine::RunSound(int cycles) {
             }
             int16_t sample[2];
             qsound.Step(sample);
+            if (extraSound) {
+                extraSound->RunTo(m_sampleAt);
+                int16_t extra[2];
+                extraSound->Step(extra);
+                for (int n = 0; n < 2; n++) {
+                    sample[n] = static_cast<int16_t>(std::clamp(sample[n] + extra[n], -32768, 32767));
+                }
+            }
             audio.push_back(sample[0]);
             audio.push_back(sample[1]);
             m_sampleCount++;
@@ -463,6 +474,9 @@ void Machine::WriteRegister(uint32_t address, uint16_t value, uint16_t mask) {
         if (mask & 0x00FF) {
             const uint32_t at = (address - 0x618000) / 2;
             soundRam[at] = static_cast<uint8_t>(value);
+            if (extraSound && at >= 0x010) { // (the game's settings and its greeting: the other side's too; not requests)
+                extraSound->Shared(at, static_cast<uint8_t>(value));
+            }
             if (at == 0x00F && soundRam[0x00F] != 0xFF) { // (a request is there: soundtrack.h)
                 soundtrack.Request(soundRam, frame);
             }
@@ -522,6 +536,9 @@ void Machine::WriteRegister(uint32_t address, uint16_t value, uint16_t mask) {
                 }
             }
             m_soundRunning = run;
+            if (extraSound) {
+                extraSound->SetRunning(run);
+            }
         }
         return;
     case 0x8040A0: return; // (written once at start-up)
@@ -648,6 +665,9 @@ void Machine::Serialize(Archive &ar) {
     ar.Vec(m_chipQueue);
     ar.Pod(m_chipNext);
     ar.Pod(m_chipLast);
+    if (extraSound) {
+        extraSound->Serialize(ar);
+    }
     if (ar.version == 0 || ar.version >= 6) { // (a save state from before soundtracks has none)
         soundtrack.Serialize(ar);
     } else if (!ar.Saving()) {
