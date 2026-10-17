@@ -84,6 +84,7 @@ void Machine::Reset() {
     std::fill(videoRam.begin(), videoRam.end(), 0);
     std::fill(objectRam.begin(), objectRam.end(), 0);
     std::fill(extraRam.begin(), extraRam.end(), 0);
+    std::fill(scrollFromExtra.begin(), scrollFromExtra.end(), 0);
     memset(soundRam, 0, sizeof(soundRam));
     memset(soundRam2, 0, sizeof(soundRam2));
     soundtrack.Reset();
@@ -372,6 +373,7 @@ void Machine::Write16(uint32_t address, uint16_t value) {
     }
     if (address >= 0x900000 && address < 0x930000) {
         SetWord(&videoRam[address - 0x900000], value);
+        VideoWritten(address);
         return;
     }
     WriteRegister(address, value, 0xFFFF);
@@ -384,6 +386,7 @@ void Machine::Write8(uint32_t address, uint8_t value) {
     }
     if (address >= 0x900000 && address < 0x930000) {
         videoRam[address - 0x900000] = value;
+        VideoWritten(address);
         return;
     }
     if (address & 1) {
@@ -640,6 +643,7 @@ void Machine::Serialize(Archive &ar) {
     ar.Vec(objectRam);
     if (m_extra) {
         ar.Pod(objectsFromExtra);
+        ar.Vec(scrollFromExtra);
     }
     ar.Vec(extraRam);
     ar.Pod(soundRam);

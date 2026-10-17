@@ -149,13 +149,16 @@ void Video::DrawScroll(int which, int rasterLine, uint16_t *pens, uint8_t *prior
         const int line = static_cast<int>(y & (size - 1));
         const bool flipX = attr & 0x20, flipY = attr & 0x40;
         at += static_cast<uint32_t>(flipY ? size - 1 - line : line) * rowBytes;
-        if (at + rowBytes > m_src.graphicsSize) {
+        // (a tile of the extra set's: in its graphics)
+        const bool extra = m_extraGraphics && m_scrollFromExtra && m_scrollFromExtra[(base + index * 4) / 4];
+        const uint8_t *graphics = extra ? m_extraGraphics : m_src.graphics;
+        if (at + rowBytes > (extra ? m_extraGraphicsSize : m_src.graphicsSize)) {
             continue;
         }
         const uint16_t colour = static_cast<uint16_t>(((attr & 0x1F) + colourBase) * 16);
         uint8_t pixels[32];
         for (int part = 0; part < size / 8; part++) {
-            Unpack(&m_src.graphics[at + part * 4], &pixels[part * 8]);
+            Unpack(&graphics[at + part * 4], &pixels[part * 8]);
         }
         for (int k = 0; k < size; k++) {
             const int x = out + k;

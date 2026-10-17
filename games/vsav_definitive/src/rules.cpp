@@ -122,9 +122,38 @@ namespace {
         }
         return false;
     }
+
+    // 00A446 (008C58 there): the arcade's winner, whose ending is shown (A5+130), is the player's character (A0)
+    // with its high bits off here (this game's endings are by 0-F), as it is there for theirs: their ending is
+    // Vampire Savior 2's (graft.cfg: divert 021A20)
+    bool Winner(M68K &c) {
+        const uint8_t character = CharacterOf(c.a[0]);
+        if (IsTaken(character)) {
+            SetLow16(c.d[0], character);
+        }
+        return false;
+    }
+
+    // 01C6FA, 01C712 (01B180 there): a character's (D0) palette for the pictures between matches, in a table of 32
+    // bytes each (3AD400 here, whose places from 10 on are other palettes; 3C117C there, by the number its byte table
+    // at 01B1C0 gives the character): theirs is Vampire Savior 2's
+    constexpr uint32_t kTheirPictureColours = 0x01B1C0;
+    bool PictureColours(M68K &c) {
+        const uint8_t character = c.d[0] & 0xFF;
+        if (!IsTaken(character) || !ExtraBase()) {
+            return false;
+        }
+        const uint8_t number = *ExtraOpcodes(kTheirPictureColours + character);
+        c.a[0] = ExtraBase() + kTheirPalettes + static_cast<uint32_t>(number) * 32;
+        c.pc = (c.pc & 0xFFFFFF) + 12; // (on to the lea of where they go: movea.l #, lsl.w #5, lea passed)
+        return true;
+    }
 } // namespace
 
 void definitive::RegisterRules() {
+    AddHook(At(0x01C6FA), "PictureColours", PictureColours);
+    AddHook(At(0x01C712), "PictureColours", PictureColours);
+    AddHook(At(0x00A446), "Winner", Winner);
     AddHook(At(0x00A720), "JedahAgainst", JedahAgainst);
     AddHook(At(0x018460), "ReactionByKind", ReactionByKind);
     AddHook(At(0x018508), "ReactionByKind", ReactionByKind);

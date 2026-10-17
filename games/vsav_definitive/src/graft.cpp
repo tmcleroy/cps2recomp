@@ -194,7 +194,8 @@ namespace {
     bool Divert(M68K &c) {
         const uint32_t at = c.pc & 0xFFFFFF;
         for (const graft::Divert &d : graft::kDiverts) {
-            if (d.at == at && TakenPlayer(c.a[d.reg])) {
+            const bool taken = d.who & 0x10000 ? IsTaken(Ram8(Var(c, static_cast<int32_t>(d.who & 0xFFFF)))) : TakenPlayer(c.a[d.who]);
+            if (d.at == at && taken) {
                 c.pc = d.to;
                 return true;
             }

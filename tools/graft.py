@@ -53,8 +53,10 @@ def read_spec(path):
             spec.setdefault("extend", []).append((int(line[1], 16), int(line[2]), line[3], int(line[4], 16), int(line[5], 16),
                                                   other[0] if other else None, int(at.group(1), 16), "words" in line))
         elif line[0] == "divert":
-            # divert <this game's place> <the other game's same place> <the address register with the player>
-            spec.setdefault("divert", []).append((int(line[1], 16), int(line[2], 16), int(line[3][1])))
+            # divert <this game's place> <the other game's same place> <the address register with the player, or
+            # a5+N: the byte N from A5 is the character>
+            who = int(line[3][3:], 16) | 0x10000 if line[3].startswith("a5+") else int(line[3][1])
+            spec.setdefault("divert", []).append((int(line[1], 16), int(line[2], 16), who))
         elif line[0] == "ram":
             # ram <the other game's variables> <bytes> <where they are here>
             spec.setdefault("ram", []).append((int(line[1], 16), int(line[2], 16), int(line[3], 16)))
@@ -396,7 +398,7 @@ def main():
             a, n, h, kinds[kind], at, insn.length, m.group(1) if m else "0", stride, ra.group(1) if ra else "0", how, insn.text))
     out.append("};")
     # Where a character taken in goes on in the other game's code (its engine has more for them there)
-    out.append("struct Divert { uint32_t at, to; uint8_t reg; };")
+    out.append("struct Divert { uint32_t at, to; uint32_t who; }; // (who: an address register with the player; 0x10000 + N: the byte N from A5 is the character)")
     out.append("inline constexpr Divert kDiverts[] = {")
     for a, b, r in spec.get("divert", []):
         if not is_own(b):
