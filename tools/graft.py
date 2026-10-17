@@ -52,6 +52,9 @@ def read_spec(path):
             other = [int(x[6:], 16) for x in line[6:] if x.startswith("other=")]
             spec.setdefault("extend", []).append((int(line[1], 16), int(line[2]), line[3], int(line[4], 16), int(line[5], 16),
                                                   other[0] if other else None, int(at.group(1), 16), "words" in line))
+        elif line[0] == "mask":
+            # mask <this game's move.l #mask,dN> <the other game's>
+            spec.setdefault("mask", []).append((int(line[1], 16), int(line[2], 16)))
         elif line[0] == "patch":
             # patch <the other game's address> <bytes> <as they are> <as they are to be>
             spec.setdefault("patch", []).append((int(line[1], 16), int(line[2]), int(line[3], 16), int(line[4], 16)))
@@ -377,11 +380,22 @@ def main():
         out.append("    {0x%06X, 0x%02X, 0x%X, %s, 0x%06X, %d, %s, %d, %s}, // %s: %s" % (
             a, n, h, kinds[kind], at, insn.length, m.group(1) if m else "0", stride, ra.group(1) if ra else "0", how, insn.text))
     out.append("};")
+    # This game's masks of bits by character number, and the other's: the characters taken in are as the other has them
+    out.append("struct Mask { uint32_t at; uint8_t length, reg; uint32_t here, there; };")
+    out.append("inline constexpr Mask kMasks[] = {")
+    for a, b in spec.get("mask", []):
+        mine, theirs = m68k.decode(here, a), m68k.decode(other, b)
+        mm = re.match(r"move\.l #\$([0-9A-F]+),d(\d)$", mine.text)
+        mt = re.match(r"move\.l #\$([0-9A-F]+),d(\d)$", theirs.text)
+        if not mm or not mt:
+            sys.exit("graft: mask %06X / %06X: not a move.l #mask,dN (%s / %s)" % (a, b, mine.text, theirs.text))
+        out.append("    {0x%06X, %d, %s, 0x%s, 0x%s}, // %s / %06X" % (a, mine.length, mm.group(2), mm.group(1), mt.group(1), mine.text, b))
+    out.append("};")
     out.append("} // namespace graft")
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     # (the places of this game's code the sources hook, for tools/recomp.py: --hooks)
     hooks = sorted({int(re.search(r"0x([0-9A-F]{6}), \d+, \d, \d+, \d\}", line).group(1), 16)
-                    for line in out if "Kind::" in line and "}," in line})
+                    for line in out if "Kind::" in line and "}," in line} | {a for a, _ in spec.get("mask", [])})
     with open(os.path.splitext(args.out)[0] + "_hooks.txt", "w") as f:
         f.write("".join("%06X\n" % h for h in hooks))
     content = "\n".join(out) + "\n"

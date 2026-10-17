@@ -8,6 +8,8 @@
 #include <array>
 #include <cstdint>
 
+#include "game.h"
+
 namespace vsav::family {
 
 struct Place {
@@ -730,5 +732,15 @@ inline constexpr const char *kColoursFile = "vs2j.10", *kColoursFileWhose = "Vam
 
 // What this game's own sources add (none: Vampire Savior's sources are all it has)
 inline void RegisterOwnSources() {}
+
+// What a character put in by a mode in place of the one chosen needs besides its number (src/training.cpp): Phobos's
+// and Donovan's form, +3C2, which the character choice sets from Start held as they are chosen (01F832); the form
+// chosen without it
+inline void CharacterPut(uint32_t player, int character) {
+    if (character == 0x10 || character == 0x13) {
+        cps2recomp::SetRam8(player + 0x3C2, character == 0x13 ? 1 : 0);
+    }
+}
+
 
 } // namespace vsav::family

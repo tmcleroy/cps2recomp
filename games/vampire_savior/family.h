@@ -178,4 +178,8 @@ inline constexpr const char *kColoursFile = "vm3j.10b", *kColoursFileWhose = "th
 // What this game's own sources add (none: Vampire Savior's sources are all it has)
 inline void RegisterOwnSources() {}
 
+// What a character put in by a mode in place of the one chosen needs besides its number (src/training.cpp)
+inline void CharacterPut(uint32_t, int) {}
+
+
 } // namespace vsav::family

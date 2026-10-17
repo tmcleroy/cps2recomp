@@ -13,7 +13,7 @@
 //   - an address loaded from the other set's tables (movea.l) moved the same way (M68K::PointerLoad).
 // Their sounds go to the other set's sound side (game.cfg's extra_sound_program and extra_samples), and, for now, which
 // character each player is comes from the menu (the character choice has no place for them yet).
-#include "lift.h"
+#include "definitive.h"
 #include "modes.h"
 #include "sound_board.h"
 #include "vsav.h"
@@ -37,9 +37,9 @@ namespace {
 
     void (*g_before)(Machine &) = nullptr; // (the game's own, run after)
 
+    using namespace definitive;
     // Which character a player is, from the menu (0: as chosen; then the characters taken in)
     constexpr const char *kPlayerFeatures[2] = {"definitive_p1", "definitive_p2"};
-    constexpr uint8_t kTaken[] = {0x13};
 
 #ifdef VSAV_GRAFT
     template <typename T>
@@ -129,38 +129,42 @@ namespace {
         return false;
     }
 
-    // This game's tables of offsets from themselves, read for a character taken in
-    bool OffsetTable(M68K &c) {
-        const uint32_t at = c.pc & 0xFFFFFF;
-        if (getenv("GRAFT_DEBUG")) {
-            fprintf(stderr, "graft: table read at %06X, d0 %08X d1 %08X a6 %08X:", at, c.d[0], c.d[1], c.a[6]);
-            for (int n = 0; n < 16; n++) {
-                fprintf(stderr, " %02X", Ram8((c.a[6] & 0xFFFFFF) + n));
-            }
-            fprintf(stderr, "\n");
+} // namespace
+
+// This game's tables of offsets from themselves, read for a character taken in
+bool definitive::OffsetTable(M68K &c) {
+    const uint32_t at = c.pc & 0xFFFFFF;
+    if (getenv("GRAFT_DEBUG")) {
+        fprintf(stderr, "graft: table read at %06X, d0 %08X d1 %08X a6 %08X:", at, c.d[0], c.d[1], c.a[6]);
+        for (int n = 0; n < 16; n++) {
+            fprintf(stderr, " %02X", Ram8((c.a[6] & 0xFFFFFF) + n));
         }
-        for (const graft::Target &t : graft::kTargets) {
-            if (t.at != at || (c.d[t.index] & 0xFFFF) / t.stride != t.character) {
-                continue;
-            }
-            c.cycles += 14;
-            switch (t.kind) {
-            case graft::Kind::Jump:
-                c.pc = t.to;
-                return true;
-            case graft::Kind::Call:
-                c.Push32(at + t.length + 4); // (after the jsr that follows: 4 bytes, by the table)
-                c.pc = t.to;
-                return true;
-            case graft::Kind::SelfRelative:
-            case graft::Kind::Entry:
-                c.a[t.to_register] = t.to;
-                c.pc = at + t.length;
-                return true;
-            }
-        }
-        return false;
+        fprintf(stderr, "\n");
     }
+    for (const graft::Target &t : graft::kTargets) {
+        if (t.at != at || (c.d[t.index] & 0xFFFF) / t.stride != t.character) {
+            continue;
+        }
+        c.cycles += 14;
+        switch (t.kind) {
+        case graft::Kind::Jump:
+            c.pc = t.to;
+            return true;
+        case graft::Kind::Call:
+            c.Push32(at + t.length + 4); // (after the jsr that follows: 4 bytes, by the table)
+            c.pc = t.to;
+            return true;
+        case graft::Kind::SelfRelative:
+        case graft::Kind::Entry:
+            c.a[t.to_register] = t.to;
+            c.pc = at + t.length;
+            return true;
+        }
+    }
+    return false;
+}
+
+namespace {
 
     // A sound asked for by a character taken in (the player itself, or a thing of its: A4 its player) is the other
     // set's: its number is that set's (its voices are where the characters it left out had theirs). It goes to the
@@ -168,18 +172,9 @@ namespace {
     bool InPlayers(uint32_t record) {
         return (record & 0xFFFFFF) == Player(0) || (record & 0xFFFFFF) == Player(1);
     }
-    bool Taken(uint32_t record) {
-        record &= 0xFFFFFF;
-        for (int n = 0; n < 2; n++) {
-            if (record == Player(n)) {
-                return std::find(std::begin(kTaken), std::end(kTaken), Ram8(record + kCharacter)) != std::end(kTaken);
-            }
-        }
-        return false;
-    }
     bool TakenSound(M68K &c) {
         SoundBoard *board = ExtraSound();
-        if (!board || !(Taken(c.a[6]) || (!InPlayers(c.a[6]) && Taken(c.a[4])))) {
+        if (!board || !(TakenPlayer(c.a[6]) || (!InPlayers(c.a[6]) && TakenPlayer(c.a[4])))) {
             return false;
         }
         board->Request(c.d[1], c.d[2], c.d[3]);
@@ -193,6 +188,29 @@ namespace {
             return false; // (the game's own code: nothing)
         }
         return TakenSound(c);
+    }
+
+    // This game's masks of bits by character number: the characters taken in are as the other game has them
+    bool Mask(M68K &c) {
+        const uint32_t at = c.pc & 0xFFFFFF;
+        for (const graft::Mask &m : graft::kMasks) {
+            if (m.at != at) {
+                continue;
+            }
+            uint32_t mask = m.here;
+            for (const uint8_t taken : kTaken) {
+                const uint32_t bit = 1u << (taken & 31);
+                mask = (mask & ~bit) | (m.there & bit);
+            }
+            c.d[m.reg] = mask;
+            c.flagN = mask & 0x80000000u;
+            c.flagZ = mask == 0;
+            c.flagV = c.flagC = false;
+            c.cycles += 12;
+            c.pc = at + m.length;
+            return true;
+        }
+        return false;
     }
 
     void PutInPlace() {
@@ -213,6 +231,14 @@ namespace {
 
 } // namespace
 
+bool definitive::IsTaken(uint8_t character) {
+    return std::find(std::begin(kTaken), std::end(kTaken), character) != std::end(kTaken);
+}
+bool definitive::TakenPlayer(uint32_t record) {
+    record &= 0xFFFFFF;
+    return (record == vsav::Player(0) || record == vsav::Player(1)) && IsTaken(Ram8(record + vsav::kCharacter));
+}
+
 } // namespace cps2recomp
 
 namespace vsav::family {
@@ -225,13 +251,18 @@ void RegisterOwnSources() {
         const uint32_t at = graft::kBase + f.at; // (in the other set's code, which is not translated: tools/recomp.py need not know)
         AddHook(at, "GraftBranch", FarBranch);
     }
+    definitive::RegisterRules(); // (first: where a rule's hook is, it reads the table itself)
     for (const graft::Target &t : graft::kTargets) {
         const uint32_t at = t.at; // (tools/recomp.py has these from graft_data_hooks.txt)
         if (!HasHook(at)) {
-            AddHook(at, "GraftTable", OffsetTable);
+            AddHook(at, "GraftTable", definitive::OffsetTable);
         }
     }
     SetPointerLoads(PointerFrom, graft::kBase, graft::kBase + ExtraProgramSize());
+    for (const graft::Mask &m : graft::kMasks) {
+        const uint32_t at = m.at; // (tools/recomp.py has these from graft_data_hooks.txt)
+        AddHook(at, "GraftMask", Mask);
+    }
     AddHook(At(0x0031DA), "TakenSoundIfOn", TakenSoundIfOn);
     AddHook(At(0x0031E6), "TakenSound", TakenSound);
 #endif

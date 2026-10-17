@@ -9,6 +9,8 @@
 #include <array>
 #include <cstdint>
 
+#include "game.h"
+
 namespace vsav::family {
 
 struct Place {
@@ -173,12 +175,22 @@ inline constexpr uint32_t kPanelTiles[2] = {0x13800, 0x14400};
 inline constexpr uint32_t kCurtainTiles[2] = {0x2C600, 0x2FE00};
 
 // The characters whose three other palettes go elsewhere when their effects need them, a bit by number (02ADB2)
-inline constexpr uint32_t kFirstLineOnly = 0xEF92EF96;
+inline constexpr uint32_t kFirstLineOnly = 0xEF9AEF96; // (Vampire Savior's, and Donovan's bit, 13, from Vampire Savior 2's)
 
 // The ROM file whose colours PalMod changes, and which set it is
 inline constexpr const char *kColoursFile = "vm3j.10b", *kColoursFileWhose = "the Japanese set's, 970519";
 
 // What this game's own sources add: the characters taken in (src/graft.cpp)
 void RegisterOwnSources();
+
+// What a character put in by a mode in place of the one chosen needs besides its number (src/training.cpp): Phobos's
+// and Donovan's form, +3C2, which the character choice sets from Start held as they are chosen (01F832 in Vampire Savior 2; here none: src/rules.cpp); the form
+// chosen without it
+inline void CharacterPut(uint32_t player, int character) {
+    if (character == 0x10 || character == 0x13) {
+        cps2recomp::SetRam8(player + 0x3C2, character == 0x13 ? 1 : 0);
+    }
+}
+
 
 } // namespace vsav::family

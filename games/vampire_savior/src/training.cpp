@@ -163,6 +163,7 @@ namespace {
                 const int character = HiddenForm(n, wanted.characters[n]);
                 SetRam8(Player(n) + kCharacter, static_cast<uint8_t>(character));
                 SetRam8(Player(n) + kCharacterAgain, static_cast<uint8_t>(character));
+                family::CharacterPut(Player(n), character);
             }
         }
         for (int n = 0; n < 2; n++) {
