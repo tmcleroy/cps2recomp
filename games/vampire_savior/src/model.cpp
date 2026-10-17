@@ -104,16 +104,32 @@ namespace {
     uint32_t Read32(Machine &machine, uint32_t address) {
         return (static_cast<uint32_t>(machine.Read16(address)) << 16) | machine.Read16(address + 2);
     }
-    bool InRom(uint32_t address) {
-        return address >= At(0x100000) && address < 0x400000 && !(address & 1);
+    // An address the game keeps in its tables, as its code loads it (in a game that runs another set's code, an
+    // address in that set's tables is moved: M68K::PointerLoad)
+    uint32_t ReadAddress(Machine &machine, uint32_t address) {
+        return machine.cpu.PointerLoad(address, Read32(machine, address));
     }
-    // Is this an animation's frame? (Its picture is somewhere in the ROM, and it is shown for a while.)
+    // (the tables are in the ROM's second half on; or in the same part of another set's program, where a game has
+    // one: game.cfg's extra_set)
+    bool InExtra(uint32_t address) {
+        return ExtraBase() && address >= ExtraBase() && InProgram(address);
+    }
+    bool InRom(uint32_t address) {
+        const uint32_t own = InExtra(address) ? address - ExtraBase() : address;
+        return own >= At(0x100000) && own < 0x400000 && !(address & 1);
+    }
+    // Is this an animation's frame? (Its picture is somewhere in the ROM, and it is shown for a while.) A frame of
+    // another set's names its picture as that set does (where it is there)
     bool IsFrame(Machine &machine, uint32_t frame) {
-        return InRom(frame) && machine.Read8(frame) != 0 && InRom(Read32(machine, frame + kFramePicture));
+        if (!InRom(frame) || machine.Read8(frame) == 0) {
+            return false;
+        }
+        const uint32_t picture = Read32(machine, frame + kFramePicture);
+        return InExtra(frame) ? InRom(ExtraBase() + picture) : InRom(picture);
     }
     // Where an animation of the character's starts (0: there is none of that number)
     uint32_t AnimationAt(Machine &machine, int character, int table, int number) {
-        const uint32_t list = Read32(machine, kAnimationTables[table] + static_cast<uint32_t>(character) * 4);
+        const uint32_t list = ReadAddress(machine, kAnimationTables[table] + static_cast<uint32_t>(character) * 4);
         if (!InRom(list)) {
             return 0;
         }
@@ -271,7 +287,7 @@ namespace {
                         }
                     }
                     const uint8_t follows = m.Read8(g_scan.frame + kFrameEnd);
-                    const uint32_t next = follows & 0x80 ? Read32(m, g_scan.frame + kFrameJump) : follows & 0x40 ? 0 : g_scan.frame + kFrameBytes;
+                    const uint32_t next = follows & 0x80 ? ReadAddress(m, g_scan.frame + kFrameJump) : follows & 0x40 ? 0 : g_scan.frame + kFrameBytes;
                     if (next > g_scan.frame && IsFrame(m, next) && ++g_scan.frames < kScanFramesMost) {
                         g_scan.frame = next;
                     } else {
@@ -367,7 +383,7 @@ namespace {
         } else if (--g.left <= 0) {
             // (the frame's time is up: the next, by what the frame says follows it; the end is the start again)
             const uint8_t follows = machine.Read8(g.frame + kFrameEnd);
-            uint32_t next = follows & 0x80 ? Read32(machine, g.frame + kFrameJump) : follows & 0x40 ? g.first : g.frame + kFrameBytes;
+            uint32_t next = follows & 0x80 ? ReadAddress(machine, g.frame + kFrameJump) : follows & 0x40 ? g.first : g.frame + kFrameBytes;
             if (!IsFrame(machine, next)) {
                 next = g.first;
             }

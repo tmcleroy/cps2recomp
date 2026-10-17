@@ -341,7 +341,7 @@ uint16_t Machine::Read16(uint32_t address) {
         return Word(&videoRam[address - 0x900000]);
     }
     if (InExtra(address)) {
-        m_readExtra = true;
+        ReadExtra();
         return Word(&m_extra->program[address - m_extraBase]);
     }
     return ReadRegister(address);
@@ -358,7 +358,7 @@ uint8_t Machine::Read8(uint32_t address) {
         return videoRam[address - 0x900000];
     }
     if (InExtra(address)) {
-        m_readExtra = true;
+        ReadExtra();
         return m_extra->program[address - m_extraBase];
     }
     const uint16_t word = ReadRegister(address & ~1u);
