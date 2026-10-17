@@ -163,9 +163,27 @@ namespace {
         c.pc = c.Pop32();
         return true;
     }
+
+    // 05F1B6 (06B290 there): a player's (A4) five palettes for the talk before the last opponent, by its character
+    // (D6) and its colours (+3AE), in a table of five palettes each (3AD700 here, 17 by the colours; 3C2BBC there,
+    // 18, at the place its byte table at 06B2F2 gives the character): theirs are Vampire Savior 2's
+    constexpr uint32_t kTheirTalkPalettes = 0x3C2BBC, kTheirTalkPlaces = 0x06B2F2;
+    bool TalkPalettes(M68K &c) {
+        const uint8_t character = c.d[6] & 0xFF;
+        if (!IsTaken(character) || !ExtraBase()) {
+            return false;
+        }
+        const uint32_t colours = Ram8((c.a[4] & 0xFFFFFF) + 0x3AE);
+        const uint32_t place = colours * 18 + *ExtraOpcodes(kTheirTalkPlaces + character);
+        c.a[0] = ExtraBase() + kTheirTalkPalettes + place * 5 * 32;
+        c.d[7] = 4; // (moveq)
+        c.pc = At(0x01C3A4);
+        return true;
+    }
 } // namespace
 
 void definitive::RegisterRules() {
+    AddHook(At(0x05F1B6), "TalkPalettes", TalkPalettes);
     AddHook(At(0x01A888), "ThrownMeeting", ThrownMeeting);
     AddHook(At(0x01C6FA), "PictureColours", PictureColours);
     AddHook(At(0x01C712), "PictureColours", PictureColours);

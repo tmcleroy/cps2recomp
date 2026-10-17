@@ -37,13 +37,12 @@ everyone.
 - Their moves, specials and supers, from Vampire Savior 2's code, with what its engine does differently for them
   (where it compares their numbers) done the same here.
 - Their pictures and colours from Vampire Savior 2's graphics, in the fight, the versus screen, the character
-  choice and the model viewer; custom colours and the colour editor for them too.
+  choice, the arcade's talks and the model viewer; custom colours and the colour editor for them too.
 - Their voices and their own sounds, played by Vampire Savior 2's own sound program and samples beside Vampire
   Savior's, heard together.
 - The arcade with any of them to its end, which is Vampire Savior 2's: its staff roll.
 
-Not yet: Donovan's stage and Vampire Savior 2's music (Vampire Savior's twelve stages are all here); in the arcade,
-the talk before the last opponent shows the three as a silhouette.
+Not yet: Donovan's stage and Vampire Savior 2's music (Vampire Savior's twelve stages are all here).
 
 ## What you need
 
