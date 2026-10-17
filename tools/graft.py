@@ -52,6 +52,9 @@ def read_spec(path):
             other = [int(x[6:], 16) for x in line[6:] if x.startswith("other=")]
             spec.setdefault("extend", []).append((int(line[1], 16), int(line[2]), line[3], int(line[4], 16), int(line[5], 16),
                                                   other[0] if other else None, int(at.group(1), 16), "words" in line))
+        elif line[0] == "patch":
+            # patch <the other game's address> <bytes> <as they are> <as they are to be>
+            spec.setdefault("patch", []).append((int(line[1], 16), int(line[2]), int(line[3], 16), int(line[4], 16)))
         elif line[0] == "table":
             # (where this game reads it: "read at <address>" in the line's remark, for the tables made by hooks)
             at = re.search(r"read at ([0-9A-F]{6})", raw_line)
@@ -256,6 +259,12 @@ def main():
                 odd.append((x, text))
                 continue
             patches.append((x + at, 2, nd & 0xFFFF, "a5"))
+
+    # Changes to their code by hand (graft.cfg), each where it is as expected
+    for x, size, was, now in spec.get("patch", []):
+        if int.from_bytes(other[x:x + size], "big") != was:
+            sys.exit("graft: patch at %06X: the other game's program is not as expected" % x)
+        patches.append((x, size, now, "by hand"))
 
     # The tables' entries: bytes to put at a place of this game's program; and for the tables of offsets from
     # themselves, where the character's entry leads

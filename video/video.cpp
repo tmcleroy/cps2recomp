@@ -63,10 +63,13 @@ void Video::CopyPalette() {
     }
 }
 
-void Video::LatchObjects(const uint8_t *objectRam) {
+void Video::LatchObjects(const uint8_t *objectRam, const uint8_t *fromExtra) {
     m_priorityControl = m_src.objectRegs[kObjPriority];
     for (int n = 0; n < 0x1000; n++) {
         m_objects[n] = Word(&objectRam[n * 2]);
+    }
+    if (fromExtra) {
+        memcpy(m_objectsFromExtra, fromExtra, sizeof(m_objectsFromExtra));
     }
     // The list ends at the first entry marked so
     m_lastObject = 0x1000 - 4;
@@ -194,6 +197,10 @@ void Video::DrawObjects(int rasterLine, uint16_t *pens, uint8_t *priority, const
         const bool flipX = attr & 0x20, flipY = attr & 0x40;
         const uint16_t colour = static_cast<uint16_t>((attr & 0x1F) * 16);
         const uint32_t mask = masks[level] | 0x80000000u;
+        // (an object of the extra set's: its tiles are in its graphics)
+        const bool extra = m_extraGraphics && m_objectsFromExtra[i / 4];
+        const uint8_t *graphics = extra ? m_extraGraphics : m_src.graphics;
+        const size_t graphicsSize = extra ? m_extraGraphicsSize : m_src.graphicsSize;
         // (where the first column drawn is in the object's own count across, which wraps at 1024)
         const int first = kWide ? kFirstColumn - wide.side - (wide.object ? wide.object(code, attr, i / 4) : 0) - 16 : 0;
         for (int ty = 0; ty < down; ty++) {
@@ -217,12 +224,12 @@ void Video::DrawObjects(int rasterLine, uint16_t *pens, uint8_t *priority, const
                     tile = (!flipX && !flipY) ? (code & ~0xFu) + ((code + cx) & 0xF) + 0x10 * cy : code + cx + 0x10 * cy;
                 }
                 const uint32_t at = (tile * 128 + static_cast<uint32_t>(flipY ? 15 - line : line) * 8);
-                if (at + 8 > m_src.graphicsSize) {
+                if (at + 8 > graphicsSize) {
                     continue;
                 }
                 uint8_t pixels[16];
-                Unpack(&m_src.graphics[at], pixels);
-                Unpack(&m_src.graphics[at + 4], pixels + 8);
+                Unpack(&graphics[at], pixels);
+                Unpack(&graphics[at + 4], pixels + 8);
                 for (int k = 0; k < 16; k++) {
                     const int px = sx + k;
                     if (px < 0 || px >= width) {
@@ -384,6 +391,9 @@ void Video::Serialize(Archive &ar) {
     ar.Pod(m_objects);
     ar.Pod(m_priorityControl);
     ar.Pod(m_lastObject);
+    if (m_extraGraphics) {
+        ar.Pod(m_objectsFromExtra);
+    }
 }
 
 } // namespace cps2recomp

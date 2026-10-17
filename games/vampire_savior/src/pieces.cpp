@@ -89,7 +89,7 @@ namespace {
         c.a[0] = Ram32(piece + kFrame);
         SetLow8(c.d[0], Mem8(c, c.a[0] + kFrameEnd));
         if ((c.d[0] & 0x80)) {
-            c.a[0] = Mem32(c, c.a[0] + 8);
+            c.a[0] = MemPointer(c, c.a[0] + 8);
         } else if (c.d[0] & 0x40) {
             SetRam8(piece + kOver, 0xFF);
             return;

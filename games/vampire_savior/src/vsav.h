@@ -334,6 +334,11 @@ inline uint16_t Mem16(cps2recomp::M68K &c, uint32_t address) {
 inline uint32_t Mem32(cps2recomp::M68K &c, uint32_t address) {
     return c.Read(address, 2);
 }
+// An address the game loads into an address register (movea.l): as Mem32, but one read from another set's program
+// is moved as the translated code moves it (M68K::PointerLoad; a game that runs another set's code)
+inline uint32_t MemPointer(cps2recomp::M68K &c, uint32_t address) {
+    return c.PointerLoad(address, c.Read(address, 2));
+}
 // The game's variables, by their distance from A5
 inline uint32_t Var(cps2recomp::M68K &c, int32_t offset) {
     return (c.a[5] + static_cast<uint32_t>(offset)) & 0xFFFFFF;
