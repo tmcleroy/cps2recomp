@@ -52,6 +52,12 @@ def read_spec(path):
             other = [int(x[6:], 16) for x in line[6:] if x.startswith("other=")]
             spec.setdefault("extend", []).append((int(line[1], 16), int(line[2]), line[3], int(line[4], 16), int(line[5], 16),
                                                   other[0] if other else None, int(at.group(1), 16), "words" in line))
+        elif line[0] == "divert":
+            # divert <this game's place> <the other game's same place> <the address register with the player>
+            spec.setdefault("divert", []).append((int(line[1], 16), int(line[2], 16), int(line[3][1])))
+        elif line[0] == "ram":
+            # ram <the other game's variables> <bytes> <where they are here>
+            spec.setdefault("ram", []).append((int(line[1], 16), int(line[2], 16), int(line[3], 16)))
         elif line[0] == "mask":
             # mask <this game's move.l #mask,dN> <the other game's>
             spec.setdefault("mask", []).append((int(line[1], 16), int(line[2], 16)))
@@ -109,6 +115,10 @@ def main():
             n, total = (int(v) for v in t[3].split("/"))
             if 2 * n > total:
                 named[int(t[1], 16)] = int(t[2], 16)
+    # (variables of the other game's this one has no place for: where graft.cfg puts them, byte by byte)
+    for b, size, a in spec.get("ram", []):
+        for n in range(size):
+            named[a + n] = b + n
     # ... and the other way round: the other game's code places this game has. A routine's start as the code
     # calls it (named) before an instruction's place (a routine may begin with something new there).
     back = {}
@@ -145,6 +155,9 @@ def main():
             continue
         here_tables.append((addr, named[addr], stride, size, view, kind))
     roots = set()
+    # (where a character taken in goes on in the other game's code: that code is theirs too)
+    for _, there, _ in spec.get("divert", []):
+        roots.add(there)
     for addr, oaddr, stride, size, view, kind in here_tables:
         if kind not in ("code", "jump"):
             continue
@@ -306,12 +319,12 @@ def main():
         for number, _ in spec["characters"]:
             raw = mem[oaddr + number * stride:oaddr + number * stride + size]
             if kind == "entry":
-                targets.append((addr, number, base + oaddr + number * stride, kind, "data"))
+                targets.append((addr, number, base + oaddr + number * stride, kind, "data", spec["read"].get(addr)))
                 continue
             if kind in ("jump", "selfrel"):
                 to = (oaddr + int.from_bytes(raw, "big", signed=True)) & 0xFFFFFF
                 h, how = place(to) if kind == "jump" else (base + to, "data")
-                targets.append((addr, number, h, kind, how))
+                targets.append((addr, number, h, kind, how, spec["read"].get(addr)))
                 continue
             if kind in ("code", "data") and size == 4:
                 v = int.from_bytes(raw, "big")
@@ -362,11 +375,10 @@ def main():
     kinds = {"jump": "Kind::Jump", "call": "Kind::Call", "selfrel": "Kind::SelfRelative", "entry": "Kind::Entry"}
     for addr, i, v, at, words in extended:
         h, how = place(v) if v else (0, "none")
-        targets.append((addr, i, h, "jump" if words else "entry", how))
-        spec["read"][addr] = at
-    for a, n, h, kind, how in targets:
+        targets.append((addr, i, h, "jump" if words else "entry", how, at))  # (a table extended where each line says)
+    for a, n, h, kind, how, read in targets:
         # (the instruction that uses the table: the first from where the number is read that is indexed by a register)
-        at = spec["read"].get(a)
+        at = read
         for _ in range(8):
             insn = m68k.decode(here, at)
             if re.search(r",d\d\.w\)", insn.text):
@@ -379,6 +391,14 @@ def main():
             kind = "call"  # (a call by the table: what follows the jsr is where it comes back to)
         out.append("    {0x%06X, 0x%02X, 0x%X, %s, 0x%06X, %d, %s, %d, %s}, // %s: %s" % (
             a, n, h, kinds[kind], at, insn.length, m.group(1) if m else "0", stride, ra.group(1) if ra else "0", how, insn.text))
+    out.append("};")
+    # Where a character taken in goes on in the other game's code (its engine has more for them there)
+    out.append("struct Divert { uint32_t at, to; uint8_t reg; };")
+    out.append("inline constexpr Divert kDiverts[] = {")
+    for a, b, r in spec.get("divert", []):
+        if not is_own(b):
+            sys.exit("graft: divert %06X: %06X is not theirs" % (a, b))
+        out.append("    {0x%06X, 0x%X, %d}, // %s / %s" % (a, base + b, r, m68k.decode(here, a).text, m68k.decode(other, b).text))
     out.append("};")
     # This game's masks of bits by character number, and the other's: the characters taken in are as the other has them
     out.append("struct Mask { uint32_t at; uint8_t length, reg; uint32_t here, there; };")
@@ -395,7 +415,7 @@ def main():
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     # (the places of this game's code the sources hook, for tools/recomp.py: --hooks)
     hooks = sorted({int(re.search(r"0x([0-9A-F]{6}), \d+, \d, \d+, \d\}", line).group(1), 16)
-                    for line in out if "Kind::" in line and "}," in line} | {a for a, _ in spec.get("mask", [])})
+                    for line in out if "Kind::" in line and "}," in line} | {a for a, _ in spec.get("mask", [])} | {a for a, _, _ in spec.get("divert", [])})
     with open(os.path.splitext(args.out)[0] + "_hooks.txt", "w") as f:
         f.write("".join("%06X\n" % h for h in hooks))
     content = "\n".join(out) + "\n"

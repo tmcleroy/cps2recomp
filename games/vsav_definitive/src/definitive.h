@@ -12,8 +12,9 @@
 namespace cps2recomp::definitive {
 
 // The characters taken from Vampire Savior 2, by their numbers there (and here)
-inline constexpr uint8_t kTaken[] = {0x13};
-inline constexpr uint8_t kDonovan = 0x13;
+inline constexpr uint8_t kTaken[] = {0x10, 0x11, 0x13};
+inline constexpr const char *kTakenNames[] = {"Phobos", "Pyron", "Donovan"};
+inline constexpr uint8_t kPhobos = 0x10, kPyron = 0x11, kDonovan = 0x13;
 bool IsTaken(uint8_t character);
 // A player's record (FF8400, FF8800) whose character is taken in; anything else, false
 bool TakenPlayer(uint32_t record);

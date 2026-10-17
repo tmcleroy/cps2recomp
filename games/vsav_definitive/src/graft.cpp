@@ -190,6 +190,18 @@ namespace {
         return TakenSound(c);
     }
 
+    // Where Vampire Savior 2's engine has more for the characters taken in: they go on in its code (graft.cfg: divert)
+    bool Divert(M68K &c) {
+        const uint32_t at = c.pc & 0xFFFFFF;
+        for (const graft::Divert &d : graft::kDiverts) {
+            if (d.at == at && TakenPlayer(c.a[d.reg])) {
+                c.pc = d.to;
+                return true;
+            }
+        }
+        return OffsetTable(c); // (a table of this game's read there, extended: graft.cfg)
+    }
+
     // This game's masks of bits by character number: the characters taken in are as the other game has them
     bool Mask(M68K &c) {
         const uint32_t at = c.pc & 0xFFFFFF;
@@ -252,6 +264,14 @@ void RegisterOwnSources() {
         AddHook(at, "GraftBranch", FarBranch);
     }
     definitive::RegisterRules(); // (first: where a rule's hook is, it reads the table itself)
+    for (const graft::Divert &d : graft::kDiverts) {
+        const uint32_t at = d.at; // (tools/recomp.py has these from graft_data_hooks.txt)
+        if (!HasHook(at)) {
+            AddHook(at, "GraftDivert", Divert);
+        } else {
+            fprintf(stderr, "graft: divert at %06X: a rule's hook is there already\n", at);
+        }
+    }
     for (const graft::Target &t : graft::kTargets) {
         const uint32_t at = t.at; // (tools/recomp.py has these from graft_data_hooks.txt)
         if (!HasHook(at)) {
@@ -271,7 +291,7 @@ void RegisterOwnSources() {
     for (int n = 0; n < 2; n++) {
         game.features.push_back({kPlayerFeatures[n], "Definitive", n == 0 ? "Player 1 is" : "Player 2 is",
                                  "Whom the player fights as, whatever is chosen at the character choice.", 0,
-                                 {"As chosen", "Donovan"}});
+                                 {"As chosen", kTakenNames[0], kTakenNames[1], kTakenNames[2]}});
     }
     g_before = game.beforeFrame;
     game.beforeFrame = [](Machine &machine) {

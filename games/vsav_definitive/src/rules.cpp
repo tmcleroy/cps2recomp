@@ -62,26 +62,65 @@ namespace {
         return true;
     }
 
-    // 05F152 (06B1A0 there): a palette by the character (D6) and its colours (D0), in a table of 32 bytes each
-    // (3AC000 here; 3C117C there): Donovan's is Vampire Savior 2's, at D0 + C6 there
+    // 05F152 (06B18A-06B1A0 there): a palette by the character (D6) and its colours (D0), in a table of 32 bytes each
+    // (3AC000 here; 3C117C there): theirs are Vampire Savior 2's: Donovan's at D0 + C6, Pyron's at D0 + BC, Phobos's
+    // as character 0B's
     constexpr uint32_t kTheirPalettes = 0x3C117C;
-    bool PaletteForDonovan(M68K &c) {
-        if ((c.d[6] & 0xFF) != kDonovan || !ExtraBase()) {
+    bool TheirPalette(M68K &c) {
+        const uint8_t character = c.d[6] & 0xFF;
+        if (!IsTaken(character) || !ExtraBase()) {
             return false;
         }
         c.a[0] = ExtraBase() + kTheirPalettes;
-        SetLow16(c.d[0], (c.d[0] + 0xC6) & 0xFFFF);
+        if (character == kPhobos) {
+            SetLow8(c.d[6], 0x0B);
+            c.pc = At(0x05F15E); // (on to lsl.w #4,d0 and add.w d6,d0)
+            return true;
+        }
+        SetLow16(c.d[0], (c.d[0] + (character == kPyron ? 0xBC : 0xC6)) & 0xFFFF);
         c.pc = At(0x05F162); // (on to lsl.w #5,d0 and the lea)
         return true;
     }
 
     // 07A95C, 07A98C (085A68, 085ABA there): how high the thing is put by its player's (A4) opponent's height
-    // (D0: its +36 halved): 8 less for Donovan
-    bool HeightAgainstDonovan(M68K &c) {
-        if (CharacterOf(Opponent(c.a[4])) == kDonovan) {
+    // (D0: its +36 halved): 8 less for Donovan, 4 more for Phobos and Pyron
+    bool HeightAgainstTaken(M68K &c) {
+        const uint8_t opponent = CharacterOf(Opponent(c.a[4]));
+        if (opponent == kDonovan) {
             SetLow16(c.d[0], (c.d[0] - 8) & 0xFFFF);
+        } else if (opponent == kPhobos || opponent == kPyron) {
+            SetLow16(c.d[0], (c.d[0] + 4) & 0xFFFF);
         }
         return false; // (the game's own code goes on)
+    }
+
+    // 030AB0 (0304D8 there): a player in this state against Phobos, unless +3B4, takes another way (+0A 78): always
+    // with +394 at 5, else one time in 16 (by the game's random numbers, 014E8A here)
+    bool AgainstPhobos(M68K &c) {
+        const uint32_t player = c.a[6] & 0xFFFFFF;
+        if (Ram8(player + 0x3B4) || CharacterOf(Opponent(player)) != kPhobos) {
+            return false;
+        }
+        bool other = Ram8(player + 0x394) == 5;
+        if (!other) {
+            Call(c, At(0x014E8A));
+            other = (c.d[0] & 0xF) == 0;
+        }
+        if (other) {
+            SetRam8(player + 0x0A, 0x78);
+        }
+        return false;
+    }
+
+    // 060ED6 (06D304 there): a thing put on its player's (A6) opponent takes Pyron's place (+0E) and palette, less 3
+    bool OnPyron(M68K &c) {
+        const uint32_t opponent = Opponent(c.a[6]);
+        if (CharacterOf(opponent) == kPyron) {
+            const uint32_t thing = c.a[4] & 0xFFFFFF;
+            SetRam16(thing + 0x0E, Ram16(opponent + 0x0E));
+            SetRam8(thing + 0x0F, Ram8(thing + 0x0F) - 3);
+        }
+        return false;
     }
 } // namespace
 
@@ -91,9 +130,11 @@ void definitive::RegisterRules() {
     AddHook(At(0x018508), "ReactionByKind", ReactionByKind);
     AddHook(At(0x024C80), "NoCallForDonovan", NoCallForDonovan);
     AddHook(At(0x025CA0), "NoTurnForDonovan", NoTurnForDonovan);
-    AddHook(At(0x05F152), "PaletteForDonovan", PaletteForDonovan);
-    AddHook(At(0x07A95C), "HeightAgainstDonovan", HeightAgainstDonovan);
-    AddHook(At(0x07A98C), "HeightAgainstDonovan", HeightAgainstDonovan);
+    AddHook(At(0x05F152), "TheirPalette", TheirPalette);
+    AddHook(At(0x07A95C), "HeightAgainstTaken", HeightAgainstTaken);
+    AddHook(At(0x07A98C), "HeightAgainstTaken", HeightAgainstTaken);
+    AddHook(At(0x030AB0), "AgainstPhobos", AgainstPhobos);
+    AddHook(At(0x060ED6), "OnPyron", OnPyron);
 }
 
 } // namespace cps2recomp
