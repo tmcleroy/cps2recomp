@@ -76,6 +76,11 @@ def read_spec(path):
             spec["tables"].append((int(line[1], 16), int(line[2]), int(line[3]), line[4], line[5], other[0] if other else None,
                                    int(at.group(1), 16) if at else None))
             spec.setdefault("index", {})[(int(line[1], 16), int(at.group(1), 16) if at else None)] = shift[0] if shift else 0
+            # (swap=AA:BB: in the entries' bytes, AA becomes BB, a number the other game has and this one has not)
+            for x in line[6:]:
+                if x.startswith("swap="):
+                    was, now = (int(v, 16) for v in x[5:].split(":"))
+                    spec.setdefault("swap", {}).setdefault(int(line[1], 16), []).append((was, now))
     return spec
 
 
@@ -336,6 +341,8 @@ def main():
                 if v:
                     v, _how = place(v)
                 raw = v.to_bytes(4, "big")
+            if kind == "value" and addr in spec.get("swap", {}):
+                raw = bytes(dict(spec["swap"][addr]).get(b, b) for b in raw)
             entries.append((addr + number * stride, raw, view))
 
     # The other game's code places this game has (for addresses loaded from its tables), sorted
