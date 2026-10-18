@@ -25,16 +25,17 @@ namespace {
     struct Place {
         uint8_t character;
         int16_t x;                 // its middle, from the random choice's
+        int16_t ringX;             // the ring's, from the random choice's (on the face as drawn)
         uint16_t tile, attributes; // the face
         int16_t faceX, faceY;      // ... its object, from the place's middle
         uint8_t theirPalette;
     };
     constexpr Place kPlaces[] = {
-        {kDonovan, -44, 0xB10B, 0x1216, -0x12, -0x11, 0x05},
-        {kPyron, 0, 0xB0F5, 0x1217, -0x18, -0x11, 0x11},
-        {kPhobos, 44, 0xB108, 0x1219, -0x20, -0x10, 0x13},
+        {kDonovan, -44, -44, 0xB10B, 0x1216, -0x12, -0x11, 0x05},
+        {kPyron, 0, -1, 0xB0F5, 0x1217, -0x18, -0x11, 0x11},
+        {kPhobos, 44, 40, 0xB108, 0x1219, -0x20, -0x10, 0x13},
     };
-    constexpr int kBelow = 34;
+    constexpr int kBelow = 34, kRingBelow = 36;
     int PlaceIndex(uint8_t place) {
         for (int i = 0; i < 3; i++) {
             if (kPlaces[i].character == place) {
@@ -97,8 +98,8 @@ namespace {
         }
         const uint8_t *random = ProgramOpcodes(kRingPlaces + kRandom * 4);
         const uint32_t me = c.a[6] & 0xFFFFFF;
-        SetRam16(me + 0x10, static_cast<uint16_t>(((random[0] << 8) | random[1]) + kPlaces[i].x));
-        SetRam16(me + 0x14, static_cast<uint16_t>(((random[2] << 8) | random[3]) - kBelow));
+        SetRam16(me + 0x10, static_cast<uint16_t>(((random[0] << 8) | random[1]) + kPlaces[i].ringX));
+        SetRam16(me + 0x14, static_cast<uint16_t>(((random[2] << 8) | random[3]) - kRingBelow));
         c.cycles += 40;
         c.pc = c.Pop32();
         return true;
