@@ -45,8 +45,9 @@ code is not part of that source: it is made from the player's own ROM sets by th
 
 ## The steps
 
-1. In a pull request: set `VERSION`, move the "Unreleased" lines of `CHANGELOG.md` under a heading for the
-   version. `make check` passes; for every game, with its ROM set: `make GAME=<id> check` over its ladder movie,
+1. In a pull request: set `VERSION`, and `tools/release/changelog.sh X.Y.Z` writes the version's section of
+   `CHANGELOG.md` from the files in `changes/` (and any lines left under "Unreleased") and removes them.
+   `make check` passes; for every game, with its ROM set: `make GAME=<id> check` over its ladder movie,
    `check-blocks`, `check-rewrites` and `check-release` (40,000 frames; Puzzle Fighter's ladder is 66,000).
    Merge it.
 2. On `main`: `git tag -a vX.Y.Z -m "X.Y.Z"` and `git push origin vX.Y.Z`.

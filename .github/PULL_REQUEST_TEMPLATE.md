@@ -7,4 +7,4 @@
 - [ ] No added input lag or lost speed (say what was measured, if timing, input, sound or presentation changed).
 - [ ] Keyboard and gamepad both still work.
 - [ ] `recomp-common/` is unchanged (it is a copy: change recomp-common and run `tools/sync-common.sh`).
-- [ ] A line in `CHANGELOG.md` under "Unreleased"; the README (the main one, or the game's) says what players get.
+- [ ] Its changelog lines in a file of its own, `changes/<branch>.md` (not in `CHANGELOG.md`: [changes/README.md](../changes/README.md)); the README (the main one, or the game's) says what players get.
