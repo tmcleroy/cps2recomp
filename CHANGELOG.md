@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Vampire Savior games: tester feedback** (from vampire-savior-recomp#49). Endless battle (Shuffle, Scroll) and
+  ring out: what the stage has in front of the fighters (Abaraya's kettle, Green Scream's leaves) is in front of them
+  again, and a move's own picture (Jedah's Finale Rosso turning everything red) replaces the stage behind while it is
+  up (`fight/battle.cpp`, for every game: a stage machine's pieces listed before its own players are drawn over the
+  fighters; `Description::planesHeld`). The fighters' unseen match is on Feast of the Damned
+  (`Description::fightersStage`): on Fetus of God its camera took the stage behind past its ends. **Training: Gauge
+  refills** (`gauge_refill`). **Widescreen**: Felicia's wall cling, Q-Bee's flight to the wall and carrying throw, and
+  a catch of Bishamon's go to the wide picture's edge (`games/vampire_savior/src/moves.cpp`, readable rewrites, with
+  their places in Vampire Savior 2 and Vampire Hunter 2 in `family.h`).
+
 - **A release has only its three downloads**, their checksums and three small update lists (it had a file for
   every file of every download too, 46 more). The launcher's **Update** now downloads the system's download
   itself, checks it, and puts in place what changed (recomp-common 91b4e51; `update-<system>.txt` names the

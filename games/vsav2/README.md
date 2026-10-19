@@ -76,6 +76,7 @@ the page holds the aids below.
 | Input display | What each player presses and for how long, the stick as a keypad number |
 | Combo readout | Hits, damage, how much is lost for good and how much comes back, the round's best |
 | Health refills | A player's health comes back when they have not been hit for a moment |
+| Gauge refills | A player's special gauge is full again when they have not spent any of it for a moment |
 | The dummy | Stands, crouches, jumps; guards (always, after a hit, at random; high or low as each attack needs); pushes away or guard cancels; softens throws; gets up where it fell or rolls towards or away; records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
 | Start over | The round as it began, in the middle or a corner, sides swapped or not (Backspace, or a gamepad's left shoulder) |
 | Stage | Any of the thirteen stages, or the game's own choice |

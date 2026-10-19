@@ -104,6 +104,7 @@ void RegisterBattle() {
     d.healthBack = 0x30;
     d.stages = kStages;
     d.stageToRound = 1100; // (counted: 921 for most stages, 1,046 for Fetus of God, and a few)
+    d.fightersStage = 1;   // Feast of the Damned (Fetus of God's camera goes 96 further each way than the others')
     d.characterSpan = kCharacterSpan;
     d.choosable = [](int number) { return Choosable(number); };
     d.rosterNumber = [](int choice) { return choice >= 1 && choice <= static_cast<int>(std::size(kRoster)) ? kRoster[choice - 1].number : -1; };
@@ -124,6 +125,7 @@ void RegisterBattle() {
     d.thePanel = ThePanel;
     d.notTheFighters = NotTheFighters;
     d.playerSets = [](int n) { return kPlayerSets[n]; };
+    d.planesHeld = [] { return Ram8(kCameraRecord + kCameraHeld) != 0; }; // (a player's +136, copied to each plane's +60)
     d.noShadow = NoShadow;
     d.inAir = [](uint32_t player) { return Ram8(player + kAirborne) != 0; };
     d.atJumpTop = [](uint32_t player) { return Ram8(player + kAirborne) && static_cast<int32_t>(Ram32(player + kSpeedY)) <= 0; };

@@ -50,6 +50,7 @@ inline constexpr Place kPlaceList[] = {
     {0x01560C, 0x013D06}, // the same entry of a jump table, 3 on alike
     {0x015696, 0x013DA2}, // an instruction, 4 on alike
     {0x015698, 0x013DA4}, // the same entry of a jump table, 3 on alike
+    {0x01688A, 0x014F96}, // an instruction, 13 on alike
     {0x016FD0, 0x01571E}, // the same entry of a jump table, 7 on alike
     {0x016FFC, 0x01574A}, // the same entry of a jump table, 7 on alike
     {0x0170A6, 0x0157F4}, // an instruction, 12 on alike
@@ -141,12 +142,22 @@ inline constexpr Place kPlaceList[] = {
     {0x020B38, 0x000000}, // ChooseColours: this game's chooses other hidden characters (no rewrite) by hand
     {0x020C98, 0x000000}, // CountShadowCode: this game's is not the same (no rewrite) by hand
     {0x02244C, 0x020E30}, // an instruction, 4 on alike
+    {0x022D96, 0x0217C8}, // an instruction, 11 on alike
+    {0x0270B6, 0x0262B0}, // an instruction, 8 on alike
+    {0x0273E2, 0x0265FA}, // an instruction, 13 on alike
     {0x027694, 0x026898}, // an instruction, 24 on alike
     {0x0276A6, 0x0268AA}, // an instruction, 24 on alike
+    {0x027EB8, 0x02713A}, // an instruction, 2 on alike
     {0x027EC0, 0x027142}, // the reelings' animation set (battle.cpp), found by its instructions: the second of three tables, then 0x382(a6) by hand
     {0x027F70, 0x0271F2}, // the animation on a step (battle.cpp), found by its instructions: subq.b #1,0x20(a6) and the frame's flags by hand
     {0x028192, 0x027414}, // an instruction, 24 on alike
     {0x02824C, 0x0274D6}, // an instruction, 24 on alike
+    {0x042542, 0x04378C}, // an instruction, 24 on alike
+    {0x0494B4, 0x04AA8C}, // an instruction, 24 on alike
+    {0x04956A, 0x04AB42}, // a place the code names so (1/1)
+    {0x049576, 0x04AB4E}, // the same entry of a jump table, 9 on alike
+    {0x049ACC, 0x04B09E}, // the same entry of a jump table, 11 on alike
+    {0x049B30, 0x04B102}, // a place the code names so (1/1)
     {0x07D240, 0x08B586}, // an instruction, 11 on alike
     {0x07D354, 0x08B69A}, // the same entry of a jump table, 3 on alike
     {0x07D372, 0x08B6B8}, // an instruction, 5 on alike

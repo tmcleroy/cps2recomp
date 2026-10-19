@@ -95,6 +95,10 @@ struct Description {
     // --- the game ---
     int stages = 0;                 // the stages (1 to this)
     int stageToRound = 2000;        // frames a stage's machine takes to its round, at most, and a few
+    // The stage the fighters' own match is on when another machine shows the stage behind them (it is never
+    // seen; 0: the game's choice). The stage behind follows the fighters' camera: one whose camera goes further
+    // than cameraLeft and cameraRight would take the stage behind beyond its own ends.
+    int fightersStage = 0;
     int characterSpan = 0;          // characters at random: 0 to this, those choosable
     bool (*choosable)(int number) = nullptr;
     // A choice of the menu's "Fighter" rows (0: at random) as a character's number (-1: none)
@@ -125,6 +129,9 @@ struct Description {
     bool (*thePanel)(uint32_t tile, uint16_t attributes) = nullptr;
     bool (*notTheFighters)(uint32_t tile, uint16_t attributes) = nullptr;
     uint32_t (*playerSets)(int player) = nullptr;
+    // The stage's planes are held still for a move that draws a picture of its own there (Jedah's Finale Rosso
+    // turns everything behind the fighters red), or nullptr: none
+    bool (*planesHeld)() = nullptr;
     // A player's shadow not drawn from the next frame on (-1: both drawn), or nullptr
     void (*noShadow)(Machine &machine, int player) = nullptr;
     // The ring out's way down: the player is in the air, and at the top of a jump (going up no more)
