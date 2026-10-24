@@ -20,6 +20,8 @@
 
 namespace cps2recomp {
 
+int HiddenFormOf(int n, int character); // training.cpp
+
 namespace {
     using namespace sfa2;
 
@@ -147,6 +149,7 @@ bool TaggedIn(int player) {
 // at its next step
 void TagIn(int player, int character, int colours) {
     const uint32_t record = Player(player);
+    character = HiddenFormOf(player, character);
     GiveBack(record);
     SetRam8(record + kCharacter, static_cast<uint8_t>(character));
     if (colours >= 0) {
@@ -194,13 +197,13 @@ void TagUntouchable(int player) {
 // (sounds queued, traced with SFA2_SOUND_LOG over each character's entrances up the arcade ladder). The game has a
 // player's voices twice, one for each side (player 2's 0x80 on for those from 0x300, 0x100 on for those below), so the
 // side is found by who is that character now. Not listened to. Ryu, Charlie, Zangief and Gen have no sound of their
-// own in their entrances: none.
+// own in their entrances: none. A hidden form takes its own character's (Evil Ryu, and Zangief's and Gen's others: none).
 uint16_t TagCall(int character) {
     uint16_t call = 0;
     switch (character) {
     case 0x01: call = 0x0110; break; // Ken
-    case 0x02: call = 0x019A; break; // Akuma
-    case 0x04: call = 0x0127; break; // Chun-Li
+    case 0x02: case 0x14: call = 0x019A; break; // Akuma (Shin Akuma)
+    case 0x04: case 0x12: call = 0x0127; break; // Chun-Li (classic)
     case 0x05: call = 0x01C6; break; // Adon
     case 0x06: call = 0x0169; break; // Sodom
     case 0x07: call = 0x01DE; break; // Guy
@@ -211,7 +214,7 @@ uint16_t TagCall(int character) {
     case 0x0C: call = 0x0336; break; // Dan
     case 0x0D: call = 0x0349; break; // Sakura
     case 0x0E: call = 0x0354; break; // Rolento
-    case 0x0F: call = 0x036E; break; // Dhalsim
+    case 0x0F: case 0x16: call = 0x036E; break; // Dhalsim (another form)
     default: return 0;
     }
     if (Ram8(Player(0) + kCharacter) != character && Ram8(Player(1) + kCharacter) == character) {
@@ -247,6 +250,11 @@ bool TagSetUp(M68K &c) {
 void LiveTagBeforeFrame(Machine &machine) {
     if (!TeamBattle()) {
         g_off[0] = g_off[1] = false;
+    } else if (TeamTimeOverResult()) {
+        // (the tag style: one round decides the match, the last fighter of a side knocked out; not the board's two won,
+        // whose next round would begin under the result. The game's copy of the board's max round, taken as a game
+        // begins: 004BDC.)
+        SetRam8(0xFF8108, 1);
     }
     for (int player = 0; player < 2; player++) {
         if (!g_colours[player] || !TaggedIn(player)) {
@@ -320,8 +328,8 @@ void LiveTagBeforeFrame(Machine &machine) {
     }
     for (int player = 0; player < 2; player++) {
         // (Gen's other stance is a character of its own, 0x13, which the game changes him to and back)
-        const int now = Ram8(Player(player) + kCharacter) == 0x13 ? 0x11 : Ram8(Player(player) + kCharacter);
-        if (wanted[player] >= 0 && now != wanted[player] && !reported) {
+        auto stance = [](int character) { return character == 0x13 ? 0x11 : character; };
+        if (wanted[player] >= 0 && stance(Ram8(Player(player) + kCharacter)) != stance(wanted[player]) && !reported) {
             reported = true;
             fprintf(stderr, "swap test: player %d is %02X at %d, not %02X\n", player, Ram8(Player(player) + kCharacter), frame, wanted[player]);
         }

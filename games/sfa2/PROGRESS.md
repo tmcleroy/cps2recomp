@@ -128,6 +128,79 @@ no window only (pictures, traces); nobody has used them in a window or listened.
   knocked over twice, then the player); the new knock-out and drop in pictures (the player knocked out of a
   throw at the left end, and three drops in a row with the computer made out). Nobody has played them.
 
+## Tag team battle (2026-10-24)
+
+The toolkit's team battle (`fight/battle.h`, both styles, and the tag-team router `fight/tag.h`), as the Vampire Savior
+games have it (`cps2recomp/docs/TAG_TEAM.md`); `src/battle.cpp` fills the description, `src/livetag.cpp` swaps a
+fighter mid-fight.
+
+- **Knock-out style**: `teams`, the lines under the bars at 0.19 of the picture (under the names), the router's labels
+  at 0.25. Each knock-down is a match decided; the next is made ready on the spare machine.
+- **No entrances**: the setting up of a player (`021308`, kState 0) goes on to the entrance only in a match's first
+  round (`02140A`: A5+102 is the round's number, A5+138 the play mode). The hook `TagEntrance` sends every fighter of
+  the team battle, and a swap's newcomer, the later rounds' way (`021430`: ready, standing). Alpha 2 has no "no
+  entrance" bit of its own.
+- **The swap** (`TagIn`): the game sets a player up again itself at kState 0: it clears a few bytes below +180 and
+  +180 to +3FF (the character +82, the colour choice +A8, the colours +CC/+D0 and the gauge +9E are kept), sets health
+  0x90, puts the player 0x60 to its side of where it is, and calls the character's own setting up (by number, the
+  table at `9844C`). So a swap is: what the outgoing character made given back, the character's byte, the colour
+  choice, and kState 0. `TagSetUp` (`02145E`, after the character's own) puts the newcomer back where it was. The
+  colours go in the frame after, as `0122E2` does (the set at `26D0E0 + (character * 6 + choice) * 0xA0`, kept at +CC,
+  five palettes to where +D0 says), each colour keeping the brightness the buffer had (without it, darker: the
+  buffer's top nibble is the fade's). The name under the bar is the panel's (an object of the last pool, kind 6:
+  `082C1C`), made once from the characters at `082EA4` (a word by character from `8318E`, 0x30 on with A5+90 set,
+  player 2's 0x60 on): put right in its record (+BE, +C6). The face beside the clock follows by itself.
+- **What the outgoing character made** (`GiveBack`): six pools of objects, each a list of free ones from A5 (made at
+  `019238`, taken from at `01959E`-`01971E`, given back at `0195DE`-`019734`): `FF9400` 16 and `FF9C00` 10 (things
+  thrown, 0x80; one list by +71), `FFA100` 40, `FFB500` 4, `FFB700` 16 (0x80), `FFBF00` 8 (0x200). An object names
+  its maker at +36 (a player's record or another object's); a character's setting up makes one in the fifth pool
+  (kind = its number) and keeps it at +28; the last thing thrown is at +124. Every live one the player made (and
+  what those made) is given back as the game does, and those links cleared.
+- **The tag style's fields**: `canTag` (a round fought, no super's flash A5+15C, `CanAct`, no hit stop, on the
+  floor); `taggedIn` (kState off 0); `meter` the super combo gauge (+9E, a word: the setting up leaves it, so it is
+  the side's); `offStage`: a player off the stage is not kept in (`KeepIn`) and the camera follows the other alone
+  (lines in `CameraAcross` and `CameraUp`: the game's own `01BFE0` leaves out a player with bit 7 of +67, but that
+  byte also marks a player in a throw, so it is not set); speeds +40/+44, floor 0x28; `difficulty` A5+A0 and the
+  game's copy A5+BE; `downSound` 0x00A8 (queued a few frames after every knock-out seen).
+- **The knock-down**: a hit that empties the bar of a fighter with a partner to come in (`TeamHoldsKnockOut`) leaves
+  the health at 0, not below (Alpha 2 is knocked out below 0), and, not guarded, is a knock-down: reaction 7 and
+  +134 set, as a Custom Combo's hits and the hold throws' last hit (`021540`) are (kReelKind 4 from the table at
+  `02402C`); read where the reeling begins at the next step. In TakeDamage (`damage.cpp`), the throws' damage
+  (`fight.cpp`) and, for whatever else takes health (hold throws), `PlayersAgainstPlayers` (`collision.cpp`), which
+  decides the round. `TagUntouchable`: +25B (the game's own time of not being hit, counted down only in control;
+  the hit tests skip it) at 10 every frame it is down, and once it lies (kState `02020208`, or `02020210` from a
+  bounce) its count of lying steps +3A at 8, so it does not get up (at a turbo speed a frame can make two steps).
+- **Time over**: in `RoundFighting`, after the game's decision (`0065C4`), `TeamTimeOverResult()`, and the winner's
+  character at A5+14B as the game keeps it.
+- **One round** decides a tag match: the game's copy of the board's max round (A5+108, taken as a game begins at
+  `004BDC`) at 1 while the tag style runs, or the game's next round would begin under the result.
+- **Calls** (`TagCall`): the first sound of a character's entrance no other entrance has, traced up the ladder with
+  `SFA2_SOUND_LOG` (the ring at `FFCF60`). The game keeps each voice twice, one for each side (player 2's 0x80 on
+  from 0x300, 0x100 on below), so the side is found by who is that character. Ryu, Charlie, Zangief, Gen (and Evil
+  Ryu, Zangief's and Gen's other forms) have none. Not listened to.
+- Gen's other stance is a character of its own (0x13), which the game changes him to and back mid-fight.
+- **Checked headless**: the swap matrix (`SFA2_SWAP=FRAME:PLAYER:CHARACTER,...`, `SFA2_SWAP_FREE`; a team battle with
+  no damage and infinite time, made-up play for both players from 1300, player 1 A->B, player 2 X->B, player 1 B->A,
+  A->B, player 2 back to X, player 1 to A, player 2 to B, 3,600 frames): every A of the eighteen against every B of
+  the eighteen (324 pairs), and again with the swaps 37 frames later against every B of the 24 (the hidden forms
+  too: 432 pairs): 756 runs, 5,292 swaps, no reset, the right character after every swap, the newcomer set up, and
+  no instruction reached that has no translation (422 in every run, the runs' own). The knock-out fuzz
+  (`SFA2_TAG_LOG`; one-hit knock-outs against the CPU's team of three, all eighteen among the teams, made-up play):
+  24 runs in the tag style and 12 in the knock-out style, each to its end and back to the title, the CPU's fighters
+  swapped while the knocked-out one lies. Pictures frame by frame around tags and knock-downs, and in widescreen
+  with six Ryus (each in a colour set of its own). The gauge traced across every tag of a 2 vs 2 run: the same after.
+- **Movies**: `team_tag_two_vs_two.txt` (the tag style, 2 vs 2, teams of three, decided by knock-outs, back to the
+  title at 5995) and `team_two_vs_two.txt` (the knock-out style, 2 vs 2, five knock-outs, back to the title at
+  10907), made-up play for four players, the run's options in each first line. `CPS2RECOMP_BATTLE_SEED=1 make
+  GAME=sfa2 check FRAMES=6000 MOVIE=games/sfa2/movies/team_tag_two_vs_two.txt ARGS="--features <the first line's>
+  --keys 60:cteam_start"` (and 11,000 frames of the other): ok both ways. `--check-rewrites` over them, every layer:
+  what differs is the mode's own lines, which the game's code does not have (the original of a rewrite is run with no
+  hooks): the camera's and KeepIn's for a player off the stage (CameraAcross 287 calls, CameraUp 160, KeepIn 288, and
+  the routines around them), the one hit that held a knock-out at 0 (TakeDamage, HitTest, PlayersAgainstPlayers, 1
+  call each), and the no-entrance hook at each match's start (the knock-out movie's 5 differences, in RoundFrame and
+  PlayersStep). With the mode off nothing changes: versus, versus_attacks, custom_combo, air_guard, stun, throw_tech,
+  training_rise, corners and 20,000 frames of the ladder hash as before.
+
 ## Custom colours and the colour editor (2026-10-14)
 
 The toolkit's (`cps2recomp/fight/colours.h`, from Vampire Savior's; the same files, folders, feature and command
