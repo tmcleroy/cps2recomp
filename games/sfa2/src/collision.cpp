@@ -11,6 +11,8 @@
 
 namespace cps2recomp {
 
+bool TeamHoldsKnockOut(int player); // fight/battle.cpp
+
 namespace {
     using namespace sfa2;
 
@@ -414,6 +416,13 @@ namespace {
         c.a[6] = Var(c, 0x800);
         c.a[1] = Var(c, 0x400);
         HitTest(c);
+        // (the team battle's tag style: a fighter with a partner to come in is not knocked out, whatever took its
+        // health; a hold throw's, say)
+        for (int n = 0; n < 2; n++) {
+            if (TeamHoldsKnockOut(n) && (Ram16(Player(n) + kHealth) & 0x8000)) {
+                SetRam16(Player(n) + kHealth, 0);
+            }
+        }
         if (Ram16(Var(c, 0x450)) & 0x8000) {
             SetRam8(Var(c, kRoundResult), Ram8(Var(c, kRoundResult)) | 2);
         }

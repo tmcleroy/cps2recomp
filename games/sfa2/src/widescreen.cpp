@@ -29,6 +29,7 @@
 namespace cps2recomp {
 
 bool RingOutLetsOut(uint32_t player); // battle.cpp
+bool TagIsOff(uint32_t player);       // livetag.cpp
 
 namespace {
     using namespace sfa2;
@@ -73,6 +74,15 @@ namespace {
     void CameraAcross(M68K &c) {
         const uint32_t camera = c.a[6];
         Call(c, 0x01BFE0); // (the players' outer edges: D0 the left, D1 the right)
+        // (the team battle's tag style: a player off the stage is not followed, as the game's own does for one thrown
+        // away, +67: the other's edges alone)
+        for (int n = 0; n < 2; n++) {
+            if (TagIsOff(Player(n))) {
+                const uint32_t other = Player(1 - n);
+                SetLow16(c.d[0], static_cast<uint16_t>(Ram16(other + kX) - Ram16(other + kHalfWidth)));
+                SetLow16(c.d[1], static_cast<uint16_t>(Ram16(other + kX) + Ram16(other + kHalfWidth)));
+            }
+        }
         const uint16_t left = static_cast<uint16_t>(c.d[0]), right = static_cast<uint16_t>(c.d[1]);
         const uint16_t place = Ram16(camera + kCameraX);
         const int margin = Margin();
@@ -148,6 +158,12 @@ namespace {
     void CameraUp(M68K &c) {
         const uint32_t camera = c.a[6];
         Call(c, 0x01C1D0); // (the players' heights: D1 the higher)
+        for (int n = 0; n < 2; n++) {
+            if (TagIsOff(Player(n))) {
+                SetLow16(c.d[0], Ram16(Player(1 - n) + kY));
+                SetLow16(c.d[1], Ram16(Player(1 - n) + kY));
+            }
+        }
         const uint16_t high = static_cast<uint16_t>(c.d[1]);
         const uint16_t place = Ram16(camera + kCameraY);
         uint16_t to = place;
@@ -207,7 +223,7 @@ namespace {
         const uint32_t player = c.a[6];
         SetRam8(player + kAtEdge, 0);
         // (the ring out: a player knocked about at an end of the stage goes over it)
-        if (RingOutLetsOut(player & 0xFFFFFF)) {
+        if (RingOutLetsOut(player & 0xFFFFFF) || TagIsOff(player & 0xFFFFFF)) {
             return;
         }
         c.a[4] = static_cast<uint32_t>(static_cast<int16_t>(Mem16(c, player + kOpponent)));

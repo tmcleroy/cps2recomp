@@ -295,6 +295,19 @@ void TrainingState(Archive &ar) {
     session::State(ar);
 }
 
+// The character a player's side is to be for `character`: its hidden form, if the menu asks for that side's (the
+// team battle's tag style, a fighter tagged in: livetag.cpp)
+int HiddenFormOf(int n, int character) {
+    if (HiddenFormFor(n)) {
+        for (const auto &form : kHiddenForms) {
+            if (character == form.first) {
+                return form.other;
+            }
+        }
+    }
+    return character;
+}
+
 void RegisterTraining() {
     Game &game = TheGame();
     AddHook(kPlayerDispatch, "PlayerStep", PlayerStep);

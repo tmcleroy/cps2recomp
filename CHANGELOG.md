@@ -47,6 +47,16 @@ with X-Men vs. Street Fighter.
   and kick of one strength; two punches or two kicks make the EX moves: the left trigger is free.) The game sets a fighter up anew itself (its own setting up of a player,
   mid-fight), after what the outgoing character made is given back; every pair of characters swapped back and forth
   under made-up play in Vampire Savior, Vampire Savior 2 and Vampire Hunter 2 (602 pairs, 3,010 swaps) with no fault.
+- **Tag team battle in Street Fighter Alpha 2**, both styles, as the Vampire Savior games have it: teams of two or three
+  on one stage, the knock-out style and the tag style (the left trigger or Start tags; the one on calls the next one in,
+  where its character has a call of its own, jumps back and flies off, and the next jumps in with a jump attack; a bar
+  emptied is the game's own knock-down, lying two seconds and not to be hit, with the announcer's call), co-op and 2 vs
+  2, no entrances, a CPU difficulty of its own, every copy of a character in its own colours, the super combo gauge
+  carried across a tag, one round deciding a tag match and a time over by the teams' health. "Hidden characters" holds
+  for fighters tagged in. The game sets a fighter up anew itself (`games/sfa2/src/livetag.cpp`), after what the
+  outgoing character made is given back and with its name under the bar put right; every pair of the eighteen
+  characters (and to each hidden form) swapped back and forth under made-up play, 756 pairs and 5,292 swaps, with no
+  fault.
 
 ## 0.4.0-beta.5
 
