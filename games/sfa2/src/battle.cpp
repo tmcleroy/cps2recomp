@@ -10,6 +10,14 @@
 
 namespace cps2recomp {
 
+bool CanTag(int player); // livetag.cpp
+void TagIn(int player, int character, int colours);
+bool TaggedIn(int player);
+void TagDifficulty(int level);
+void TagOffStage(int player, bool off);
+void TagUntouchable(int player);
+uint16_t TagCall(int character);
+
 namespace {
     using namespace sfa2;
 
@@ -82,6 +90,20 @@ void RegisterBattle() {
     d.atJumpTop = [](uint32_t player) { return Ram8(player + kInAir) && static_cast<int32_t>(Ram32(player + kSpeedUp)) <= 0; };
     d.teams = true;
     d.teamLinesY = 0.19f; // (under the bars and the names)
+    // (no entrances: a team battle's fighters begin ready, livetag.cpp's TagEntrance; one health bar is all the game has)
+    d.difficulty = TagDifficulty;
+    d.canTag = CanTag;
+    d.tagIn = TagIn;
+    d.taggedIn = TaggedIn;
+    d.offStage = TagOffStage;
+    d.untouchable = TagUntouchable;
+    d.tagCall = TagCall;
+    d.downSound = 0x00A8; // (the announcer's at a knock-out: queued a few frames after every one seen)
+    d.speedX = 0x40;
+    d.speedY = kSpeedUp;
+    d.floor = kGround;
+    d.meter = kSpecialGauge; // (the super combo gauge, which the setting up leaves as it was)
+    d.meterSize = 2;
     battle::Register(d);
     battle::RegisterTeamTag(0.25f);
 }

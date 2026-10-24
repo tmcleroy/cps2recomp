@@ -118,6 +118,14 @@ namespace {
         }
     }
 
+    // Players off the stage: let out of the picture, the camera not following them (widescreen.cpp's KeepIn and camera)
+    bool g_off[2] = {false, false};
+    // A knocked-out player lying (the knock-down's steps 8 and 10: a few frames of the game's own before it gets up),
+    // kept lying by its count of them (+3A) until the next comes in; and not hit meanwhile (+25B, the game's own time
+    // of not being hit, counted down only while in control: the hit tests, 0103AA and 011092)
+    constexpr uint32_t kLying = 0x02020208, kLyingBounced = 0x02020210;
+    constexpr uint32_t kLieSteps = 0x3A, kNotHit = 0x25B;
+
     int Side(uint32_t player) {
         return player == Player(0) ? 0 : player == Player(1) ? 1 : -1;
     }
@@ -154,6 +162,62 @@ void TagIn(int player, int character, int colours) {
     g_placeY[player] = Ram32(record + kY);
     SetRam32(record + kState, 0);
     g_colours[player] = true;
+    SetRam8(record + kLieSteps, 0);
+}
+
+// The team battle's computer difficulty, 0-7: the board's setting, and the copy of it a game takes when it begins (004B6C)
+void TagDifficulty(int level) {
+    SetRam8(0xFF80A0, static_cast<uint8_t>(level));
+    SetRam8(0xFF80BE, static_cast<uint8_t>(level));
+}
+
+// The player let out of the picture, the camera not following it, or not
+void TagOffStage(int player, bool off) {
+    g_off[player] = off;
+}
+bool TagIsOff(uint32_t player) {
+    const int n = Side(player);
+    return n >= 0 && g_off[n];
+}
+
+// The player knocked out, every frame it is down: not hit, and once it lies, kept lying
+void TagUntouchable(int player) {
+    const uint32_t record = Player(player);
+    SetRam8(record + kNotHit, 10);
+    const uint32_t state = Ram32(record + kState);
+    if (state == kLying || state == kLyingBounced) {
+        SetRam8(record + kLieSteps, 8); // (more than one: a turbo speed's frame may make two steps)
+    }
+}
+
+// A character's call as it tags out: a sound of its own from its entrance, the first no other character's entrance has
+// (sounds queued, traced with SFA2_SOUND_LOG over each character's entrances up the arcade ladder). The game has a
+// player's voices twice, one for each side (player 2's 0x80 on for those from 0x300, 0x100 on for those below), so the
+// side is found by who is that character now. Not listened to. Ryu, Charlie, Zangief and Gen have no sound of their
+// own in their entrances: none.
+uint16_t TagCall(int character) {
+    uint16_t call = 0;
+    switch (character) {
+    case 0x01: call = 0x0110; break; // Ken
+    case 0x02: call = 0x019A; break; // Akuma
+    case 0x04: call = 0x0127; break; // Chun-Li
+    case 0x05: call = 0x01C6; break; // Adon
+    case 0x06: call = 0x0169; break; // Sodom
+    case 0x07: call = 0x01DE; break; // Guy
+    case 0x08: call = 0x01FB; break; // Birdie
+    case 0x09: call = 0x014D; break; // Rose
+    case 0x0A: call = 0x0310; break; // M. Bison
+    case 0x0B: call = 0x0327; break; // Sagat
+    case 0x0C: call = 0x0336; break; // Dan
+    case 0x0D: call = 0x0349; break; // Sakura
+    case 0x0E: call = 0x0354; break; // Rolento
+    case 0x0F: call = 0x036E; break; // Dhalsim
+    default: return 0;
+    }
+    if (Ram8(Player(0) + kCharacter) != character && Ram8(Player(1) + kCharacter) == character) {
+        call = static_cast<uint16_t>(call + (call >= 0x300 ? 0x80 : 0x100));
+    }
+    return call;
 }
 
 // 02140A: the setting up of a player, which in a match's first round goes on to the player's entrance: a newcomer
@@ -181,6 +245,9 @@ bool TagSetUp(M68K &c) {
 
 // Before each frame: the colours of a swap, and the tests' swaps
 void LiveTagBeforeFrame(Machine &machine) {
+    if (!TeamBattle()) {
+        g_off[0] = g_off[1] = false;
+    }
     for (int player = 0; player < 2; player++) {
         if (!g_colours[player] || !TaggedIn(player)) {
             continue;
@@ -202,6 +269,40 @@ void LiveTagBeforeFrame(Machine &machine) {
         }
     }
 
+    // (for tests, SFA2_TAG_LOG: the game's mode, the players' characters and a knocked-out one lying, as they change)
+    static const bool tagLog = getenv("SFA2_TAG_LOG") != nullptr;
+    if (tagLog) {
+        static int logFrame = 0, mode = -1, character[2] = {-1, -1};
+        static bool lying[2] = {false, false};
+        logFrame++;
+        if (Ram16(kMode) != mode) {
+            mode = Ram16(kMode);
+            fprintf(stderr, "tag log %d: mode %d\n", logFrame, mode);
+        }
+        for (int n = 0; n < 2; n++) {
+            if (Ram8(Player(n) + kCharacter) != character[n]) {
+                character[n] = Ram8(Player(n) + kCharacter);
+                fprintf(stderr, "tag log %d: player %d is %02X (health %d)\n", logFrame, n, character[n],
+                        static_cast<int16_t>(Ram16(Player(n) + kHealth)));
+            }
+            const uint32_t state = Ram32(Player(n) + kState);
+            if ((state == kLying || state == kLyingBounced) != lying[n]) {
+                lying[n] = !lying[n];
+                fprintf(stderr, "tag log %d: player %d %s\n", logFrame, n, lying[n] ? "lies" : "up");
+            }
+        }
+    }
+    // (for finding the characters' calls, SFA2_SOUND_LOG: every sound queued, with the frame and the players' characters)
+    static const bool soundLog = getenv("SFA2_SOUND_LOG") != nullptr;
+    if (soundLog) {
+        static int logFrame = 0;
+        static uint16_t was = Ram16(0xFFDF60);
+        logFrame++;
+        for (const uint16_t end = Ram16(0xFFDF60); was != end; was = static_cast<uint16_t>((was + 0x10) & 0xFF0)) {
+            fprintf(stderr, "sound %d %02X %02X %04X\n", logFrame, Ram8(Player(0) + kCharacter), Ram8(Player(1) + kCharacter),
+                    Ram16(0xFFCF60 + was + 2));
+        }
+    }
     static const char *swap = getenv("SFA2_SWAP");
     if (!swap) {
         return;
@@ -218,11 +319,13 @@ void LiveTagBeforeFrame(Machine &machine) {
         fprintf(stderr, "swap test: reset at %d\n", frame);
     }
     for (int player = 0; player < 2; player++) {
-        if (wanted[player] >= 0 && Ram8(Player(player) + kCharacter) != wanted[player] && !reported) {
+        // (Gen's other stance is a character of its own, 0x13, which the game changes him to and back)
+        const int now = Ram8(Player(player) + kCharacter) == 0x13 ? 0x11 : Ram8(Player(player) + kCharacter);
+        if (wanted[player] >= 0 && now != wanted[player] && !reported) {
             reported = true;
             fprintf(stderr, "swap test: player %d is %02X at %d, not %02X\n", player, Ram8(Player(player) + kCharacter), frame, wanted[player]);
         }
-        if (since[player] > 0 && ++since[player] > 4 && !TaggedIn(player) && !reported) {
+        if (since[player] > 0 && ++since[player] > 60 && !TaggedIn(player) && !reported) {
             reported = true;
             fprintf(stderr, "swap test: player %d not set up at %d\n", player, frame);
         }

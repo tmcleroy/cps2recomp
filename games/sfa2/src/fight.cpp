@@ -12,6 +12,8 @@ namespace cps2recomp {
 
 bool TrainingMode();                                         // training.cpp
 bool BattleNoClock();                                        // battle.cpp
+bool TeamHoldsKnockOut(int player);                          //
+int TeamTimeOverResult();                                    //
 void TrainingHit(int player, unsigned damage, bool chip);    //
 void TrainingDamageTaken(int player);                        //
 
@@ -48,6 +50,12 @@ namespace {
                         SetRam8(Var(c, kRoundClock), 0);
                         SetRam8(Var(c, kRoundTimeOver), 0xFF);
                         Call(c, 0x0065C4);
+                        // (the team battle's tag style: by the teams' health, all their fighters'; the winner's
+                        // character, for what follows, as the game's own decision keeps it)
+                        if (const int teams = TeamTimeOverResult()) {
+                            SetRam8(Var(c, kRoundResult), static_cast<uint8_t>(teams));
+                            SetRam8(Var(c, 0x14B), Ram8(Player(teams == 2 ? 1 : 0) + kCharacter));
+                        }
                     }
                 }
             }
@@ -156,7 +164,7 @@ namespace {
         } else if (player == 1 && FeatureOn("one_hit")) {
             damage = kHealthFull + 1;
         }
-        if (TrainingMode()) {
+        if (TrainingMode() || TeamHoldsKnockOut(player)) {
             damage = static_cast<uint16_t>(std::min<int>(damage, std::max<int>(0, static_cast<int16_t>(Ram16(victim + kHealth)))));
         }
         SetLow16(c.d[3], damage);

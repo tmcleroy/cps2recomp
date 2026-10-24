@@ -14,6 +14,7 @@
 namespace cps2recomp {
 
 bool TrainingMode();                                      // training.cpp
+bool TeamHoldsKnockOut(int player);                       // fight/battle.cpp
 void TrainingHit(int player, unsigned damage, bool chip); //
 
 namespace {
@@ -169,6 +170,18 @@ namespace {
         }
         const int16_t left = static_cast<int16_t>(Ram16(victim + kHealth) - damage);
         SetRam16(victim + kHealth, static_cast<uint16_t>(left));
+        // (the team battle's tag style: a hit that empties the bar of a fighter with a partner to come in leaves it at
+        // nothing, not knocked out, and knocks it down, as a Custom Combo's hits do (reaction 7, and +134: it lands and
+        // lies), read where the reeling begins at the player's next step; the partner comes in while it lies there. A
+        // guarded one does not knock down.)
+        if (player >= 0 && left <= 0 && TeamHoldsKnockOut(player)) {
+            SetRam16(victim + kHealth, 0);
+            if (Mem8(c, victim + kGuardedHit) != 0xFF) {
+                SetRam8(victim + kReaction, 7);
+                SetRam8(victim + kKnocksDown, 1);
+            }
+            return;
+        }
         if (left >= 0) {
             return;
         }
