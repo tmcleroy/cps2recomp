@@ -33,6 +33,8 @@ void RegisterBattle(); // battle.cpp
 void BattleBeforeFrame(Machine &machine);
 void BattleFrame(Machine &machine);
 void BattleState(Archive &ar);
+void RegisterLiveTag(); // livetag.cpp
+void LiveTagBeforeFrame(Machine &machine);
 
 void RegisterModel(); // model.cpp
 void ModelBeforeFrame(Machine &machine);
@@ -61,6 +63,7 @@ void RegisterGame() {
     RegisterMachines();
     RegisterModes();
     RegisterBattle();
+    RegisterLiveTag();
     RegisterModel();
     RegisterBoard();
     RegisterColours();
@@ -86,6 +89,7 @@ void RegisterGame() {
         TrainingBeforeFrame(machine);
         ModesBeforeFrame(machine);
         BattleBeforeFrame(machine);
+        LiveTagBeforeFrame(machine);
         colours::BeforeFrame(machine);
         ModelBeforeFrame(machine);
     };
