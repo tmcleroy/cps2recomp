@@ -80,7 +80,10 @@ void RegisterBattle() {
     d.playerSets = [](int n) { return 0x1Fu << (Ram8(Player(n) + kColourSet) & 0x1F); };
     d.inAir = [](uint32_t player) { return Ram8(player + kInAir) != 0; };
     d.atJumpTop = [](uint32_t player) { return Ram8(player + kInAir) && static_cast<int32_t>(Ram32(player + kSpeedUp)) <= 0; };
+    d.teams = true;
+    d.teamLinesY = 0.19f; // (under the bars and the names)
     battle::Register(d);
+    battle::RegisterTeamTag(0.25f);
 }
 
 } // namespace cps2recomp
