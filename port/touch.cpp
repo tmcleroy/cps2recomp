@@ -151,8 +151,8 @@ void TouchControls::Layout(int width, int height, const SDL_FRect &picture) {
     Control menu{side * 0.25f, top, small, 0, "MENU"};
     menu.menu = true;
     m_controls.push_back(menu);
-    if (Zoom::Possible()) {
-        Control zoom{side * 0.75f, top, small, 0, "ZOOM"};
+    if (m_chat || Zoom::Possible()) {
+        Control zoom{side * 0.75f, top, small, 0, m_chat ? "CHAT" : "ZOOM"};
         zoom.zoom = true;
         m_controls.push_back(zoom);
     }

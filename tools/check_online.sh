@@ -10,7 +10,8 @@
 # frame's state hash once it has both players' real controls (--hash-log); the two logs must be the same, and
 # neither side may stop on a desync. And the host's record of both players' controls (--record), replayed without the
 # network, must give the same hashes: each player's controls drove their own player. At the board's pace: FRAMES
-# (3000 unless said) take FRAMES / 60 seconds.
+# (3000 unless said) take FRAMES / 60 seconds. Each side gives a name and says a line in the chat (--net-name,
+# --net-say): both sides must have both names, and each the other's line.
 #
 # JOIN_ROM: the joining side's set, another region's (game.cfg's other_set): it plays the host's program, whose online_words
 # the host sends, so the two logs and the replay (of the host's set) must still be the same.
@@ -64,11 +65,12 @@ side() { # host | join, then the program's arguments
     "build/$GAME/$GAME" --rom "$rom" --headless --frames "$frames" --settings "$work/online-$name.ini" \
         --eeprom "$work/online-$name.eeprom" --hash-log "$work/online-$name.txt" --net-fake 50:25:5 "$@" 2> "$work/online-$name.err"
 }
-side host --auto 11:0:1 --features "$play" --host "$port" --net-service off --record "$work/online-host.mov" "${host_test[@]}" ${arcade:+--net-arcade} &
+side host --auto 11:0:1 --features "$play" --host "$port" --net-service off --record "$work/online-host.mov" "${host_test[@]}" ${arcade:+--net-arcade} \
+    --net-name "Host P1" --net-say "hello from the host" &
 host=$!
 if [ -n "$arcade" ]; then sleep 4; else sleep 0.5; fi
 status=0
-side join --auto 12:0:1 --join "127.0.0.1:$port" "${join_test[@]}" || { echo "FAILED: the joining side stopped"; tail -3 "$work/online-join.err"; status=1; }
+side join --auto 12:0:1 --join "127.0.0.1:$port" "${join_test[@]}" --net-name "Joiner" --net-say "good luck!" || { echo "FAILED: the joining side stopped"; tail -3 "$work/online-join.err"; status=1; }
 wait "$host" || { echo "FAILED: the host stopped"; tail -3 "$work/online-host.err"; status=1; }
 # (each side's log ends where it last had the other's controls: the shorter is what both have)
 lines=$(wc -l < "$work/online-host.txt" | tr -d ' ')
@@ -81,6 +83,19 @@ elif cmp -s <(head -n "$lines" "$work/online-host.txt") <(head -n "$lines" "$wor
     echo "ok: the two sides the same over $lines frames, with $play"
 else
     echo "FAILED: the two sides differ from frame $(diff <(head -n "$lines" "$work/online-host.txt") <(head -n "$lines" "$work/online-join.txt") | grep '^<' | head -1 | cut -d' ' -f2)"
+    status=1
+fi
+# (each side knows both names, and has the other's line of the chat: sent straight to it, through the lost packets)
+for name in host join; do
+    if ! grep -q '^online: player 1 Host P1, player 2 Joiner$' "$work/online-$name.err"; then
+        echo "FAILED: the $name doesn't have both players' names"
+        status=1
+    fi
+done
+if grep -q '^online: chat: Joiner: good luck!$' "$work/online-host.err" && grep -q '^online: chat: Host P1: hello from the host$' "$work/online-join.err"; then
+    echo "ok: the names and the chat came across"
+else
+    echo "FAILED: the chat didn't come across"
     status=1
 fi
 if [ -n "$arcade" ]; then

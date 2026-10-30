@@ -61,8 +61,9 @@ public:
     static constexpr int kDefaultPort = 7845;
     // The packets' layout (2: the host's state sent at the start); two copies must have the same to play, and the
     // lobby shows only matches of this one (the launcher asks with it too)
-    static constexpr int kProtocol = 6; // (3: the version said in the hello and to the service; 4: the welcome's flags;
-                                        // 5: the welcome's program words; 6: the host's test switch in the controls)
+    static constexpr int kProtocol = 7; // (3: the version said in the hello and to the service; 4: the welcome's flags;
+                                        // 5: the welcome's program words; 6: player names and chat;
+                                        // 7: the host's test switch in the controls)
     // Reserved in the network controls and recorded movies, never passed to a player's board inputs.
     static constexpr uint16_t kTestSwitch = 1u << 15;
     static constexpr int kMostAhead = 8;   // frames run on guessed controls at most
@@ -90,6 +91,9 @@ public:
         // (--net-arcade) hosting: the game played meanwhile, alone, as offline (with the match's features); the match
         // begins from the game as it is when the other player comes, who presses Start to challenge
         bool arcade = false;
+        // (the in-game menu's Host a match) hosting while the game is the player's own, offline, features and all;
+        // when someone comes the match begins from the board's reset with the match's (Port::MatchComing)
+        bool solo = false;
         // (tests: each packet sent late by this many ms, give or take `jitter`, and this many in a hundred lost)
         int fakeLag = 0, fakeJitter = 0, fakeLoss = 0;
     };
@@ -154,6 +158,15 @@ public:
     void Leave();
     // A line on how it is going (ping, rollbacks), every few seconds, to stderr
     void Report(bool last = false);
+    // The two players' names (--net-name; the other's from the hello or the welcome), as the screen shows them: at
+    // most kNameMost letters ("" for none given)
+    static constexpr size_t kNameMost = 16;
+    std::string Name(int player) const;
+    // The chat (issue #196): a line said to the other player, straight to them (never through the service), sent
+    // again until they have it; and the lines that have come from them since this was last asked, in order
+    static constexpr size_t kChatMost = 60;
+    void Say(const std::string &text);
+    std::vector<std::string> TakeHeard();
 
 private:
     Settings settings;
@@ -238,6 +251,15 @@ private:
     struct Late { uint64_t due; NetAddress to; std::vector<uint8_t> data; };
     std::deque<Late> late;
     uint64_t random = 0x2545F4914F6CDD1Dull;
+
+    std::string theirName; // (the other player's, as it came)
+    // (the chat: the lines said that the other side hasn't said it has, by number, and when they were last sent; the
+    // number of lines heard, all before it, and those not taken yet)
+    std::deque<std::pair<uint32_t, std::string>> unheard;
+    uint32_t said = 0, heardUpTo = 0;
+    uint64_t saidAt = 0;
+    std::vector<std::string> heard;
+    void SendChat(uint64_t now);
 
     void Send(const std::vector<uint8_t> &packet);
     void SendTo(const NetAddress &to, const std::vector<uint8_t> &packet);

@@ -4,8 +4,29 @@
 
 - **Online test menu**: the host can toggle the operator's test switch with F2 for both players. The switch is
   synchronized through input delay and rollback; the joining player cannot toggle it. Both players need the
-  updated build (protocol 6). Enable **Online test menu** before hosting; it is off by default, including in Pure
+  updated build (protocol 7). Enable **Online test menu** before hosting; it is off by default, including in Pure
   mode. Offline F2 is unchanged.
+- **No zoom online** (#196): in an online match both players see the whole picture, as the board shows it; the zoom's
+  buttons and the touch screen's Zoom button do nothing there (and the button isn't drawn).
+- **The launcher's Online page is second**, after Games (recomp-common #40).
+- **Host from the game**: the in-game menu's Online page has **Host a match**: your game stays your own (modes,
+  cheats, the menu, save states) while you wait, with HOSTING and the code at the bottom of the screen and the match
+  in the lobby under the launcher's name. When someone joins, the game starts over for the match; afterwards it's your
+  own again, still hosted. The row again (Stop hosting) stops it.
+- **A shorter in-game menu**: it starts with its Online, Display and Game pages, and Game has the speed, Mute (Off
+  or On, rather than Sound: On or Muted) and the Board, Cheats and Sound pages (recomp-common #44).
+- **Names and chat online**: each player's name is under their life bar (Hide names, on the Online page, hides
+  them), and the players can chat during a match: T, a gamepad's right stick click or the touch screen's Chat button,
+  then type on a keyboard or the system's on-screen keyboard (Steam Deck, Android). Chat goes straight between the two
+  games, never through the service. The launcher gives the player's name to Join too (recomp-common #43). Online
+  protocol 6: both players need this version.
+  games, never through the service. The launcher gives the player's name to Join too (recomp-common #43). Online protocol 6: both players need
+  this version.
+- **What's worth attention stands out on the Online page**: an invitation, open matches you can join, the waiting room
+  while someone is in it, and a new version (also a dot on the Games row, and a card at the top of the Online page).
+  The page goes open matches, waiting room, hosting a match, then the settings for a match (recomp-common #42).
+- **Online from an Android phone**: joining or hosting a match said "Couldn't reach the online service": the game
+  asked for the system's curl, which Android hasn't. It now asks through the app, as the launcher does.
 
 ## 1.1.0
 

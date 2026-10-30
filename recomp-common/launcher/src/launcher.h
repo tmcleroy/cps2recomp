@@ -75,7 +75,8 @@ struct Online {
     const char *detail = "";             // the card's first lines: what a match is
     // A lobby: the matches hosts have listed, shown on the card to join with a press. `lobby` is the URL of the
     // game's list (JSON: {"matches": [{"code", "name", "waiting"}]}); a host lists its match when the player has
-    // switched that on, with `list_argument`, and its name with `name_argument NAME`. nullptr: no lobby.
+    // switched that on, with `list_argument`, and its name with `name_argument NAME` (given to Host and Join whenever the
+    // player has a name, lobby or not: the game shows it to the other player). nullptr: no lobby.
     const char *lobby = nullptr;
     const char *list_argument = nullptr; // "--net-list"
     const char *name_argument = nullptr; // "--net-name"

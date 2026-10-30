@@ -372,7 +372,7 @@ int RunWindowed(Port &port) {
             // (online: no menu, the game goes on for both players; Esc gives up a wait, and in a match asks whether to
             // leave it: Port::leaving)
             if (port.connecting && !port.net->Arcade()) {
-                port.quit = true;
+                port.LeaveOnline();
             } else {
                 port.leaving = !port.leaving;
             }
@@ -384,6 +384,29 @@ int RunWindowed(Port &port) {
             port.MenuPicture(menuBase, menuWidth, menuHeight);
             port.menu.Open(true);
             menuDirty = true;
+        }
+    };
+    // Online, the chat (Port::typing): T on the keyboard, the right stick's click or the touch screen's Chat button
+    // opens a line to type, and the system's text input with it (on a Steam Deck or a phone, its own on-screen
+    // keyboard); Enter sends it, Esc (or the click again) puts it away. Meanwhile the keyboard is the chat's, and after
+    // it, not the game's until every key is let go (the Enter that sent it is not the game's Start).
+    uint64_t openedByT = 0; // (when T opened it: its own letter, if the system sends it as text too, is not the line's)
+    bool keysAfterChat = false;
+    auto chatOpen = [&](bool open) {
+        if (open == port.typing || (open && (!port.net || port.connecting || port.leaving))) {
+            return;
+        }
+        port.typing = open;
+        port.typed.clear();
+        if (open) {
+            int w = 0, h = 0;
+            SDL_GetWindowSize(window, &w, &h);
+            const SDL_Rect area{0, h * 3 / 4, w / 2, h / 12};
+            SDL_SetTextInputArea(window, &area, 0);
+            SDL_StartTextInput(window);
+        } else {
+            SDL_StopTextInput(window);
+            keysAfterChat = true;
         }
     };
     auto quickState = [&](bool save) {
@@ -409,9 +432,36 @@ int RunWindowed(Port &port) {
     bool running = true;
     while (running && !port.quit && (port.opt.frames == 0 || port.frame < port.opt.frames)) {
         SDL_Event ev;
+        if (port.typing && (!port.net || port.connecting)) {
+            chatOpen(false); // (the match over, or waited for again)
+        }
         while (SDL_PollEvent(&ev)) {
             if (touch.Event(ev)) {
                 continue;
+            }
+            if (port.typing && ev.type == SDL_EVENT_TEXT_INPUT) {
+                if (openedByT && SDL_GetTicks() - openedByT < 250 && (!strcmp(ev.text.text, "t") || !strcmp(ev.text.text, "T"))) {
+                    openedByT = 0;
+                    continue;
+                }
+                openedByT = 0;
+                for (const char *c = ev.text.text; *c; c++) {
+                    if (*c >= 32 && *c < 127 && port.typed.size() < Netplay::kChatMost) {
+                        port.typed += *c;
+                    }
+                }
+                continue;
+            }
+            if (port.typing && ev.type == SDL_EVENT_KEY_DOWN) {
+                if (ev.key.scancode == SDL_SCANCODE_RETURN || ev.key.scancode == SDL_SCANCODE_KP_ENTER) {
+                    port.Say();
+                    chatOpen(false);
+                } else if (ev.key.scancode == SDL_SCANCODE_ESCAPE || ev.key.scancode == SDL_SCANCODE_AC_BACK) {
+                    chatOpen(false);
+                } else if (ev.key.scancode == SDL_SCANCODE_BACKSPACE && !port.typed.empty()) {
+                    port.typed.pop_back();
+                }
+                continue; // (every other key the line's, as text)
             }
             switch (ev.type) {
             case SDL_EVENT_QUIT: running = false; break;
@@ -430,6 +480,9 @@ int RunWindowed(Port &port) {
                     toggleMenu();
                 } else if (KeyBound(ev.key.scancode)) {
                     // (a key the player has given to the game does only that)
+                } else if (port.net && ev.key.scancode == SDL_SCANCODE_T && !ev.key.repeat) {
+                    chatOpen(true);
+                    openedByT = port.typing ? SDL_GetTicks() : 0;
                 } else if (multi && !port.menu.IsOpen() && ev.key.scancode == SDL_SCANCODE_N && !ev.key.repeat) {
                     port.Key('n');
                 } else if (ev.key.scancode == SDL_SCANCODE_F5 || ev.key.scancode == SDL_SCANCODE_F9) {
@@ -474,7 +527,11 @@ int RunWindowed(Port &port) {
                 } else if (port.menu.IsOpen()) {
                     break;
                 } else if (ev.gbutton.button == SDL_GAMEPAD_BUTTON_RIGHT_STICK) {
-                    port.Key('p');
+                    if (port.net) {
+                        chatOpen(!port.typing);
+                    } else {
+                        port.Key('p');
+                    }
                 } else if (ev.gbutton.button == SDL_GAMEPAD_BUTTON_LEFT_SHOULDER) {
                     port.Key(multi ? 'n' : 'k', kKeyRestart);
                 }
@@ -508,8 +565,14 @@ int RunWindowed(Port &port) {
         if (touch.TakeMenuPress()) {
             toggleMenu();
         }
+        port.PumpHost(); // (a match hosted from the menu, listened for, the menu open or not)
+        touch.Chat(port.net != nullptr); // (online, from the start or a match hosted from the menu)
         if (touch.TakeZoomPress()) {
-            port.zoom.Both();
+            if (port.net) {
+                chatOpen(!port.typing);
+            } else {
+                port.zoom.Both();
+            }
         }
         if (Zoom::Possible()) {
             const int asked = FeatureValue("zoom");
@@ -526,8 +589,12 @@ int RunWindowed(Port &port) {
             // The keyboard is every player's (each has the keys chosen for it); the first gamepad is player
             // 1's, a second player 2's, and so on
             uint16_t pads[Machine::kMaxPlayers] = {};
-            const bool *keys = SDL_GetKeyboardState(nullptr);
-            if (!(SDL_GetModState() & SDL_KMOD_ALT)) {
+            int keyCount = 0;
+            const bool *keys = SDL_GetKeyboardState(&keyCount);
+            if (keysAfterChat) {
+                keysAfterChat = std::any_of(keys, keys + keyCount, [](bool down) { return down; });
+            }
+            if (!(SDL_GetModState() & SDL_KMOD_ALT) && !port.typing && !keysAfterChat) {
                 for (int player = 0; player < Players(); player++) {
                     pads[player] |= ReadKeyboard(keys, player);
                 }
@@ -631,7 +698,7 @@ int RunWindowed(Port &port) {
             } else if (port.leaving) {
                 // (online, "Leave the match?": Confirm leaves it, Back stays; this side's player stands still meanwhile)
                 if (menuPressed & recomp::kMenuConfirm) {
-                    port.quit = true;
+                    port.LeaveOnline();
                 } else if (menuPressed & recomp::kMenuBack) {
                     port.leaving = false;
                 }

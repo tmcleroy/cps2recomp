@@ -22,8 +22,10 @@ class Zoom {
 public:
     static constexpr float kSizes[] = {1.0f, 1.25f, 1.5f, 1.75f, 2.0f};
     static constexpr int kSizeCount = static_cast<int>(sizeof(kSizes) / sizeof(kSizes[0]));
-    // Whether the game can be zoomed at all
+    // Whether the game can be zoomed at all (not in online play: Forbid)
     static bool Possible();
+    // Online play (issue #196): no zoom while it lasts, for either player; the whole picture shown again at once
+    void Forbid(bool forbid = true);
 
     static constexpr int kBoth = 2; // (the "player" the camera follows when it keeps both in the picture)
     // A press for player `player` (0 or 1)

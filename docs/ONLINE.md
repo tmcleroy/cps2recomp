@@ -22,6 +22,12 @@ Each player needs the game and its ROM set. The launcher's **Online** page (in t
   Online page is open and you've set **Your name**, unless you switch off **Let others invite me**. An invitation never
   interrupts a game: it waits on the Online page. **Block** (on a player or an invitation) hides the two of you from
   each other; **Unblock all** undoes it. Nobody's address is shown, only names.
+- **Host from the game**: playing a game on your own, open its menu (Esc), go to **Online** and choose **Host a
+  match**. Your game stays exactly your own while you wait: modes, training, cheats, the menu, save states, pause. The
+  bottom of the screen says HOSTING with the match's code, and with a name set on the launcher's Online page the match
+  is in the lobby too. When someone joins, the game starts over from the title for the match, with the match's
+  settings. After the match you're back to your own settings and still hosting with the same code (unless you left
+  the match yourself). The menu's row, now **Stop hosting**, stops it.
 - **Arcade while waiting** (a switch under Host a match): play the game on your own while you wait, as at the arcade.
   The match's code and "WAITING FOR A CHALLENGER" show at the bottom of the screen. When someone joins, they come
   into your game as it is and press Start to challenge you. Esc asks whether to stop hosting.
@@ -62,7 +68,8 @@ cps2recomp-launcher --play sfa3 -- --join CODE             # the other player: t
 - **Each player presses Start to come in**, as at the arcade: the first to press plays the computer until the other
   presses theirs ("Here comes a new challenger").
 - **Each player plays with their own player 1 controls**, and hears and sees the game as their own settings have it
-  (the Display page, the shader, the zoom, the custom soundtrack). The match takes the host's board settings
+  (the Display page, the shader, the custom soundtrack). There's no zoom online: both see the whole picture, as the
+  board shows it. The match takes the host's board settings
   (difficulty, timer, rounds...) and the host's features that change play (free play, arcade timing,
   widescreen, hidden characters...), for the match only: the other player's own are left as they are.
 - **Rollback**: each side runs the game with both players' controls, its own player's held back 2 frames (as a
@@ -81,6 +88,13 @@ cps2recomp-launcher --play sfa3 -- --join CODE             # the other player: t
   itself. The two games then start over together from the title. (The host closing their game ends the match.)
 - **Win streaks**: in the fighting games, a player who wins two or more matches in a row against the other has it
   said under their life bar ("STREAK 3"), counted from when both have pressed Start, until the streak ends.
+- **Names**: each player's name, as set on the launcher's Online page, is under their life bar (Hide names, on the
+  Online page, hides them).
+- **Chat**: press T on the keyboard, a gamepad's right stick click, or the touch screen's Chat button, type a line and
+  press Enter (Esc, or the click again, puts it away). The Steam Deck and phones show their own on-screen keyboard.
+  The last few lines show at the bottom left for a few seconds. Chat goes straight from one game to the other, as the
+  controls do: nothing of it passes through our service. While you type, the keyboard is the chat's, so a keyboard
+  player's fighter stands still; a gamepad still plays.
 - **Leaving a match**: Esc, or the gamepad's menu button, asks **Leave the match?** over the game (which goes on);
   Confirm leaves, Back stays.
 - **Off during a match**: the cheats (on both sides, for a fair match), the in-game menu, save states, pause, the speed, run-ahead, the training mode and the

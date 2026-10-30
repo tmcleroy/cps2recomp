@@ -586,10 +586,10 @@ int App::page_count() const {
 
 void App::set_page(const std::string& id) {
     if (id == "multi" && !collection_->multi.empty()) {
-        page_ = 3;
+        page_ = fixed_pages() - 1;
     }
     if (id == "online" && collection_ && collection_->lobby) {
-        page_ = fixed_pages() - 1;
+        page_ = 1;
     }
     // (a game in a closed series: the series opened)
     for (const std::vector<size_t>& unit : units()) {
@@ -795,11 +795,13 @@ Page App::own_page(int index, size_t* which) const {
     if (collection_) {
         int fixed = fixed_pages();
         if (index < fixed) {
-            return index == 0   ? Page::Library
-                   : index == 1 ? Page::Features
-                   : index == 2 ? Page::Controllers
-                   : index == 3 && !collection_->multi.empty() ? Page::Multi
-                                                               : Page::Online;
+            // (Games, then Online where there is one: the pages played from; then the settings, then Multi game)
+            int online = collection_->lobby ? 1 : 0;
+            return index == 0          ? Page::Library
+                   : index < 1 + online ? Page::Online
+                   : index == 1 + online ? Page::Features
+                   : index == 2 + online ? Page::Controllers
+                                         : Page::Multi;
         }
         std::vector<Row> list = rows();
         if (index < fixed || static_cast<size_t>(index - fixed) >= list.size()) {
@@ -1557,6 +1559,11 @@ void App::sidebar(float height) {
                 toggle = slots_[which]->series;
             }
         }
+        if (kind == Page::Library && update_news()) {
+            // (a new version: a dot at the Games row's end, where its update card is)
+            const ImVec2 at(ImGui::GetItemRectMax().x - px(18), (ImGui::GetItemRectMin().y + ImGui::GetItemRectMax().y) * 0.5f);
+            ImGui::GetWindowDrawList()->AddCircleFilled(at, px(4), ui::palette().accent);
+        }
         if (row && games > 1 && ImGui::IsItemActive()) {
             if (dragging_ < 0 && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
                 dragging_ = static_cast<int>(which);
@@ -1969,7 +1976,7 @@ void App::online_card(size_t which, float width, bool ready) {
         address.erase(0, address.find_first_not_of(" \t"));
         address.erase(address.find_last_not_of(" \t") + 1);
         if (ui::button("Join", Kind::Secondary, 130.0f, ready && !address.empty())) {
-            play(which, {online.join_argument, address});
+            play(which, join_arguments(online, address));
         }
     });
     card.end();
@@ -1981,13 +1988,25 @@ void App::online_card(size_t which, float width, bool ready) {
 std::vector<std::string> App::host_arguments(const launcher::Online& online) const {
     std::vector<std::string> args = {online.host_argument};
     // (a match is in the lobby when the player has a name for it to be listed under; without one, only its code joins it)
-    if (online.lobby && online.list_argument && online.name_argument && online_name_[0]) {
-        args.push_back(online.list_argument);
+    // (the name: the game shows it to the other player as well)
+    if (online.name_argument && online_name_[0]) {
+        if (online.lobby && online.list_argument) {
+            args.push_back(online.list_argument);
+        }
         args.push_back(online.name_argument);
         args.push_back(online_name_);
     }
     if (online.arcade_argument && prefs_.get("online", "arcade") == "1") {
         args.push_back(online.arcade_argument);
+    }
+    return args;
+}
+
+std::vector<std::string> App::join_arguments(const launcher::Online& online, const std::string& match) const {
+    std::vector<std::string> args = {online.join_argument, match};
+    if (online.name_argument && online_name_[0]) {
+        args.push_back(online.name_argument);
+        args.push_back(online_name_);
     }
     return args;
 }
@@ -2119,13 +2138,41 @@ void App::online_page(float width) {
             playable.push_back(which);
         }
     }
+#ifdef LAUNCHER_UPDATE_REPO
+    // A new version: said first, as both players of a match need the same one (the Games page has the update)
+    if (update_news()) {
+        const launcher::Updater::Status status = updater_->status();
+        ui::text("NEW VERSION", Font::Semibold, ui::size::kDetail, p.accent);
+        ui::gap(10);
+        Card news(width, true);
+        const std::string title = "Version " + status.version + " is out";
+        row(width, title.c_str(), "Both players of a match need the same version. Update to play the players who have the new one.", 130.0f,
+            36.0f, [&] {
+                if (ui::button("Update…", Kind::Primary, 130.0f)) {
+                    page_ = 0;  // (the Games page: the update card)
+                }
+            });
+        news.end();
+        ui::gap(24);
+    }
+#endif
     if (collection_->room) {
         invitations_card(width);
     }
-    // Every game's open matches, by game, in the sidebar's order
+    // Every game's open matches, by game, in the sidebar's order; highlighted while one can be joined
     follow_lobby(collection_->lobby);
+    const auto joinable = [&](const launcher::OpenMatch& match, size_t which) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return slots_[which]->id == match.game && version_matches(match.version) && !slots_[which]->checking && slots_[which]->file.usable();
+    };
+    bool any_joinable = false;
+    for (const launcher::OpenMatch& match : lobby_) {
+        for (size_t which = 0; which < slots_.size(); which++) {
+            any_joinable = any_joinable || joinable(match, which);
+        }
+    }
     live_label("OPEN MATCHES", width, lobby_fetch_.valid() || (room_in_ && room_lists_ && room_fetch_.valid()));
-    Card list(width);
+    Card list(width, any_joinable);
     if (lobby_.empty()) {
         const char* empty = lobby_failed_    ? "Couldn't reach the online service."
                             : lobby_at_ == 0 ? "Looking…"
@@ -2178,8 +2225,8 @@ void App::online_page(float width) {
                                 choose_game_file(which);
                             }
                         }
-                    } else if (ui::button("Join", Kind::Secondary, 130.0f, ready)) {
-                        play(which, {one.about->online.join_argument, match.code});
+                    } else if (ui::button("Join", Kind::Primary, 130.0f, ready)) {
+                        play(which, join_arguments(one.about->online, match.code));
                     }
                 },
                 !file || other);
@@ -2230,7 +2277,7 @@ void App::online_page(float width) {
             if (found.status == 200 && !version_matches(found.version)) {
                 join_said_ = "That match is on version " + found.version + ", and you have " + own_version() + ": both need the same version.";
             } else if (found.status == 200 && which < slots_.size() && can_play(which)) {
-                play(which, {slots_[which]->about->online.join_argument, join_code_});
+                play(which, join_arguments(slots_[which]->about->online, join_code_));
             } else if (found.status == 200 && which < slots_.size()) {
                 join_said_ = "That's a " + slots_[which]->name + " match: add your " + collection_->file_name + " to join it.";
                 join_needs_ = static_cast<int>(which);
@@ -2276,6 +2323,9 @@ void App::online_page(float width) {
             });
         join.end();
     }
+    if (collection_->room) {
+        room_card(width, playable);
+    }
     ui::gap(24);
     layout::label("HOST A MATCH");
     Card host(width);
@@ -2318,9 +2368,6 @@ void App::online_page(float width) {
         arcade_row(width, online);
     }
     host.end();
-    if (collection_->room) {
-        room_card(width, playable);
-    }
     // The features about a match (Collection::online_features), as the Features page has them: set for every game
     if (collection_->online_features) {
         std::vector<FeatureRow> rows;
@@ -2471,8 +2518,9 @@ void App::invitations_card(float width) {
     if (shown.empty()) {
         return;
     }
-    layout::label("INVITATIONS");
-    Card card(width);
+    ui::text("INVITATIONS", Font::Semibold, ui::size::kDetail, ui::palette().accent);
+    ui::gap(10);
+    Card card(width, true);
     int n = 0;
     for (const launcher::Invitation* invitation : shown) {
         if (n > 0) {
@@ -2500,7 +2548,7 @@ void App::invitations_card(float width) {
             if (known && file) {
                 if (ui::button("Accept", Kind::Primary, 130.0f, can_play(which))) {
                     room_answered_.push_back(invitation->code);
-                    play(which, {slots_[which]->about->online.join_argument, invitation->code});
+                    play(which, join_arguments(slots_[which]->about->online, invitation->code));
                 }
             } else if (known) {
                 if (ui::button("Add…", Kind::Secondary, 130.0f, !slots_[which]->checking)) {
@@ -2533,7 +2581,7 @@ void App::invitations_card(float width) {
 void App::room_card(float width, const std::vector<size_t>& playable) {
     ui::gap(24);
     live_label("WAITING ROOM", width, room_fetch_.valid());
-    Card card(width);
+    Card card(width, !room_.players.empty());  // (highlighted while there's someone to invite)
     const bool named = online_name_[0] != '\0';
     const bool invitable = prefs_.get("online", "invitable") != "0";
     // (the game to invite to: one this player can play)
@@ -2654,7 +2702,7 @@ void App::lobby_card(size_t which, float width, bool ready) {
             width, match.name.c_str(), waited.c_str(), 130.0f, 36.0f,
             [&] {
                 if (ui::button("Join", Kind::Secondary, 130.0f, ready && !other)) {
-                    play(which, {online.join_argument, match.code});
+                    play(which, join_arguments(online, match.code));
                 }
             },
             other);
@@ -2857,17 +2905,16 @@ void App::update_card(float width, bool top, bool always) {
     using State = launcher::Updater::State;
     const ui::Palette& p = ui::palette();
     const launcher::Updater::Status status = updater_->status();
-    const bool news = status.state == State::Available || status.state == State::Installing || status.state == State::Installed ||
-                      status.state == State::NotInstalled;
+    const bool news = update_news();
     if (news != top && !always) {
         return;
     }
     if (!top) {
         ui::gap(36);
     }
-    ui::text(news ? "NEW VERSION" : "UPDATES", Font::Semibold, ui::size::kDetail, p.secondary);
+    ui::text(news ? "NEW VERSION" : "UPDATES", Font::Semibold, ui::size::kDetail, news ? p.accent : p.secondary);
     ui::gap(10);
-    Card card(width);
+    Card card(width, news);
     const bool running = any_running();
     std::string title = status.state == State::Installed ? "Version " + status.version + ", installed"
                         : news                            ? "Version " + status.version + " is out"
@@ -2919,6 +2966,16 @@ void App::update_card(float width, bool top, bool always) {
     }
 }
 #endif
+
+bool App::update_news() const {
+#ifdef LAUNCHER_UPDATE_REPO
+    using State = launcher::Updater::State;
+    const State state = updater_->status().state;
+    return state == State::Available || state == State::Installing || state == State::Installed || state == State::NotInstalled;
+#else
+    return false;
+#endif
+}
 
 // A collection's page for one game: its file, Display and Sound, Play, and the features that are its alone
 void App::title_page(size_t which, float width) {

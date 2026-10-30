@@ -18,6 +18,7 @@
 
 #include "game_info.h"
 #include "../recomp-common/launcher/src/online.h"
+#include "../recomp-common/launcher/src/run_program.h"
 #include "../runtime/game.h"
 #include "port.h"
 
@@ -54,7 +55,22 @@ namespace {
         kPunch = 6,   // host -> joining, before the hello: nothing, but it opens the host's router to them
         kPiece = 7,   // host -> joining: a piece of the game's state as the match begins (Netplay::state)
         kPieceAck = 8, // joining -> host: how many pieces have come, all before that one
+        kChat = 9,    // either: a line of the chat, by its number
+        kChatAck = 10, // either: how many lines of the chat have come, all before that one
     };
+
+    // A name or a line of the chat as the screen's font has it (ASCII's letters, digits and marks), at most `most` of
+    // them, spaces at its ends taken off
+    std::string Printable(const std::string &text, size_t most) {
+        std::string out;
+        for (const char c : text) {
+            if (out.size() < most && c >= 32 && c < 127) {
+                out += c;
+            }
+        }
+        const size_t start = out.find_first_not_of(' ');
+        return start == std::string::npos ? std::string() : out.substr(start, out.find_last_not_of(' ') - start + 1);
+    }
 
     struct Writer {
         std::vector<uint8_t> out;
@@ -179,7 +195,8 @@ namespace {
     }
 
     // The service is asked with the system's curl (as the launcher's updates are fetched: macOS, Windows 10 and
-    // later, and Linux have it), on another thread; the answer's last line is its HTTP status
+    // later, and Linux have it; Android, through the game's activity), on another thread; the answer's last line is
+    // its HTTP status
     std::string CurlProgram() {
 #ifdef _WIN32
         char system[MAX_PATH];
@@ -457,6 +474,7 @@ void Netplay::Welcome(Port &port) {
     welcome.U8(port.cameIn ? 1 : 0);
     // (this side's set: the other side says so when it has another region's)
     welcome.Text(SetName(port));
+    welcome.Text(settings.name);
     greeting = welcome.out;
 }
 
@@ -470,7 +488,9 @@ bool Netplay::Begin(Port &port, std::string &error) {
     began = NowMs();
     if (settings.hosting) {
         StartAt(settings.delay);
-        Settle(true, {});
+        if (!settings.solo) {
+            Settle(true, {}); // (solo: when someone comes)
+        }
         waiting = "Waiting for the other player (UDP port " + std::to_string(settings.port) + ")";
     } else {
         Writer hello(kHello);
@@ -478,6 +498,7 @@ bool Netplay::Begin(Port &port, std::string &error) {
         hello.Text(GAME_ID);
         hello.U32(build);
         hello.Text(RECOMP_VERSION);
+        hello.Text(settings.name);
         greeting = hello.out;
         // A match's code (K7Q-M2X: six letters and digits), or the host's address
         joinCode = CodeOf(settings.address);
@@ -534,7 +555,12 @@ namespace {
             args.push_back(body);
         }
         args.push_back(url);
-#ifdef _WIN32
+#if defined(__ANDROID__)
+        // (Android has no curl to start: the game's activity makes the request, as the launcher's are made there:
+        // recomp-common's run_program, GameActivity.curl)
+        std::string text;
+        const int exitCode = launcher::run_program(launcher::curl_program(), std::vector<std::string>(args.begin() + 1, args.end()), &text);
+#elif defined(_WIN32)
         // (Windows: curl, a console program, started with no console window; its output through a pipe)
         std::string command;
         for (const std::string &arg : args) {
@@ -833,6 +859,7 @@ int Netplay::Waiting(Port &port, std::string &error) {
                 const std::string game = in.Text();
                 const uint32_t theirs = in.U32();
                 const std::string version = in.Text();
+                const std::string name = in.Text();
                 std::string why;
                 if (protocol == kProtocol && version != RECOMP_VERSION) {
                     why = "The other player has version " + version + " and this one " RECOMP_VERSION ": both need the same version.";
@@ -851,8 +878,14 @@ int Netplay::Waiting(Port &port, std::string &error) {
                     continue;
                 }
                 if (!found) {
+                    if (settings.solo) {
+                        // (the player's own game until now: the match from the board's reset, with the match's features)
+                        port.MatchComing();
+                        Settle(true, {});
+                    }
                     peer = from;
                     found = true;
+                    theirName = name;
                     chunksHad = 0;
                     Welcome(port);
                     fprintf(stderr, "online: the other player is here\n");
@@ -1025,6 +1058,7 @@ int Netplay::Waiting(Port &port, std::string &error) {
         hostIn = (in.U8() & 1) != 0;
         // (the host's set: where this side's is another region's, the match is played as the host's)
         const std::string hostSet = in.Text();
+        theirName = in.Text();
         if (!in.ok) {
             error = "The host's welcome did not make sense.";
             return -1;
@@ -1038,6 +1072,39 @@ int Netplay::Waiting(Port &port, std::string &error) {
         sent = 0; // (the first ack at once)
     }
     return 0;
+}
+
+std::string Netplay::Name(int player) const {
+    return Printable(player == local ? settings.name : theirName, kNameMost);
+}
+
+void Netplay::Say(const std::string &text) {
+    const std::string line = Printable(text, kChatMost);
+    if (!line.empty()) {
+        unheard.push_back({said++, line});
+        SendChat(0);
+    }
+}
+
+std::vector<std::string> Netplay::TakeHeard() {
+    std::vector<std::string> taken;
+    taken.swap(heard);
+    return taken;
+}
+
+// The lines the other side hasn't said it has, in order, now and then until it has (a line is a packet: what the
+// chat sends is small beside the controls, sent every frame)
+void Netplay::SendChat(uint64_t now) {
+    if (unheard.empty() || now - saidAt < 250) {
+        return;
+    }
+    for (const auto &[n, text] : unheard) {
+        Writer line(kChat);
+        line.U32(n);
+        line.Text(text);
+        Send(line.out);
+    }
+    saidAt = NowMs();
 }
 
 int Netplay::Ping() const {
@@ -1086,6 +1153,28 @@ void Netplay::Take(const uint8_t *data, size_t size) {
             ended = data[4] == kBye ? "The other player left." : in.Text();
             failed = data[4] == kRefuse;
             left = data[4] == kBye;
+        }
+        return;
+    }
+    if (data[4] == kChat) {
+        // (the next line, or one again that is already here: either way, how many have come is said back)
+        const uint32_t n = in.U32();
+        const std::string text = Printable(in.Text(), kChatMost);
+        if (in.ok && n == heardUpTo) {
+            heardUpTo++;
+            if (!text.empty()) {
+                heard.push_back(text);
+            }
+        }
+        Writer ack(kChatAck);
+        ack.U32(heardUpTo);
+        Send(ack.out);
+        return;
+    }
+    if (data[4] == kChatAck) {
+        const uint32_t upTo = in.U32();
+        while (in.ok && !unheard.empty() && unheard.front().first < upTo) {
+            unheard.pop_front();
         }
         return;
     }
@@ -1153,6 +1242,7 @@ bool Netplay::Ready(uint64_t frame) {
         }
     }
     Compare();
+    SendChat(NowMs());
     if (ended.empty() && NowMs() - lastHeard > 5000) {
         ended = "Lost the connection to the other player.";
         failed = lost = true;

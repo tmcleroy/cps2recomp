@@ -72,7 +72,8 @@ Both players need the updated build; the switch stays synchronized through input
 Two players on two machines, with **rollback** netcode. Any mix of macOS, Linux, the Steam Deck and Windows can play
 each other.
 
-- **Host** a match and give the other player its **code**: they type it on the launcher's **Online** page. If you've
+- **Host** a match from the launcher, or from the game you're playing (its menu's **Online** page: you play on until
+  someone joins), and give the other player its **code**: they type it on the launcher's **Online** page. If you've
   set your name, the match is also listed in the **lobby**, where anyone can pick it from **Open matches**. Nothing
   needs setting up on either router.
 - The **waiting room** lists the players whose Online page is open: **Invite** one to a match in any game, and they
@@ -82,7 +83,10 @@ each other.
   (best effort: the same set is surest).
 - Each player presses Start to come in, as at the arcade. The match uses the host's board settings (difficulty,
   timer, rounds); cheats are off.
-- **On screen:** the ping (and the input delay, if you like), and the **win streak** of a player who keeps winning.
+- **On screen:** both players' **names**, the ping (and the input delay, if you like), and the **win streak** of a
+  player who keeps winning.
+- **Chat** with the other player during a match: press T (or a gamepad's right stick, or the touch screen's Chat) and
+  type, on a keyboard or your system's on-screen keyboard. It goes straight between the two games.
 - A dropped connection waits for the other player to come back with the same code.
 
 **[More about online play →](docs/ONLINE.md)**: the lobby, the waiting room, joining by address, and how rollback works.

@@ -17,14 +17,22 @@ namespace layout {
 // A rounded panel behind its contents.
 class Card {
 public:
-    explicit Card(float width) : list_(ImGui::GetWindowDrawList()), start_(ImGui::GetCursorScreenPos()), width_(width) {
+    // `highlight`: one worth the player's attention now (an invitation, a match to join, a new version): tinted with
+    // the accent and edged with it
+    explicit Card(float width, bool highlight = false)
+        : list_(ImGui::GetWindowDrawList()), start_(ImGui::GetCursorScreenPos()), width_(width), highlight_(highlight) {
         list_->ChannelsSplit(2);
         list_->ChannelsSetCurrent(1);
     }
     void end() {
-        float bottom = ImGui::GetCursorScreenPos().y;
+        const ui::Palette& p = ui::palette();
+        ImVec2 end(start_.x + width_, ImGui::GetCursorScreenPos().y);
         list_->ChannelsSetCurrent(0);
-        list_->AddRectFilled(start_, ImVec2(start_.x + width_, bottom), ui::palette().surface, ui::px(14));
+        list_->AddRectFilled(start_, end, p.surface, ui::px(14));
+        if (highlight_) {
+            list_->AddRectFilled(start_, end, p.accent_soft, ui::px(14));
+            list_->AddRect(start_, end, p.accent, ui::px(14), std::max(1.0f, ui::px(1.5f)));
+        }
         list_->ChannelsMerge();
     }
 
@@ -32,6 +40,7 @@ private:
     ImDrawList* list_;
     ImVec2 start_;
     float width_;
+    bool highlight_;
 };
 
 // A card row: label and detail on the left, a control on the right. In a narrow window, where the words would have

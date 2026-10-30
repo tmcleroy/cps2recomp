@@ -42,7 +42,7 @@ struct MenuRow {
         Action, // the host's own: Chosen::Action with its id
         Quit,   // "Quit game": Chosen::Quit
         Resume, // closes the menu
-        Mute,   // "Sound": on or muted, through MenuConfig::muted and setMuted (left out without them)
+        Mute,   // "Mute": off or on, through MenuConfig::muted and setMuted (left out without them)
     };
     Kind kind;
     int id;                  // Action: handed back when chosen
@@ -75,6 +75,8 @@ struct MenuPage {
     std::string parent;      // the page its row is on ("": the first page)
     std::string description; // what its row says ("": "The page of <name> choices.")
     bool counts = true;      // its row says how many of its features are on
+    // Speed and Mute rows at the top of this page, rather than on the first page (other kinds are left out here)
+    std::vector<MenuRow::Kind> rows = {};
 };
 
 struct MenuConfig {

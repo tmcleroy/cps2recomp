@@ -35,9 +35,17 @@ public:
     // in one way goes on through its rows, as a held key does in a list.
     uint16_t Read(bool menuOpen);
     unsigned Menu() const;
-    // The menu button, or the zoom's (the camera on both fighters, or off: zoom.h), was pressed since this was last asked
+    // The menu button, or the zoom's (the camera on both fighters, or off: zoom.h; online, the chat's), was pressed
+    // since this was last asked
     bool TakeMenuPress();
     bool TakeZoomPress();
+    // Online play (no zoom): the zoom's button is the chat's, which opens the system's keyboard
+    void Chat(bool chat) {
+        if (chat != m_chat) {
+            m_chat = chat;
+            m_width = 0; // (laid out again)
+        }
+    }
     // Their picture, when it changed since this was last asked (and for nothing shown, an empty one): the
     // presenter's overlay (present.h, SetOverlay), half the window's size
     bool TakePicture(std::vector<uint32_t> &pixels, int &width, int &height);
@@ -57,6 +65,7 @@ private:
 
     bool m_shown = false, m_changed = true, m_menuPressed = false, m_zoomPressed = false;
     bool m_idle = false;    // (shown, but no finger for a while: not drawn)
+    bool m_chat = false;
     uint64_t m_touched = 0; // (when a finger was last on the screen, SDL_GetTicks)
     int m_width = 0, m_height = 0;
     SDL_FRect m_picture{};

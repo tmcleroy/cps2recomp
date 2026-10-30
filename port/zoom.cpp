@@ -27,10 +27,20 @@ namespace {
     // Keeping both in the picture: room beyond a fighter's height (the game's focusTall) above it, below its feet for
     // its shadow, and across, as a part of its height, for its arms and what it wears
     constexpr float kRoomTop = 8.0f, kRoomFeet = 14.0f, kAcrossOfTall = 0.62f;
+    bool forbidden = false; // (online play: Forbid)
 } // namespace
 
 bool Zoom::Possible() {
-    return cps2recomp::TheGame().focus != nullptr;
+    return !forbidden && cps2recomp::TheGame().focus != nullptr;
+}
+
+void Zoom::Forbid(bool forbid) {
+    forbidden = forbid;
+    m_size = 0;
+    m_player = 0;
+    m_panX = m_panY = 0;
+    m_jump = true;
+    m_labelTicks = 0;
 }
 
 void Zoom::Said() {
@@ -107,6 +117,9 @@ void Zoom::Pan(int across, int down) {
 }
 
 void Zoom::Set(int size, int player) {
+    if (forbidden) {
+        return;
+    }
     m_size = player == kBoth ? std::max(size, 1) : std::clamp(size, 0, kSizeCount - 1);
     m_player = player;
     m_jump = true;

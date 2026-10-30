@@ -49,7 +49,8 @@ bool Menu::Exists(const std::string &page) const {
         return true;
     }
     if (std::any_of(m_config.features.begin(), m_config.features.end(), [&](const MenuFeature &f) { return f.category == page; }) ||
-        std::any_of(m_config.commands.begin(), m_config.commands.end(), [&](const MenuCommand &c) { return c.category == page; })) {
+        std::any_of(m_config.commands.begin(), m_config.commands.end(), [&](const MenuCommand &c) { return c.category == page; }) ||
+        std::any_of(m_config.pages.begin(), m_config.pages.end(), [&](const MenuPage &p) { return p.name == page && !p.rows.empty(); })) {
         return true;
     }
     // (or a page under it has: looked at one level down, which is what a page of pages needs, and cannot go
@@ -164,6 +165,16 @@ void Menu::Fill() {
             }
         }
     } else {
+        // (the page's own Speed and Mute rows first)
+        for (const MenuPage &page : m_config.pages) {
+            for (const MenuRow::Kind kind : page.name == m_page ? page.rows : std::vector<MenuRow::Kind>()) {
+                if (kind == MenuRow::Speed && !m_config.speeds.empty()) {
+                    m_rows.push_back({kRowSpeed, 0, ""});
+                } else if (kind == MenuRow::Mute && m_config.muted && m_config.setMuted) {
+                    m_rows.push_back({kRowMute, 0, ""});
+                }
+            }
+        }
         for (size_t i = 0; i < m_config.commands.size(); i++) {
             if (m_page == m_config.commands[i].category) {
                 m_rows.push_back({kRowCommand, i, ""});
@@ -318,10 +329,10 @@ void Menu::Draw(uint32_t *pixels, int width, int height) const {
             rowDescription = m_config.speedDescription;
             break;
         case kRowMute:
-            title = "Sound";
-            value = m_config.muted() ? "Muted" : "On";
+            title = "Mute";
+            value = m_config.muted() ? "On" : "Off";
             valueColor = m_config.muted() ? on : dim;
-            rowDescription = "Switches the game's sound off and on.";
+            rowDescription = "Switches the game's sound off, and on again.";
             break;
         case kRowAction:
             title = m_first[row.index].title;

@@ -4,6 +4,8 @@
 // The in-game menu (menu.h): the shared menu told what a CPS-2 game's is made of.
 #include "menu.h"
 
+#include <cstring>
+
 #include "../machine/machine.h"
 #include "../runtime/game.h"
 
@@ -30,8 +32,15 @@ namespace {
 void Menu::Open(bool withStates) {
     const cps2recomp::Game &game = cps2recomp::TheGame();
     recomp::MenuConfig config;
-    // The game's pages that belong at the head; then three groups with a line between them: the save
-    // states, what the game offers, and leaving
+    // Online, Display and Game first (issue #196), then the game's pages that belong at the head; then three groups
+    // with a line between them: the save states, what the game offers, and leaving. Under Game: the speed, Mute, and
+    // the Board, Cheats and Sound pages (a first page of fewer rows).
+    config.groups.push_back({{recomp::MenuRow::Page, 0, "Online"}, {recomp::MenuRow::Page, 0, "Display"},
+                             {recomp::MenuRow::Page, 0, "Game"}});
+    config.pages.push_back({"Game", "", "", true, {recomp::MenuRow::Speed, recomp::MenuRow::Mute}});
+    for (const char *under : {"Board", "Cheats", "Sound"}) {
+        config.pages.push_back({under, "Game"});
+    }
     std::vector<recomp::MenuRow> top;
     for (const cps2recomp::Page &page : game.pages) {
         // (such pages are ways of running the game: their rows do not count features that are on)
@@ -48,8 +57,6 @@ void Menu::Open(bool withStates) {
     }
     config.groups.push_back({
         {recomp::MenuRow::Pages},
-        {recomp::MenuRow::Speed},
-        {recomp::MenuRow::Mute},
         {recomp::MenuRow::Action, kCoin, "Insert coin", "Puts a coin in the first slot."},
         {recomp::MenuRow::Action, kStart2, "Player 2 joins",
          "Presses player 2's Start: with a coin in (or free play), a second player to practise against."},
@@ -69,6 +76,11 @@ void Menu::Open(bool withStates) {
         config.features.push_back({feature.category, feature.title, feature.description, {feature.choices.begin(), feature.choices.end()}});
     }
     for (const cps2recomp::Command &command : game.commands) {
+        if (hosting && !strcmp(command.name, "online_host")) {
+            config.commands.push_back({command.category, "Stop hosting",
+                                       "Others can no longer join: the match's code stops working. Your game goes on as it is."});
+            continue;
+        }
         config.commands.push_back({command.category, command.title, command.description});
     }
     config.value = [](size_t feature) { return cps2recomp::FeatureSetting(cps2recomp::TheGame().features[feature].name); };

@@ -14,6 +14,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <deque>
 #include <map>
 #include <memory>
 #include <string>
@@ -73,6 +74,7 @@ struct Options {
     uint64_t rollbackTest = 0;  // --rollback-test SEED: each frame run as online play's rollback would (RollbackTest)
     bool online = false;        // --host or --join: online play (netplay.h), as `net` says
     Netplay::Settings net;
+    std::string netSay;         // --net-say TEXT: (tests) the line said in the chat two seconds into the match
 };
 
 // Recorded input: what the players hold, at the frames where it changes
@@ -204,7 +206,39 @@ struct Port {
     bool roundCounted = false;
     int roundQuiet = 0;
     void Streaks();     // (this side's player has pressed Start in the match: "PRESS START TO JOIN" is said until then)
+    // Online: the chat (issue #196). Each line is said on the picture for a while (`until`, a tick), the newest
+    // lowest; and the line this side's player is typing, while they type one (the frontend's: Enter sends it, Esc
+    // puts it away; the keyboard is the chat's meanwhile, not the game's)
+    struct ChatLine {
+        std::string text;
+        uint64_t until;
+        bool own;
+    };
+    std::deque<ChatLine> chat;
+    bool typing = false;
+    std::string typed;
+    void Say();       // (the typed line: sent, and said with the rest)
+    void HearChat();  // (the other side's lines that have come)
     bool StartOnline(std::string &error);
+    // The in-game menu's Online page (issue #196): a match hosted while the game goes on as the player's own, offline
+    // (its modes, cheats, the menu, save states, pause: all as without it), `waitingHost` listening meanwhile (PumpHost:
+    // every tick, and while the menu is open), listed in the lobby under the launcher's name if the player has one.
+    // When someone comes (MatchComing, from Netplay::Waiting) the game starts from the board's reset with the match's
+    // features, for both players alike. The menu's row again stops hosting (StopHosting). After the match the player's
+    // own game and features are back (BackToSolo): still hosted with the same code when the other player left, not
+    // when this one did.
+    std::unique_ptr<Netplay> waitingHost;
+    void HostFromMenu();
+    void PumpHost();
+    void MatchComing();
+    void StopHosting();
+    void BackToSolo(bool stillHosting);
+    bool hostedFromMenu = false;
+    std::map<std::string, int> ownFeatures; // (as they were before the match's: put back by BackToSolo)
+    std::string hostNote;                   // (why the hosting stopped, said for a few seconds: until hostNoteUntil)
+    uint64_t hostNoteUntil = 0;
+    // Esc's question answered yes: the match left, and the game with it unless it was hosted from the menu
+    void LeaveOnline();
     void Matched();
     void ArcadeFrame(); // (--net-arcade: the host's own play while it waits for the other player)
     // A window's match that ended with the other side gone: the host waits for them to come back (the same code, or

@@ -226,6 +226,8 @@ private:
     // Host's arguments for a game's Online: listed under the player's name if they have one, and arcade while waiting
     // if they switched it on; and the row with that switch
     std::vector<std::string> host_arguments(const launcher::Online& online) const;
+    // Join's: the match (a code or an address), and the player's name, which the game shows the other player
+    std::vector<std::string> join_arguments(const launcher::Online& online, const std::string& match) const;
     void arcade_row(float width, const launcher::Online& online);
     void lobby_card(size_t which, float width, bool ready);
     // The Online page (a collection with a lobby: Collection::lobby): host in the lobby in any game, and every game's
@@ -285,6 +287,8 @@ private:
     // at the page's end when there is not (`always`: at the top either way)
     void update_card(float width, bool top, bool always = false);
 #endif
+    // A newer version is out (or being installed): the Games row's dot, and the Online page's prompt
+    bool update_news() const;
 
     const launcher::Collection* collection_ = nullptr;  // a collection's launcher's (a port's: none)
     SDL_Window* window_;
