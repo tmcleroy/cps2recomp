@@ -65,7 +65,8 @@ Every fighting game has a full training mode, from the in-game menu:
 
 ## Online play
 
-The host can press **F2** to open the board's test menu for both players. The joining player's F2 has no effect.
+With **Online test menu** enabled, the host can press **F2** to open the board's test menu for both players.
+This option is off by default, including in Pure mode. The joining player's F2 has no effect.
 Both players need the updated build; the switch stays synchronized through input delay and rollback.
 
 Two players on two machines, with **rollback** netcode. Any mix of macOS, Linux, the Steam Deck and Windows can play

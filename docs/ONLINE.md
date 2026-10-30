@@ -53,7 +53,10 @@ cps2recomp-launcher --play sfa3 -- --join CODE             # the other player: t
 
 ## In a match
 
-- **Test menu**: only the host can toggle the board's test switch with **F2**. Both players see the test menu;
+- **Test menu**: enable **Online test menu** in the launcher's Features page before hosting (or pass
+  `--features online_test_menu` to the game). It is off by default, including in Pure mode; the host's setting
+  applies to both players. Offline F2 is unchanged. Only the host can toggle the board's test switch with **F2**.
+  Both players see the test menu;
   the switch is synchronized with their inputs, including during rollback. Both need a build supporting this
   feature; older network protocols cannot join it.
 - **Each player presses Start to come in**, as at the arcade: the first to press plays the computer until the other

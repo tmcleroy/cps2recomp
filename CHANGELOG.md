@@ -4,7 +4,8 @@
 
 - **Online test menu**: the host can toggle the operator's test switch with F2 for both players. The switch is
   synchronized through input delay and rollback; the joining player cannot toggle it. Both players need the
-  updated build (protocol 6).
+  updated build (protocol 6). Enable **Online test menu** before hosting; it is off by default, including in Pure
+  mode. Offline F2 is unchanged.
 
 ## 1.1.0
 

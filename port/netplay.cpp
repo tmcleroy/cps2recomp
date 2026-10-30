@@ -106,7 +106,7 @@ namespace {
         if (name == "run_ahead" || name == "custom_colours") {
             return Share::Off; // (custom colours: each player's own library, which the other side has not)
         }
-        if (name.rfind("widescreen", 0) == 0 || category == "Game" || category == "Board") {
+        if (name == "online_test_menu" || name.rfind("widescreen", 0) == 0 || category == "Game" || category == "Board") {
             return Share::Host;
         }
         if (category == "Cheats") {
@@ -1191,7 +1191,7 @@ void Netplay::Run(Port &port, uint64_t at, bool drawing) {
     k.used = at < remoteUpTo ? remoteInput[at % kInputs] : remoteUpTo ? remoteInput[(remoteUpTo - 1) % kInputs] : 0;
     players[remote] = k.used;
     // The host is player 1. Apply its switch for this frame, including frames rerun during rollback.
-    port.machine->testSwitch = (players[0] & kTestSwitch) != 0;
+    port.machine->testSwitch = FeatureOn("online_test_menu") && (players[0] & kTestSwitch) != 0;
     for (uint16_t &player : players) {
         player &= static_cast<uint16_t>(~kTestSwitch);
     }
@@ -1208,7 +1208,8 @@ void Netplay::Frame(Port &port, uint16_t controls) {
     current = port.frame;
     const uint64_t frame = port.frame;
     controls &= static_cast<uint16_t>(~kTestSwitch);
-    if (Hosting() && (port.test || (frame >= port.opt.testFrom && frame < port.opt.testTo))) {
+    if (Hosting() && FeatureOn("online_test_menu") &&
+        (port.test || (frame >= port.opt.testFrom && frame < port.opt.testTo))) {
         controls |= kTestSwitch;
     }
     localInput[(frame + delay) % kInputs] = controls;

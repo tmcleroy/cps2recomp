@@ -178,6 +178,10 @@ void RegisterPortFeatures() {
                                       "Left Shift with Q, E or W, or a touch screen's Zoom button (both).",
                                       kFeatureSession, {"Off", "Player 1", "Player 2", "Both fighters"}});
     }
+    TheGame().features.push_back({"online_test_menu", "Online", "Online test menu",
+                                  "Lets the host use F2 to toggle the board's test switch for both players during an online "
+                                  "match. The host's setting applies to both players. Off by default; offline F2 is unchanged.",
+                                  0});
     // (online play's readout, each player's own: Port::Shown)
     TheGame().features.push_back({"online_ping", "Online", "Ping",
                                   "During an online match, the time a packet takes to the other player and back, at the bottom of "

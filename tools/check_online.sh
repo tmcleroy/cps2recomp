@@ -19,6 +19,8 @@
 # the match begins from the game as the host's play left it, sent whole; the replay from the board's reset is not tried.
 # TEST_MENU=1: the host holds the test switch at frames 180:240, and the joining player tries it at 300:360.
 # Only the host's switch may appear in the recorded controls; the replay also verifies its effect on the board.
+# TEST_MENU=off: the host uses the default Pure settings; neither player's switch may have any effect, even
+# though the joining player enables the feature locally. Both modes test that the host's setting wins.
 #
 #   [ARCADE=1] [JOIN_ROM=<set>] GAME=<id> check_online.sh [FRAMES]   (make GAME=<id> check-online: from the repository's top, after `make`; ROM=your set)
 set -eu
@@ -46,6 +48,12 @@ rm -f "$work/online-host.txt" "$work/online-join.txt" "$work/online-host.eeprom"
 play=$("build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '($2=="Game"||$2=="Cheats"||$2=="Display") && NF==5 &&
     $1 !~ /^(display_|window_size|run_ahead|custom_soundtrack|widescreen_walls|custom_colours)/ {print $1}' | paste -sd, -)
 play="${play:+$play,}widescreen"
+if [ "${TEST_MENU:-}" = off ]; then
+    play=""
+    join_test+=(--features online_test_menu)
+elif [ -n "${TEST_MENU:-}" ]; then
+    play="$play,online_test_menu"
+fi
 # (the match has them but for the cheats, which are off on both sides: the replay is given the same)
 cheats=$("build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$2=="Cheats" {print $1}')
 match=$(printf '%s\n' "$play" | tr ',' '\n' | grep -vxF "$cheats" | paste -sd, -)
@@ -91,9 +99,10 @@ if [ -n "$arcade" ]; then
 fi
 # And the match is what the game does with those controls: both players' (--record), replayed without the network
 if [ -n "${TEST_MENU:-}" ]; then
-    python3 - "$work/online-host.mov" <<'PY' || status=1
+    python3 - "$work/online-host.mov" "$TEST_MENU" <<'PY' || status=1
 import sys
 
+enabled = sys.argv[2] != 'off'
 seen = set()
 with open(sys.argv[1]) as movie:
     for line in movie:
@@ -102,11 +111,12 @@ with open(sys.argv[1]) as movie:
         frame, host, join, *_ = line.split()
         frame = int(frame)
         # The default two-frame input delay applies to the test switch too.
-        assert bool(int(host, 16) & 0x8000) == (182 <= frame < 242), (frame, host)
+        assert bool(int(host, 16) & 0x8000) == (enabled and 182 <= frame < 242), (frame, host)
         assert not int(join, 16) & 0x8000, (frame, join)
         seen.add(frame)
 assert set(range(182, 362)).issubset(seen), 'test switch frames missing from the record'
-print('ok: only the host can send the test switch, with the input delay')
+print('ok: only the host can send the test switch, with the input delay' if enabled else
+      'ok: Pure defaults disable both test switches, despite the joining player enabling the feature')
 PY
 fi
 : > "$work/online-replay.ini"
