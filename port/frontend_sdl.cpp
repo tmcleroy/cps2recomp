@@ -449,7 +449,8 @@ int RunWindowed(Port &port) {
                     port.Key('k', kKeyRestart);
                 } else if (!port.menu.IsOpen() && ev.key.scancode == SDL_SCANCODE_BACKSLASH && !ev.key.repeat) {
                     port.Key('k', kKeyExtra);
-                } else if (ev.key.scancode == SDL_SCANCODE_F2) {
+                } else if (ev.key.scancode == SDL_SCANCODE_F2 && !ev.key.repeat &&
+                           (!port.net || port.net->Hosting())) {
                     port.test = !port.test; // the operator's test switch
                 } else if (ev.key.scancode == SDL_SCANCODE_F11 ||
                            (ev.key.scancode == SDL_SCANCODE_RETURN && (ev.key.mod & SDL_KMOD_ALT))) {

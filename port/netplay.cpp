@@ -1097,6 +1097,9 @@ void Netplay::Take(const uint8_t *data, size_t size) {
     uint16_t inputs[256];
     for (unsigned n = 0; n < count; n++) {
         inputs[n] = in.U16();
+        if (Hosting()) {
+            inputs[n] &= static_cast<uint16_t>(~kTestSwitch); // only the host can operate the test switch
+        }
     }
     const double theirs = static_cast<int16_t>(in.U16()) / 100.0;
     const uint64_t hashFrame = in.U32();
@@ -1187,6 +1190,11 @@ void Netplay::Run(Port &port, uint64_t at, bool drawing) {
     // (the other side's, or guessed as the last that came)
     k.used = at < remoteUpTo ? remoteInput[at % kInputs] : remoteUpTo ? remoteInput[(remoteUpTo - 1) % kInputs] : 0;
     players[remote] = k.used;
+    // The host is player 1. Apply its switch for this frame, including frames rerun during rollback.
+    port.machine->testSwitch = (players[0] & kTestSwitch) != 0;
+    for (uint16_t &player : players) {
+        player &= static_cast<uint16_t>(~kTestSwitch);
+    }
     port.machine->drawing = drawing;
     port.Step(players);
     port.machine->drawing = true;
@@ -1199,6 +1207,10 @@ void Netplay::Frame(Port &port, uint16_t controls) {
     const auto began = std::chrono::steady_clock::now();
     current = port.frame;
     const uint64_t frame = port.frame;
+    controls &= static_cast<uint16_t>(~kTestSwitch);
+    if (Hosting() && (port.test || (frame >= port.opt.testFrom && frame < port.opt.testTo))) {
+        controls |= kTestSwitch;
+    }
     localInput[(frame + delay) % kInputs] = controls;
     localUpTo = frame + delay + 1;
     // How far ahead of the other side this side is: the frame it is on, over what the other side said last

@@ -1539,7 +1539,12 @@ void Port::RunFrame() {
         machine->players[1] |= kStart;
     }
     machine->serviceButton = service && !net;
-    machine->testSwitch = !net && (test || testFrames > 0 || (frame >= opt.testFrom && frame < opt.testTo));
+    // Online, Netplay applies the host's switch from the delayed inputs. Offline movies retain that switch too.
+    machine->testSwitch = !net && (test || testFrames > 0 || (frame >= opt.testFrom && frame < opt.testTo) ||
+                                 (pad[0] & Netplay::kTestSwitch));
+    for (uint16_t &player : machine->players) {
+        player &= static_cast<uint16_t>(~Netplay::kTestSwitch);
+    }
     if (testFrames > 0) {
         testFrames--;
     }

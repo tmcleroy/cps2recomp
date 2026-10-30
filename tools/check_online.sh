@@ -17,6 +17,8 @@
 #
 # ARCADE=1: the host plays alone while it waits (--net-arcade) and the other side joins a few seconds later, so that
 # the match begins from the game as the host's play left it, sent whole; the replay from the board's reset is not tried.
+# TEST_MENU=1: the host holds the test switch at frames 180:240, and the joining player tries it at 300:360.
+# Only the host's switch may appear in the recorded controls; the replay also verifies its effect on the board.
 #
 #   [ARCADE=1] [JOIN_ROM=<set>] GAME=<id> check_online.sh [FRAMES]   (make GAME=<id> check-online: from the repository's top, after `make`; ROM=your set)
 set -eu
@@ -25,6 +27,16 @@ ROM=${ROM:-rom/$GAME}
 JOIN_ROM=${JOIN_ROM:-$ROM}
 frames=${1:-3000}
 arcade=${ARCADE:-}
+host_test=()
+join_test=()
+if [ -n "${TEST_MENU:-}" ]; then
+    if [ "$frames" -lt 420 ] || [ -n "$arcade" ]; then
+        echo "TEST_MENU needs at least 420 frames and no ARCADE"
+        exit 1
+    fi
+    host_test=(--test-switch 180:240)
+    join_test=(--test-switch 300:360)
+fi
 work=work/$GAME/check
 mkdir -p "$work"
 : > "$work/online-host.ini"
@@ -44,11 +56,11 @@ side() { # host | join, then the program's arguments
     "build/$GAME/$GAME" --rom "$rom" --headless --frames "$frames" --settings "$work/online-$name.ini" \
         --eeprom "$work/online-$name.eeprom" --hash-log "$work/online-$name.txt" --net-fake 50:25:5 "$@" 2> "$work/online-$name.err"
 }
-side host --auto 11:0:1 --features "$play" --host "$port" --record "$work/online-host.mov" ${arcade:+--net-arcade} &
+side host --auto 11:0:1 --features "$play" --host "$port" --net-service off --record "$work/online-host.mov" "${host_test[@]}" ${arcade:+--net-arcade} &
 host=$!
 if [ -n "$arcade" ]; then sleep 4; else sleep 0.5; fi
 status=0
-side join --auto 12:0:1 --join "127.0.0.1:$port" || { echo "FAILED: the joining side stopped"; tail -3 "$work/online-join.err"; status=1; }
+side join --auto 12:0:1 --join "127.0.0.1:$port" "${join_test[@]}" || { echo "FAILED: the joining side stopped"; tail -3 "$work/online-join.err"; status=1; }
 wait "$host" || { echo "FAILED: the host stopped"; tail -3 "$work/online-host.err"; status=1; }
 # (each side's log ends where it last had the other's controls: the shorter is what both have)
 lines=$(wc -l < "$work/online-host.txt" | tr -d ' ')
@@ -78,6 +90,25 @@ if [ -n "$arcade" ]; then
     exit $status
 fi
 # And the match is what the game does with those controls: both players' (--record), replayed without the network
+if [ -n "${TEST_MENU:-}" ]; then
+    python3 - "$work/online-host.mov" <<'PY' || status=1
+import sys
+
+seen = set()
+with open(sys.argv[1]) as movie:
+    for line in movie:
+        if line.startswith('#') or not line.strip():
+            continue
+        frame, host, join, *_ = line.split()
+        frame = int(frame)
+        # The default two-frame input delay applies to the test switch too.
+        assert bool(int(host, 16) & 0x8000) == (182 <= frame < 242), (frame, host)
+        assert not int(join, 16) & 0x8000, (frame, join)
+        seen.add(frame)
+assert set(range(182, 362)).issubset(seen), 'test switch frames missing from the record'
+print('ok: only the host can send the test switch, with the input delay')
+PY
+fi
 : > "$work/online-replay.ini"
 "build/$GAME/$GAME" --rom "$ROM" --headless --frames "$lines" --settings "$work/online-replay.ini" --features "$match" \
     --movie "$work/online-host.mov" --hash-log "$work/online-replay.txt" --hash-no-picture --hash-no-sound 2> /dev/null

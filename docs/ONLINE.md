@@ -53,6 +53,9 @@ cps2recomp-launcher --play sfa3 -- --join CODE             # the other player: t
 
 ## In a match
 
+- **Test menu**: only the host can toggle the board's test switch with **F2**. Both players see the test menu;
+  the switch is synchronized with their inputs, including during rollback. Both need a build supporting this
+  feature; older network protocols cannot join it.
 - **Each player presses Start to come in**, as at the arcade: the first to press plays the computer until the other
   presses theirs ("Here comes a new challenger").
 - **Each player plays with their own player 1 controls**, and hears and sees the game as their own settings have it
