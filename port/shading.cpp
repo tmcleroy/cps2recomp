@@ -56,7 +56,10 @@ namespace {
 #else
             if (const char *base = SDL_GetBasePath()) {
                 paths.push_back(std::string(base) + name);
+                // (a release keeps the games in games/ under the library: one folder up, and the app's own folders)
+                paths.push_back(std::string(base) + "../" + name);
                 paths.push_back(std::string(base) + "../Frameworks/" + name);
+                paths.push_back(std::string(base) + "../../Frameworks/" + name);
             }
 #endif
             paths.push_back(name);

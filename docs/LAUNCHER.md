@@ -19,6 +19,36 @@ scrolls, and each row's buttons under its words.
 
 ![The Features page: what the games share, set for all of them at once](screenshots/launcher-features.png)
 
+## The `roms` folder
+
+The download keeps the launcher at its top and every game's program in `games/` under it. A folder named `roms`
+beside the launcher is read when the launcher opens: it checks every zip in it against every game's own list of
+files (each file by its CRC32, as the games read a set), and says which games' sets are there, which zip each was
+read from, and which games have none. A set that is another version's, or that is missing a file, is said so, with
+the file that is missing or wrong.
+
+```text
+CPS2Recomp/
+  cps2recomp-launcher.exe   the launcher: what you open
+  roms/                     your own ROM sets (never part of the download)
+    sfa2u.zip
+    msh.zip
+  games/                    every game's program, which the launcher starts
+    sfa2.exe
+    msh.exe
+```
+
+A game whose set is in there and that has none chosen is given it: **Play** works at once, with nothing pointed at.
+A set chosen another way is left as it is, unless it is no longer usable and `roms` has the game's. The Games page's
+**ROM SETS** row says how many games' sets are there, and **Show** opens the report; nothing opens by itself, so the
+check never stands between you and the games.
+
+The check only reads: nothing is moved, rewritten or removed, and a zip's extra files (which the games ignore) are
+only reported. It is the same check as `tools/validate_cps2_roms.py`, which also offers to remove those extras from
+the command line. A switch at the bottom of its report stops it from running when the launcher opens (**Check
+again** runs it anyway). A folder of loose files instead of a zip works too, and so does any other folder: **Choose
+folder…** on the Games page still finds each game's set in one, wherever it is.
+
 ## Updates
 
 When the launcher opens it asks GitHub for this project's releases (the Updates card, at the top of the Games
@@ -67,7 +97,7 @@ cps2recomp-launcher --play sfa2                 # straight into a game, as the l
 cps2recomp-launcher --play sfa2 -- --features widescreen,no_damage
                                                 # with more arguments for the game, after the launcher's own
 cps2recomp-launcher --page vampire_savior       # the launcher, at a game's page
-sfa2 --rom ~/roms/sfa2u.zip --settings my.ini   # a game's own program (beside the launcher), by itself
+sfa2 --rom ~/roms/sfa2u.zip --settings my.ini   # a game's own program (in games/, under the launcher), by itself
 sfa2 --soundtrack ~/music/sfa2-arranged          # a custom soundtrack's folder (with the feature on)
 sfa2 --help                                     # what a game's program takes
 ```

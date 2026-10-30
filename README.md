@@ -110,9 +110,12 @@ each other.
 ## Getting started
 
 1. Download the build for your system from the [releases page](https://github.com/tmcleroy/cps2recomp/releases) and
-   unpack it.
-2. Open the launcher (`CPS-2 Recomp.app`, `cps2recomp-launcher`). On its Games page, **Choose folder…** and pick the
-   folder you keep your ROM sets in: it finds each game's set by name (`sfa2u.zip` or a folder of the set's files).
+   unpack it. The launcher sits at the top of the folder (`cps2recomp-launcher`), and every game's program in
+   `games/` under it.
+2. Put your ROM sets in a folder named `roms` beside the launcher: it reads that folder when it opens and tells you
+   which games' sets are there and which are not ([the launcher](docs/LAUNCHER.md#the-roms-folder)). Or open the
+   launcher (`CPS-2 Recomp.app`, `cps2recomp-launcher`) and, on its Games page, **Choose folder…** to pick the folder
+   you keep your ROM sets in: it finds each game's set by name (`sfa2u.zip` or a folder of the set's files).
    Your ROM sets are only ever read.
 3. Press **Play** beside a game.
 

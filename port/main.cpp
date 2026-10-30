@@ -417,7 +417,9 @@ std::string Port::ShaderPreset() const {
     }
     const char *base = SDL_GetBasePath();
     const std::filesystem::path program = base ? TextPath(base) : std::filesystem::path(".");
-    for (const std::filesystem::path &at : {program / "shaders", program / ".." / "Resources" / "shaders"}) {
+    // (the presets are beside the program, or one folder up: a release keeps the games in games/ under the shaders/)
+    for (const std::filesystem::path &at : {program / "shaders", program / ".." / "shaders", program / ".." / "Resources" / "shaders",
+                                            program / ".." / ".." / "Resources" / "shaders"}) {
         if (std::filesystem::exists(at / kShaderPresets[value - 1], error)) {
             return PathText(at / kShaderPresets[value - 1]);
         }
@@ -1986,8 +1988,20 @@ bool InCollection() {
     static const bool collection = [] {
         const char *base = SDL_GetBasePath();
         std::error_code missing;
-        return base && !std::filesystem::exists(std::string(base) + GAME_ID "-launcher" + kExeSuffix, missing) &&
-               std::filesystem::exists(std::string(base) + "cps2recomp-launcher" + kExeSuffix, missing);
+        if (!base) {
+            return false;
+        }
+        // (the game's program is in games/ beside the launcher: its own, or the collection's, is one folder up)
+        const std::filesystem::path folders[] = {std::filesystem::path(base), std::filesystem::path(base) / ".."};
+        for (const std::filesystem::path &folder : folders) {
+            if (std::filesystem::exists(folder / (std::string(GAME_ID) + "-launcher" + kExeSuffix), missing)) {
+                return false;
+            }
+            if (std::filesystem::exists(folder / (std::string("cps2recomp-launcher") + kExeSuffix), missing)) {
+                return true;
+            }
+        }
+        return false;
     }();
     return collection;
 }
@@ -2280,15 +2294,27 @@ bool StartLauncher() {
         return false;
     }
     const char *kExe = port::kExeSuffix;
-    std::string launcher = std::string(base) + GAME_ID "-launcher" + kExe;
+    // (the game's program is in games/ beside the launcher: its own launcher, or the collection's, is one folder up)
+    const std::filesystem::path folders[] = {std::filesystem::path(base), std::filesystem::path(base) / ".."};
     std::error_code missing;
+    std::string launcher;
     bool collection = false;
-    if (!std::filesystem::exists(launcher, missing)) {
-        launcher = std::string(base) + "cps2recomp-launcher" + kExe;
-        collection = true;
-        if (!std::filesystem::exists(launcher, missing)) {
-            return false;
+    for (const std::filesystem::path &folder : folders) {
+        std::string own = (folder / (std::string(GAME_ID) + "-launcher" + kExe)).string();
+        if (std::filesystem::exists(own, missing)) {
+            launcher = own;
+            collection = false;
+            break;
         }
+        std::string all = (folder / (std::string("cps2recomp-launcher") + kExe)).string();
+        if (std::filesystem::exists(all, missing)) {
+            launcher = all;
+            collection = true;
+            break;
+        }
+    }
+    if (launcher.empty()) {
+        return false;
     }
     bool setUp = false;
     // (the launcher's own folder and file; the collection's keeps each game's file in a section of its own. In

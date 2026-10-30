@@ -22,7 +22,7 @@ build_programs "$BUILD" -DCMAKE_PREFIX_PATH="$DEPS/sdl-$SYSTEM" -DCMAKE_EXE_LINK
 STAGE="$BUILD/stage/$ARCHIVE"
 rm -rf "$BUILD/stage" && mkdir -p "$STAGE"
 copy_programs "$BUILD" "$STAGE" ""
-strip "$STAGE/$EXE-launcher" $(for game in $GAMES; do echo "$STAGE/$game"; done)
+strip "$STAGE/$EXE-launcher" $(for game in $GAMES; do echo "$STAGE/games/$game"; done)
 add_notices "$STAGE" "$BUILD/launcher"
 # (the Display page's shaders, port/shading.h: librashader beside the games and the presets, tools/librashader.sh)
 LIBRA=$("$ROOT/tools/librashader.sh")

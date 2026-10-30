@@ -18,7 +18,7 @@ build_programs "$BUILD" $ARCH -DCMAKE_PREFIX_PATH="$DEPS/sdl-macos"
 APP="$OUT/$NAME.app"
 rm -rf "$APP" && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 copy_programs "$BUILD" "$APP/Contents/MacOS" ""
-strip -x "$APP/Contents/MacOS/"*
+strip -x "$APP/Contents/MacOS/$EXE-launcher" $(for game in $GAMES; do echo "$APP/Contents/MacOS/games/$game"; done)
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@NAME@/$NAME/g" -e "s/@APP_ID@/$APP_ID/g" -e "s/@EXE@/$EXE-launcher/g" \
     "$ROOT/tools/release/Info.plist" > "$APP/Contents/Info.plist"
 add_notices "$APP/Contents/Resources" "$BUILD/launcher"
@@ -31,7 +31,7 @@ cp "$LIBRA/librashader-LICENSE.md" "$APP/Contents/Resources/licenses/librashader
 cp "$LIBRA/librashader-LICENSE-GPL.md" "$APP/Contents/Resources/licenses/librashader-GPL-3.0.txt"
 codesign --force --deep -s - "$APP"
 
-for binary in "$APP/Contents/MacOS/"* "$APP/Contents/Frameworks/"*; do
+for binary in "$APP/Contents/MacOS/$EXE-launcher" "$APP/Contents/MacOS/games/"* "$APP/Contents/Frameworks/"*; do
     if otool -L "$binary" | grep -q '/opt/homebrew\|/usr/local'; then
         echo "error: $binary links a library outside macOS" >&2
         exit 1

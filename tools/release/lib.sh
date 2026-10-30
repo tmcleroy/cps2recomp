@@ -43,7 +43,7 @@ sdl_static() {
     fi
 }
 # Every game's program, in $1/game-<id>/, and the collection's launcher, in $1/launcher/ (the rest: more
-# arguments for CMake)
+# arguments for CMake). LAUNCHER_CMAKE_ARGS: what only the launcher's build is given, after those.
 build_programs() {
     build=$1; shift
     list=""
@@ -64,14 +64,16 @@ build_programs() {
     done
     cmake -S "$ROOT/launcher" -B "$build/launcher" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCOLLECTION=ON -DGAMES="$list" \
         -DGAME_NAME="$NAME" -DGAME_EXE="$EXE" -DAPP_ID="$APP_ID" -DHOME_ENV=CPS2RECOMP_HOME \
-        -DDISCLAIMER="Not affiliated with Capcom." -DCOLLECTION_VERSION="$VERSION" "$@" >/dev/null
+        -DDISCLAIMER="Not affiliated with Capcom." -DCOLLECTION_VERSION="$VERSION" "$@" ${LAUNCHER_CMAKE_ARGS:-} >/dev/null
     cmake --build "$build/launcher"
 }
-# Every game's program and the launcher, from $1 (build_programs') into $2 (the end of a program's name: $3)
+# Every game's program (in $2/games/, under the launcher) and the launcher, from $1 (build_programs') into $2 (the
+# end of a program's name: $3)
 copy_programs() {
     cp "$1/launcher/$EXE-launcher$3" "$2/"
+    mkdir -p "$2/games"
     for game in $GAMES; do
-        cp "$1/game-$game/$game$3" "$2/"
+        cp "$1/game-$game/$game$3" "$2/games/"
     done
 }
 check_archive() { # the archive

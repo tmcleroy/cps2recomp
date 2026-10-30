@@ -3,15 +3,16 @@
 # Copyright (C) 2026 Tommy McLeroy. Part of cps2recomp.
 #
 # The collection: one launcher for every game (recomp-common's launcher with LAUNCHER_COLLECTION; launcher/src/
-# description.cpp), in build/collection/ with each game's program beside it. The games are built first (make
-# games; each from its own ROM set); one that is not built is left out, and the launcher does not show it.
+# description.cpp), in build/collection/, with each game's program in build/collection/games/ under it. The games
+# are built first (make games; each from its own ROM set); one that is not built is left out, and the launcher does
+# not show it.
 # Run from the repository's top (make collection).
 #   B=folder           where (build/collection)
 #   NO_GAME_CODE=1     take each game's program from build/<id>-nocode/ (the build with no translated code)
 set -eu
 B=${B:-build/collection}
 games=""
-mkdir -p "$B"
+mkdir -p "$B/games"
 for cfg in games/*/game.cfg; do
     id=$(basename "$(dirname "$cfg")")
     games="$games${games:+;}$id"
@@ -19,7 +20,7 @@ for cfg in games/*/game.cfg; do
     [ -n "${NO_GAME_CODE:-}" ] && from=build/$id-nocode/$id
     for exe in "$from" "$from.exe"; do
         if [ -f "$exe" ]; then
-            cp -p "$exe" "$B/"
+            cp -p "$exe" "$B/games/"
             echo "$id: $exe"
         fi
     done

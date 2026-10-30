@@ -3,7 +3,8 @@
 # Copyright (C) 2026 Tommy McLeroy. Part of cps2recomp.
 #
 # Release build for Windows x64, cross-compiled with MinGW-w64 on Linux:
-# build/release/CPS2Recomp-windows-x64.zip (the launcher, every game's program, SDL3.dll, zlib1.dll, librashader.dll and the shaders, licences).
+# build/release/CPS2Recomp-windows-x64.zip (the launcher at the top, every game's program in games/ under it with the
+# DLLs they share, librashader.dll and the shaders, licences).
 # Needs the packages of tools/release/Dockerfile, and the translated code of a build of each game with its ROM
 # set (lib.sh), and Rust with its x86_64-pc-windows-gnu target for librashader (tools/librashader.sh: the Display
 # page's shaders).
@@ -17,18 +18,30 @@ if [ ! -d "$SDL/x86_64-w64-mingw32" ]; then
     mkdir -p "$SDL" && tar -xzf "$DEPS/sdl3-mingw.tar.gz" -C "$SDL" --strip-components=1
 fi
 sdl_source # (for its licence text)
+# (the launcher is alone at the top of the archive, with nothing beside it to load: SDL 3 and zlib are linked into it.
+# The games are in games/, where Windows looks for their DLLs, so they keep the two shared ones.)
+LAUNCHER_CMAKE_ARGS="-DLAUNCHER_SDL_STATIC=ON -DZLIB_USE_STATIC_LIBS=ON"
 build_programs "$BUILD" -DCMAKE_TOOLCHAIN_FILE="$ROOT/tools/release/mingw-w64.cmake" \
     -DCMAKE_PREFIX_PATH="$SDL/x86_64-w64-mingw32" -DCMAKE_EXE_LINKER_FLAGS="-static"
 
 STAGE="$BUILD/stage/$ARCHIVE"
 rm -rf "$BUILD/stage" && mkdir -p "$STAGE"
 copy_programs "$BUILD" "$STAGE" .exe
-cp "$SDL/x86_64-w64-mingw32/bin/SDL3.dll" "$STAGE/"
-cp "$(find /usr/x86_64-w64-mingw32 /usr/lib/gcc/x86_64-w64-mingw32 -name zlib1.dll | head -1)" "$STAGE/"
-x86_64-w64-mingw32-strip "$STAGE"/*.exe
-# (linked statically but for SDL3.dll, zlib1.dll and Windows' own; anything else here is a mistake)
-if x86_64-w64-mingw32-objdump -p "$STAGE"/*.exe | grep -i 'DLL Name' | grep -viE 'SDL3|zlib1|KERNEL32|msvcrt|USER32|SHELL32|ADVAPI32|ole32|api-ms-|GDI32|IMM32|WINMM|VERSION|SETUPAPI|OLEAUT32|COMDLG32|WS2_32|IPHLPAPI'; then
-    echo "error: a program needs a DLL that is not in the archive" >&2
+# (beside the games, and only there: Windows finds a program's DLLs beside the program. librashader.dll is opened at
+# run time instead, and the games look for it one folder up.)
+SDL3_DLL="$SDL/x86_64-w64-mingw32/bin/SDL3.dll"
+ZLIB_DLL="$(find /usr/x86_64-w64-mingw32 /usr/lib/gcc/x86_64-w64-mingw32 -name zlib1.dll | head -1)"
+cp "$SDL3_DLL" "$ZLIB_DLL" "$STAGE/games/"
+x86_64-w64-mingw32-strip "$STAGE"/*.exe "$STAGE"/games/*.exe
+# (the launcher loads nothing but Windows' own: anything else means it was not linked statically, and it would need
+# a DLL of its own at the top of the archive)
+if x86_64-w64-mingw32-objdump -p "$STAGE/$EXE-launcher.exe" | grep -i 'DLL Name' | grep -viE 'KERNEL32|msvcrt|USER32|SHELL32|ADVAPI32|ole32|api-ms-|GDI32|IMM32|WINMM|VERSION|SETUPAPI|OLEAUT32|COMDLG32|WS2_32|IPHLPAPI'; then
+    echo "error: the launcher needs a DLL of its own (LAUNCHER_CMAKE_ARGS, lib.sh)" >&2
+    exit 1
+fi
+# (the games: linked statically but for SDL3.dll, zlib1.dll and Windows' own; anything else here is a mistake)
+if x86_64-w64-mingw32-objdump -p "$STAGE"/games/*.exe | grep -i 'DLL Name' | grep -viE 'SDL3|zlib1|KERNEL32|msvcrt|USER32|SHELL32|ADVAPI32|ole32|api-ms-|GDI32|IMM32|WINMM|VERSION|SETUPAPI|OLEAUT32|COMDLG32|WS2_32|IPHLPAPI'; then
+    echo "error: a game needs a DLL that is not in the archive" >&2
     exit 1
 fi
 add_notices "$STAGE" "$BUILD/launcher"

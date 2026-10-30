@@ -30,6 +30,10 @@ inline std::filesystem::path InstallFolder(const std::filesystem::path &program_
     if (!folder.has_filename() && folder.has_relative_path()) {
         folder = folder.parent_path();  // ("a/b/" is "a/b")
     }
+    // (a release keeps the game programs in games/ under the launcher: the download's folder is the one above it)
+    if (folder.filename() == "games") {
+        folder = folder.parent_path();
+    }
     for (std::filesystem::path at = folder; at.has_relative_path(); at = at.parent_path()) {
         if (at.filename() == "Contents" && at.parent_path().extension() == ".app") {
             return at.parent_path().parent_path();

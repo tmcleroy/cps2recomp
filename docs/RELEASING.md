@@ -34,8 +34,10 @@ is. A release without them is not offered to the launchers, and a release whose 
 refused by them. (0.4.0-beta.2 carried a gzipped file for every file of the three, 46 more files, and its
 launchers read only that kind: they cannot update themselves to a later release.)
 
-Each holds the launcher (`cps2recomp-launcher`), every game's program (`sfa2`, `vampire_savior`,
-`puzzle_fighter`) and the licences. No ROM, graphics, sound or key is in them: the player supplies their own ROM
+Each holds the launcher (`cps2recomp-launcher`, at the top of the folder), every game's program (`sfa2`, `vampire_savior`,
+`puzzle_fighter`) in `games/` under it, and the licences. On Windows the DLLs the games share (`SDL3.dll`,
+`zlib1.dll`) are beside them in `games/`, where Windows looks for them; the launcher is linked with both, so it has
+none beside it. No ROM, graphics, sound or key is in them: the player supplies their own ROM
 sets. **Each game's program does hold that game's 68000 and Z80 programs translated to C++ and compiled**, as a
 build from source does and as most published recompilations' downloads do. That is a form of the games' code,
 and giving it out is a risk the maintainer has accepted (2026-10-12). It also means an archive can only be built

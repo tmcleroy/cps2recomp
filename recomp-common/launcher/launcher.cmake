@@ -63,7 +63,15 @@ add_library(launcher_imgui STATIC
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp)
 target_include_directories(launcher_imgui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 target_compile_definitions(launcher_imgui PUBLIC IMGUI_DEFINE_MATH_OPERATORS IMGUI_DISABLE_OBSOLETE_FUNCTIONS IMGUI_DISABLE_DEMO_WINDOWS IMGUI_DISABLE_DEBUG_TOOLS)
-target_link_libraries(launcher_imgui PUBLIC SDL3::SDL3)
+# (a static SDL 3, when the port asks for one and the system has it: the launcher is then a program with nothing
+# beside it, which a release with its games in a folder of their own needs. LAUNCHER_SDL_STATIC, from the port's
+# CMakeLists.txt, or the release scripts.)
+if (LAUNCHER_SDL_STATIC AND TARGET SDL3::SDL3-static)
+    set(LAUNCHER_SDL_LIBRARY SDL3::SDL3-static)
+else ()
+    set(LAUNCHER_SDL_LIBRARY SDL3::SDL3)
+endif ()
+target_link_libraries(launcher_imgui PUBLIC ${LAUNCHER_SDL_LIBRARY})
 
 # The fonts, compiled in (blob("font_regular") / blob("font_semibold") for ui.cpp).
 set(LAUNCHER_FONTS "${CMAKE_CURRENT_BINARY_DIR}/fonts.cpp")
@@ -101,6 +109,8 @@ if(ANDROID)
 endif()
 if(WIN32)
     target_link_libraries(launcher PRIVATE iphlpapi ws2_32) # (online.cpp: this machine's addresses)
+    # (a windowed program: no console window opens beside the launcher when it is opened)
+    set_target_properties(launcher PROPERTIES WIN32_EXECUTABLE ON)
 endif()
 if(LAUNCHER_VERSION)
     target_compile_definitions(launcher PRIVATE LAUNCHER_VERSION="${LAUNCHER_VERSION}")

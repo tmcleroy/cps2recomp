@@ -11,7 +11,7 @@
 #
 # Every game, and the collection (one launcher for all of them):
 #   make games          build every game whose ROM set is in rom/<id>/
-#   make collection     the collection's launcher, with the games built beside it (build/collection/)
+#   make collection     the collection's launcher, with the games built under it (build/collection/games/)
 #   make collection-app macOS app bundle of the collection (build/collection/<Name>.app)
 #   make android        the Android app of the collection (build/release/CPS2Recomp-android.apk: tools/release/android.sh)
 #

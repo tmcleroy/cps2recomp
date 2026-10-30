@@ -4,6 +4,7 @@ build/
 /work
 # never commit game data or anything derived from it
 rom/
+roms/
 *.zip
 *.key
 *.state

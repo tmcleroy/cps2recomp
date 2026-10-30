@@ -1,20 +1,24 @@
 # A copy of recomp-common's src/ and launcher/, made by tools/sync-common.sh. Do not change it here.
+# (This copy carries cps2recomp's own changes on top of that commit: the games/ folder a release keeps the game
+# programs in, which launcher/src/app.cpp's program_path() looks in first, and folders.h's InstallFolder() steps out
+# of; and the check of the `roms` folder when the launcher opens, launcher/src/app.h's rom_check_modal(), which
+# includes launcher/src/romcheck.h. A later sync must keep them.)
 commit 38848fbccac10c1e2b8114cb5f5a9433e6f890d1
-4003a811a6a73dcd9f8df972f10f337809fd456f4b80caa8035105be0bd9cd89  folders.h
+59616e478011984a9d56455e267e58853fcd7d8924545a4d02a2629adf5152c2  folders.h
 3cdcd5d022ca8dc02d9c212dfc04784879a24107fdbf977c0a81f8b8ac00b516  launcher/embed_fonts.cmake
 5c9dc79aecc0bf0285e743b91c00bc34515b2c6665181d958edf134ef737bb9e  launcher/example/CMakeLists.txt
 d46fc703fd348d6a9acb65196377176314c4565245fbe376c5d53c8f965b99a0  launcher/example/description.cpp
 4e4ab0d0fc80effb53dd09b07ce18a40f653b05e8fd35fe83d50292d962a6e7b  launcher/example/game.cpp
-047e5aabe8030ab91ab3793ab7514cd4c5988828c56b6f783379ac02ad0bb018  launcher/launcher.cmake
-2f8c25af9192cadd09a91789276e82ff1d143579ee6ae3d2be34505481dbc9b5  launcher/src/app.cpp
-3bc1fc038f89c2d1047aabbaf17162e347ff407a55509eb717780c4c6aa48e67  launcher/src/app.h
+33e94140b8d402a23c08a364e28e2ca06d9531aa4f19c8ba8ad529c1df3a60af  launcher/launcher.cmake
+01f4a3c214254dc786d66cf082812c26f79dc306bde4fe7f7322c06136d31f89  launcher/src/app.cpp
+89d1adb82b84cf03aa02efefb7e8e0a1280fbc04ffa6512fc0e32e00c6a4c0a9  launcher/src/app.h
 b89048144fc89354ab084792e874df967bc3f09e8ce0cfa557468834e6043af3  launcher/src/bindings.h
 1950e887891f79e29d75be9cd42ab53dedce6de569b8d8f5cf68d13c79c5e5fa  launcher/src/embedded.h
 890cea7ebe3cd31989f039f82fdcb09d8eea627743d990d135cf4beabe11344e  launcher/src/game_process.cpp
 c6780ba243206766c0297bfa8fb72e328403054922f2fc94c00cd110debd6453  launcher/src/game_process.h
 6f2cf301c5b96ac0f1acad9cbb3fa535a32fd9cd2d3e7c52c47021bec78c7c0d  launcher/src/launcher.h
 ebc366a53938277667c0e68c6ff35c0d5843fd4451bdc07d54318ed8ce96c0ca  launcher/src/layout.h
-a72f55585489d21d8ab731aaa4d8bde57ff2e7a543d9df4eec39e6ee01623fed  launcher/src/main.cpp
+3d2718a73a1cca128c91f2e96143fe67df6f88902340548186cbd72db7b2a6cb  launcher/src/main.cpp
 7503e3f4b6b97aea85d689508d22f37d1d8e15e1b01a139afe455652a7d6d30e  launcher/src/online.cpp
 7593f886137b0d6f56e159b6c8e6656f3ca9497c9bb11ebced0153fcf5156ac1  launcher/src/online.h
 6d82da3e2dfebd9a7156973476687386fd137b2afe60e85f489bcc15d9df4a83  launcher/src/run_program.cpp
