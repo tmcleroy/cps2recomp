@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Online test menu**: the host can toggle the operator's test switch with F2 for both players. The switch is
+  synchronized through input delay and rollback; the joining player cannot toggle it. Both players need the
+  updated build (protocol 6).
+
 ## 1.1.0
 
 **Android**: an app of the launcher and every game for 64-bit ARM phones and tablets, with touch controls drawn
