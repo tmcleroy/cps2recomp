@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Android says when a new version is out** (#209): the launcher checks the releases as on the other systems, and a
+  newer one gets the update card (and the Games row's dot) with **Download**, which opens the release's APK: open
+  the download and Android installs it over the app, your settings, saves and ROM sets kept (recomp-common #45).
+
 ## 1.2.0
 
 **Online**: chat with the other player during a match, both players' names on the screen, and host a match from a
