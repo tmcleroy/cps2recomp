@@ -6,25 +6,36 @@
   synchronized through input delay and rollback; the joining player cannot toggle it. Both players need the
   updated build (protocol 7). Enable **Online test menu** before hosting; it is off by default, including in Pure
   mode. Offline F2 is unchanged.
-- **No zoom online** (#196): in an online match both players see the whole picture, as the board shows it; the zoom's
-  buttons and the touch screen's Zoom button do nothing there (and the button isn't drawn).
-- **The launcher's Online page is second**, after Games (recomp-common #40).
-- **Host from the game**: the in-game menu's Online page has **Host a match**: your game stays your own (modes,
-  cheats, the menu, save states) while you wait, with HOSTING and the code at the bottom of the screen and the match
-  in the lobby under the launcher's name. When someone joins, the game starts over for the match; afterwards it's your
-  own again, still hosted. The row again (Stop hosting) stops it.
-- **A shorter in-game menu**: it starts with its Online, Display and Game pages, and Game has the speed, Mute (Off
-  or On, rather than Sound: On or Muted) and the Board, Cheats and Sound pages (recomp-common #44).
-- **Names and chat online**: each player's name is under their life bar (Hide names, on the Online page, hides
-  them), and the players can chat during a match: T, a gamepad's right stick click or the touch screen's Chat button,
-  then type on a keyboard or the system's on-screen keyboard (Steam Deck, Android). Chat goes straight between the two
-  games, never through the service. The launcher gives the player's name to Join too (recomp-common #43). Online
-  protocol 6: both players need this version.
-  games, never through the service. The launcher gives the player's name to Join too (recomp-common #43). Online protocol 6: both players need
-  this version.
-- **What's worth attention stands out on the Online page**: an invitation, open matches you can join, the waiting room
-  while someone is in it, and a new version (also a dot on the Games row, and a card at the top of the Online page).
-  The page goes open matches, waiting room, hosting a match, then the settings for a match (recomp-common #42).
+- **Android says when a new version is out** (#209): the launcher checks the releases as on the other systems, and a
+  newer one gets the update card (and the Games row's dot) with **Download**, which opens the release's APK: open
+  the download and Android installs it over the app, your settings, saves and ROM sets kept (recomp-common #45).
+
+## 1.2.0
+
+**Online**: chat with the other player during a match, both players' names on the screen, and host a match from a
+game's own menu while you go on playing it alone until someone joins. The launcher's Online page comes second and
+shows what's worth a look (a match you can join, an invitation, players in the waiting room, a new version), and the
+in-game menu is shorter. Online play from an Android phone works now. Both players need this version (online protocol
+6).
+
+![Chat and names in an online match of Street Fighter Alpha 3](https://raw.githubusercontent.com/tmcleroy/cps2recomp/pr-assets/pr-assets/online-chat/chat.png)
+
+- **Chat in a match** (#196): press T, a gamepad's right stick click or the touch screen's Chat button, type, and press
+  Enter, on a keyboard or the system's own on-screen keyboard (Steam Deck, Android). How to chat is on the screen as a
+  match begins and while you type. Chat goes straight between the two games, never through the online service.
+- **Names in a match**: each player's name, as set on the launcher's Online page, under their life bar (Hide names,
+  on the Online page, hides them). The launcher gives the player's name to Join too (recomp-common #43).
+- **Host from the game**: the in-game menu's Online page has **Host a match**. Your game stays your own while you
+  wait (modes, training, cheats, the menu, save states), with HOSTING and the match's code at the bottom of the screen
+  and the match in the lobby under your name. When someone joins, the game starts over for the match; afterwards it's
+  your own again, still hosted. The row again (Stop hosting) stops it.
+- **The launcher's Online page** is second, after Games (recomp-common #40), and goes open matches, waiting room,
+  hosting a match, then the settings for a match. An invitation, matches you can join, the waiting room while someone
+  is in it and a new version stand out; a new version also puts a dot on the Games row and a card at the top of the
+  Online page (recomp-common #42).
+- **A shorter in-game menu**: it starts with its Online, Display and Game pages, and Game has the speed, Mute (Off or
+  On, rather than Sound: On or Muted) and the Board, Cheats and Sound pages (recomp-common #44).
+- **No zoom online**: in an online match both players see the whole picture, as the board shows it.
 - **Online from an Android phone**: joining or hosting a match said "Couldn't reach the online service": the game
   asked for the system's curl, which Android hasn't. It now asks through the app, as the launcher does.
 

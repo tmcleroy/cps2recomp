@@ -92,7 +92,8 @@ cps2recomp-launcher --play sfa3 -- --join CODE             # the other player: t
   Online page, hides them).
 - **Chat**: press T on the keyboard, a gamepad's right stick click, or the touch screen's Chat button, type a line and
   press Enter (Esc, or the click again, puts it away). The Steam Deck and phones show their own on-screen keyboard.
-  The last few lines show at the bottom left for a few seconds. Chat goes straight from one game to the other, as the
+  The last few lines show at the bottom left for a few seconds, and under them how to chat (as a match begins) and
+  how to send or put away the line you're typing. Chat goes straight from one game to the other, as the
   controls do: nothing of it passes through our service. While you type, the keyboard is the chat's, so a keyboard
   player's fighter stands still; a gamepad still plays.
 - **Leaving a match**: Esc, or the gamepad's menu button, asks **Leave the match?** over the game (which goes on);

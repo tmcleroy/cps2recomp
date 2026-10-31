@@ -2933,7 +2933,12 @@ void App::update_card(float width, bool top, bool always) {
                 SDL_OpenURL(status.notes_url.c_str());
             }
             ImGui::SameLine(0.0f, px(10));
-            if (ui::button("Update", Kind::Primary, 120.0f, status.state == State::Available && !running)) {
+            if (!status.download_url.empty()) {
+                // (Android: the new APK, which the browser downloads, for the system's installer)
+                if (ui::button("Download", Kind::Primary, 120.0f) && interactive_) {
+                    SDL_OpenURL(status.download_url.c_str());
+                }
+            } else if (ui::button("Update", Kind::Primary, 120.0f, status.state == State::Available && !running)) {
                 updater_->install();
             }
             break;

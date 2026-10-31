@@ -380,6 +380,8 @@ const char* Updater::platform() {
     return "macos";
 #elif defined(_WIN32)
     return "windows-x64";
+#elif defined(__ANDROID__)
+    return "android";
 #elif defined(__linux__) && defined(__aarch64__)
     return "linux-arm64";
 #elif defined(__linux__)
@@ -602,8 +604,43 @@ bool Updater::do_check() {
         set(State::Failed, "Couldn't check for a new version: GitHub's answer could not be read.");
         return false;
     }
-    // The newest release with a manifest for this system (a beta only while this is a beta), and this one's own
     const bool beta = version_.find('-') != std::string::npos;
+#ifdef __ANDROID__
+    // (Android: an app can't replace its own files, only the system's installer can, so there's no manifest: the
+    // newest release's APK, which the player downloads and opens, and Android installs over this one)
+    const Json* newest = nullptr;
+    std::string newest_version, apk;
+    for (const Json& release : releases.items) {
+        std::string url;
+        for (const Json& asset : release["assets"].items) {
+            const std::string& name = asset["name"].text;
+            if (name.size() > 4 && name.compare(name.size() - 4, 4, ".apk") == 0 && name.find("DO-NOT-SHARE") == std::string::npos) {
+                url = asset["browser_download_url"].text;
+            }
+        }
+        const std::string version = plain_version(release["tag_name"].text);
+        if (!release["draft"].boolean && !url.empty() && (beta || !release["prerelease"].boolean) &&
+            (!newest || compare_versions(version, newest_version) > 0)) {
+            newest = &release;
+            newest_version = version;
+            apk = url;
+        }
+    }
+    if (!newest || compare_versions(newest_version, version_) <= 0) {
+        set(State::UpToDate, "This is the newest version.");
+        return true;
+    }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        status_.version = newest_version;
+        status_.notes_url = (*newest)["html_url"].text;
+        status_.download_url = apk;
+    }
+    set(State::NotInstalled, "You have " + version_ + ". Download the new one and open it: Android installs it over this one, and your " +
+                                 "settings, saves and ROM sets stay.");
+    return true;
+#endif
+    // The newest release with a manifest for this system (a beta only while this is a beta), and this one's own
     const Json* best = nullptr;
     std::string best_version, best_manifest, current_manifest;
     for (const Json& release : releases.items) {

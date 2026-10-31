@@ -74,7 +74,9 @@ struct Options {
     uint64_t rollbackTest = 0;  // --rollback-test SEED: each frame run as online play's rollback would (RollbackTest)
     bool online = false;        // --host or --join: online play (netplay.h), as `net` says
     Netplay::Settings net;
-    std::string netSay;         // --net-say TEXT: (tests) the line said in the chat two seconds into the match
+    std::string netSay;         // --net-say [FRAME:]TEXT: (tests) the line said in the chat at FRAME of the match (120)
+    uint64_t netSayAt = 120;
+    std::string netTyping;      // --net-typing TEXT: (pictures) a line shown as being typed, all through the match
 };
 
 // Recorded input: what the players hold, at the frames where it changes
@@ -217,6 +219,7 @@ struct Port {
     std::deque<ChatLine> chat;
     bool typing = false;
     std::string typed;
+    uint64_t chatHintUntil = 0; // (how to chat, said under the chat for a while as a match begins)
     void Say();       // (the typed line: sent, and said with the rest)
     void HearChat();  // (the other side's lines that have come)
     bool StartOnline(std::string &error);
