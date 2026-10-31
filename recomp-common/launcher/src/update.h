@@ -56,6 +56,7 @@ public:
         std::string version;    // the newer version's (Available and after)
         std::string message;    // for the player
         std::string notes_url;  // the release's page
+        std::string download_url; // (Android) the newer release's APK, for the player to download and open
         double fraction = 0.0;  // of the download (Installing)
     };
 
