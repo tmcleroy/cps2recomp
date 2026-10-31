@@ -1,5 +1,5 @@
 # A copy of recomp-common's src/ and launcher/, made by tools/sync-common.sh. Do not change it here.
-commit 6c5f9e82924c9cf1028cb635ed08769d4cdbe906
+commit 13de85af407e71a32afc4596cd7df0231ea5ad69
 4003a811a6a73dcd9f8df972f10f337809fd456f4b80caa8035105be0bd9cd89  folders.h
 3cdcd5d022ca8dc02d9c212dfc04784879a24107fdbf977c0a81f8b8ac00b516  launcher/embed_fonts.cmake
 5c9dc79aecc0bf0285e743b91c00bc34515b2c6665181d958edf134ef737bb9e  launcher/example/CMakeLists.txt
