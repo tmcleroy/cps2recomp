@@ -51,6 +51,12 @@ stays under 12 ms (Super Turbo, with the arcade timing and widescreen), inside t
 
 ## `make check-online` (FRAMES=n): two copies of the game against each other
 
+`TEST_MENU=1 make GAME=mvsc check-online FRAMES=600` also checks the host's test switch through packet loss
+and rollback. The joining player tries the switch later; only the host's delayed switch may reach the recorded
+inputs. Replaying those inputs offline must reproduce the match, including the test menu.
+`TEST_MENU=off make GAME=mvsc check-online FRAMES=600` checks the default Pure settings: neither switch can
+activate, even when the joining player enables the feature locally. The host's setting wins in both tests.
+
 Online play (`port/netplay.h`) between two copies of the game on one machine: one `--host`s, the other `--join`s it
 over localhost, each with made-up play for its own player (`--auto`), and every packet sent late, 50 ms give or take
 25, and one in twenty lost (`--net-fake 50:25:5`), so that guesses go wrong and frames are rolled back. The host has

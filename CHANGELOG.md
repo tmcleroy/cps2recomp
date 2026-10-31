@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Online test menu**: the host can toggle the operator's test switch with F2 for both players. The switch is
+  synchronized through input delay and rollback; the joining player cannot toggle it. Both players need the
+  updated build (protocol 7). Enable **Online test menu** before hosting; it is off by default, including in Pure
+  mode. Offline F2 is unchanged.
 - **Android says when a new version is out** (#209): the launcher checks the releases as on the other systems, and a
   newer one gets the update card (and the Games row's dot) with **Download**, which opens the release's APK: open
   the download and Android installs it over the app, your settings, saves and ROM sets kept (recomp-common #45).
