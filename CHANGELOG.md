@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Online test menu**: the host can toggle the operator's test switch with F2 for both players. The switch is
+  synchronized through input delay and rollback; the joining player cannot toggle it. Both players need the
+  updated build (protocol 7). Enable **Online test menu** before hosting; it is off by default, including in Pure
+  mode. Offline F2 is unchanged.
 - **Vampire Savior Definitive's Donovan, Phobos and Pyron work again** (#230): since 1.0.0 the downloads gave them
   another character's moves (Victor's, for Donovan) and the game started over a few moves into the fight. The build
   made its map of Vampire Savior 2's code once, on a fresh tree's first pass, before the game's code had been found, and

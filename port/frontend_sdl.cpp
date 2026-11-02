@@ -514,7 +514,8 @@ int RunWindowed(Port &port) {
                     port.Key('k', kKeyExtra);
                 } else if (ev.key.scancode == SDL_SCANCODE_F12 && !ev.key.repeat) {
                     port.Screenshot();
-                } else if (ev.key.scancode == SDL_SCANCODE_F2) {
+                } else if (ev.key.scancode == SDL_SCANCODE_F2 && !ev.key.repeat &&
+                           (!port.net || (port.net->Hosting() && FeatureOn("online_test_menu")))) {
                     port.test = !port.test; // the operator's test switch
                 } else if (ev.key.scancode == SDL_SCANCODE_F11 ||
                            (ev.key.scancode == SDL_SCANCODE_RETURN && (ev.key.mod & SDL_KMOD_ALT))) {
