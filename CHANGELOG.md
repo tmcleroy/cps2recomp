@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Launcher Hardening
+
+Opt into a centered initial launcher window with visible desktop margins and a wider content column. The client area uses 88% of usable display height and up to 1440 logical pixels / 88% of usable width, preserving taskbar space and explicit --size/screenshot geometry. This is a shared-library presentation opt-in, not a replacement launcher or updater change. It does not duplicate the ROM-folder scan, games/ packaging or Windows ROM-path changes proposed in #208. Requires the companion recomp-common window-layout options.
+
 ## Unreleased
 
 - **The Punisher**, set `punisheru` (USA 930422): the second CPS-1 game, a beat-'em-up for two players (the Punisher

@@ -211,3 +211,8 @@ Fighter*, *Super Gem Fighter*, *Pocket Fighter*, *Vampire Savior*, *Vampire Hunt
 and their characters are trademarks of Marvel Characters, Inc.; *Alien vs. Predator* and *Cadillacs and Dinosaurs* are
 trademarks of their owners; "CPS-1", "CPS-2" and "QSound" are names and trademarks of their owners, used here only to
 say what the programs work with.
+
+
+## Launcher Hardening
+
+Opt into a centered initial launcher window with visible desktop margins and a wider content column. The client area uses 88% of usable display height and up to 1440 logical pixels / 88% of usable width, preserving taskbar space and explicit --size/screenshot geometry. This is a shared-library presentation opt-in, not a replacement launcher or updater change. It does not duplicate the ROM-folder scan, games/ packaging or Windows ROM-path changes proposed in #208. Requires the companion recomp-common window-layout options.
