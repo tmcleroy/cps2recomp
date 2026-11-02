@@ -29,7 +29,7 @@ set(LAUNCHER_GAME_EXE "${GAME_EXE}")
 set(LAUNCHER_APP_ID "${APP_ID}")
 set(LAUNCHER_HOME_ENV "${HOME_ENV}")
 set(LAUNCHER_DISCLAIMER "${DISCLAIMER}")
-set(LAUNCHER_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
+set(LAUNCHER_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/device_controls.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../port/keyboards.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../port/raw_keyboards.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../machine/romset.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../machine/cps2crypt.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../machine/kabuki.cpp)
 set(LAUNCHER_COLLECTION ${COLLECTION})
@@ -65,3 +65,7 @@ target_compile_definitions(launcher PRIVATE
     LAUNCHER_BOARD="${BOARD}" LAUNCHER_CPS_B="${CPS_B}" LAUNCHER_OTHER_SET="${OTHER_SET}")
 find_package(ZLIB REQUIRED)
 target_link_libraries(launcher PRIVATE ZLIB::ZLIB)
+
+if(WIN32)
+ target_link_libraries(launcher PRIVATE cfgmgr32)
+endif()

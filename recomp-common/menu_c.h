@@ -21,6 +21,7 @@ enum {
   RMENU_LEFT = 4,
   RMENU_RIGHT = 8,
   RMENU_CONFIRM = 16,  // chooses a row, changes it, goes into a page
+  RMENU_FAST = 64,     // coarse slider adjustment
   RMENU_BACK = 32,     // leaves a page; on the first page, closes the menu
 };
 
@@ -34,6 +35,7 @@ typedef enum {
   RMENU_ROW_QUIT,    // "Quit game": RMENU_QUIT
   RMENU_ROW_RESUME,  // closes the menu
   RMENU_ROW_MUTE,    // "Sound": on or muted, through the config's muted and setMuted (left out without them)
+  RMENU_ROW_PAGE,    // named page
 } RMenuRowKind;
 
 // A row of the first page. Rows with the same `group` are together; a line is drawn where it changes.
@@ -58,7 +60,33 @@ typedef struct {
   const char* description;
 } RMenuCommand;
 
-// Everything is copied by rmenu_configure; only the two functions and `user` are kept.
+typedef struct {
+  const char* category;
+  const char* title;
+  const char* description;
+  const char* suffix;
+  double minimum, maximum, step, usual;
+  int decimals;
+  bool signedValue;
+} RMenuSlider;
+
+typedef enum { RMENU_DETAIL_FEATURE, RMENU_DETAIL_SLIDER, RMENU_DETAIL_COMMAND, RMENU_DETAIL_HEADING } RMenuDetailKind;
+typedef struct {
+  RMenuDetailKind kind;
+  int index;
+  const char* text;
+  bool (*visible)(void* user);
+} RMenuDetailRow;
+typedef struct {
+  const char* name;
+  const char* parent;
+  const char* description;
+  bool counts;
+  const RMenuDetailRow* details;
+  int detailCount;
+} RMenuPage;
+
+// Everything is copied by rmenu_configure; callbacks and `user` are retained.
 typedef struct {
   const RMenuRow* rows;
   int rowCount;
@@ -80,6 +108,14 @@ typedef struct {
   // the Mute row: whether the game's sound is off now (not 0), and switching it off and on
   int (*muted)(void* user);
   void (*setMuted)(void* user, int muted);
+  // Optional additions; zero-initialize the config to retain original behavior.
+  const RMenuSlider* sliders;
+  int sliderCount;
+  double (*sliderValue)(void* user, int index);
+  void (*setSlider)(void* user, int index, double value);
+  double (*sliderStep)(void* user, int index, double oldValue, int direction, bool coarse);
+  const RMenuPage* pages;
+  int pageCount;
 } RMenuConfig;
 
 typedef enum { RMENU_NONE, RMENU_SAVE, RMENU_LOAD, RMENU_QUIT, RMENU_ACTION, RMENU_COMMAND } RMenuChosen;

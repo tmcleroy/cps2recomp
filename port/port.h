@@ -36,6 +36,7 @@ struct Options {
     std::string audioDump;     // WAV file of the sound (headless)
     std::string soundtrack;    // --soundtrack DIR: the custom soundtrack's folder (soundtrack.h; default: beside settings.ini)
     std::string soundtrackDump; // --soundtrack-dump FILE: WAV file of what the custom soundtrack plays (headless)
+    std::string deviceSettingsPath; // explicit shared launcher device-settings folder
     std::string settingsPath;  // settings.ini with the player's feature choices
     std::string features;      // --features A,B,-C
     std::string menuTest;      // --menu FRAME:KEYS[:shot.png]

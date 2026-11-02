@@ -211,3 +211,8 @@ Fighter*, *Super Gem Fighter*, *Pocket Fighter*, *Vampire Savior*, *Vampire Hunt
 and their characters are trademarks of Marvel Characters, Inc.; *Alien vs. Predator* and *Cadillacs and Dinosaurs* are
 trademarks of their owners; "CPS-1", "CPS-2" and "QSound" are names and trademarks of their owners, used here only to
 say what the programs work with.
+
+
+## RawInput Multi Keyboard
+
+Windows-only independent physical keyboards: two friends can use the same layout without cross-keyboard releases cancelling held directions, attacks or combinations. Interfaces are grouped only by verified PnP container identity; device assignments persist. Controllers shows assignments and Keys held. Player-scoped binds preserve the other layout. Hardware rollover limits still apply. Off retains the merged keyboard route. Shared UI requires the companion recomp-common controller-extension API.

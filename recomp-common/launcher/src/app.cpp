@@ -53,7 +53,10 @@ float page_padding_x() {
 float page_padding_top() {
     return narrow() ? 26.0f : 40.0f;
 }
-constexpr float kContentMaxWidth = 720.0f;
+#ifndef LAUNCHER_CONTENT_MAX_WIDTH
+#define LAUNCHER_CONTENT_MAX_WIDTH 720
+#endif
+constexpr float kContentMaxWidth = LAUNCHER_CONTENT_MAX_WIDTH;
 constexpr size_t kAnyGame = static_cast<size_t>(-1);  // (a file or folder for whichever game takes it)
 
 void wake();
@@ -227,6 +230,7 @@ bool toggle_state(const recomp::Ini& prefs, const std::string& section, const la
 std::vector<std::string> arguments_for(const recomp::Ini& prefs, const Target& target) {
     const launcher::Description& about = *target.about;
     launcher::Launch launch;
+    launch.controls_folder = prefs.path().parent_path();
     launch.file = prefs.get(target.file_section, about.file_key);
     launch.folder = target.folder;
     launch.on = [&](const char* key) {
@@ -479,6 +483,7 @@ App::App(SDL_Window* window)
             break;
         }
     }
+    controls_slot_ = first;
     bindings_ = recomp::LoadBindings(slots_[first]->settings.path().string(), shared_table());
     // (and each game's own, for those given one)
     own_bindings_.resize(slots_.size());
@@ -542,7 +547,7 @@ bool App::any_running() const {
 }
 
 bool App::navigation_paused() const {
-    if (capture_action_ >= 0 || nav_hold_) {
+    if (capture_action_ >= 0 || nav_hold_ || (about_.controls_capturing && about_.controls_capturing())) {
         return true;
     }
     if (collection_) {
@@ -1156,11 +1161,13 @@ void App::set_preset(const std::string& name) {
 }
 
 void App::set_feature(Slot& one, size_t index, int value) {
+    one.settings.load(); // preserve options written by the custom controller panel
     recomp::SetFeature(one.settings, one.features, index, value);
     one.settings.save();
 }
 
 void App::set_menu_choices(Slot& one, size_t index, const std::vector<bool>& offered) {
+    one.settings.load();
     recomp::SetMenuChoices(one.settings, one.features[index], offered);
     one.settings.save();
 }
@@ -1218,6 +1225,7 @@ void App::after_game(Slot& one) {
 // ---- frame -------------------------------------------------------------------------------
 
 bool App::consume(const SDL_Event& event) {
+    if (about_.controls_event && about_.controls_event(event)) return true;
     if (capture_action_ >= 0 && capture(event)) {
         return true;
     }
@@ -1665,6 +1673,7 @@ void App::page(float width, float height) {
                     : shown_kind == Page::Series ? ImHashStr(("series:" + slots_[shown_game]->series).c_str())
                                                  : static_cast<ImGuiID>(page_ + 100);
     ImGui::BeginChild(child, ImVec2(width, height), ImGuiChildFlags_AlwaysUseWindowPadding);
+    if (capture_scroll_ >= 0) ImGui::SetScrollY(capture_scroll_);
     ImGui::PushItemFlag(ImGuiItemFlags_NoNav, false);
     // (The sidebar and the page are apart for the arrow keys and a gamepad: ImGui's own search would go from
     // a sidebar row to whatever in the page is nearest. Left, Right and Back go between them: navigation().)
@@ -3812,6 +3821,10 @@ std::string pad_label(recomp::PadInput input) {
         {"dpup", "D-pad up"},            {"dpdown", "D-pad down"},         {"dpleft", "D-pad left"},        {"dpright", "D-pad right"},
         {"start", "Start"},              {"back", "Back / Select"},        {"guide", "Guide"},              {"leftstick", "Left stick click"},
         {"rightstick", "Right stick click"}, {"none", "Not set"},
+        {"leftx-", "Left stick left"}, {"leftx+", "Left stick right"},
+        {"lefty-", "Left stick up"}, {"lefty+", "Left stick down"},
+        {"rightx-", "Right stick left"}, {"rightx+", "Right stick right"},
+        {"righty-", "Right stick up"}, {"righty+", "Right stick down"},
     };
     std::string name = recomp::PadText(input);
     for (const auto& known : kLabels) {
@@ -3881,6 +3894,7 @@ recomp::Bindings& App::bind_layout() {
 // One game's settings.ini given a layout (a game's own: what the shared table has that it has not got is "none",
 // so that the game, which reads the shared table, has only these)
 void App::write_bindings(Slot& slot, const recomp::BindTable& table, const recomp::Bindings& bindings) {
+    slot.settings.load(); // bindings must never restore a stale autofire/Custom profile
     const recomp::BindTable& shared = shared_table();
     for (int player = 0; player < shared.players; player++) {
         for (int other = 0; collection_ && &table != &shared && other < shared.count; other++) {
@@ -3925,15 +3939,7 @@ void App::bind(int player, bool gamepad, int action, SDL_Scancode key, recomp::P
         }
         b.pad[player][action] = input;
     } else {
-        SDL_Scancode was = b.key[player][action];
-        for (int who = 0; who < table.players; who++) {
-            for (int other = 0; other < table.count; other++) {
-                if ((who != player || other != action) && key != SDL_SCANCODE_UNKNOWN && b.key[who][other] == key) {
-                    b.key[who][other] = who == player ? was : SDL_SCANCODE_UNKNOWN;
-                }
-            }
-        }
-        b.key[player][action] = key;
+        recomp::BindKeyboardKey(b, table, player, action, key, about_.player_scoped_keys);
     }
     save_bindings();
 }
@@ -3946,6 +3952,8 @@ bool App::capture(const SDL_Event& event) {
         if (event.key.repeat) {
             return true;  // (the key that pressed the button here, still held: not the key for it)
         }
+        if (!capture_gamepad_ && key != SDL_SCANCODE_ESCAPE && about_.keyboard_binding &&
+            (about_.physical_keyboard_capture && about_.physical_keyboard_capture())) return true;
         if (key == SDL_SCANCODE_BACKSPACE || key == SDL_SCANCODE_DELETE) {
             bind(bind_player_, capture_gamepad_, capture_action_, SDL_SCANCODE_UNKNOWN, {});
         } else if (key != SDL_SCANCODE_ESCAPE && !capture_gamepad_) {
@@ -3967,11 +3975,12 @@ bool App::capture(const SDL_Event& event) {
         nav_hold_ = true;
         return true;
     }
-    if (capture_gamepad_ && event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION && event.gaxis.value > 16000 &&
-        (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || event.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)) {
-        bind(bind_player_, true, capture_action_, SDL_SCANCODE_UNKNOWN, {-1, event.gaxis.axis});
-        capture_action_ = -1;
-        nav_hold_ = true;
+    if (capture_gamepad_ && event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
+        const auto input = recomp::PadInputFromEvent(event);
+        if (input != recomp::PadInput{}) {
+            bind(bind_player_, true, capture_action_, SDL_SCANCODE_UNKNOWN, input);
+            capture_action_ = -1; nav_hold_ = true;
+        }
         return true;
     }
     return false;
@@ -4035,6 +4044,8 @@ void App::controllers_page(float width) {
         }
     }
     SDL_free(pads);
+
+    if (about_.hardware_controls) { auto page = context(width); about_.hardware_controls(page); ui::gap(24); }
 
     if (bind_slot_ >= static_cast<int>(slots_.size()) || (bind_slot_ >= 0 && !slots_[static_cast<size_t>(bind_slot_)]->has_program())) {
         bind_slot_ = -1;
@@ -4124,27 +4135,34 @@ void App::controllers_page(float width) {
                     layout_shown.key[bind_player_][action] = usual.key[bind_player_][action];
                     layout_shown.pad[bind_player_][action] = usual.pad[bind_player_][action];
                 }
-                // (a key the usual layout gives this player is taken from the others)
-                for (int who = 0; who < table.players; who++) {
-                    for (int action = 0; who != bind_player_ && action < table.count; action++) {
-                        for (int other = 0; other < table.count; other++) {
-                            SDL_Scancode& theirs = layout_shown.key[who][other];
-                            if (theirs != SDL_SCANCODE_UNKNOWN && theirs == layout_shown.key[bind_player_][action]) {
-                                theirs = SDL_SCANCODE_UNKNOWN;
-                            }
-                        }
-                    }
+                if (!about_.player_scoped_keys) {
+                    for (int who = 0; who < table.players; ++who) if (who != bind_player_)
+                        for (int action = 0; action < table.count; ++action)
+                            for (int other = 0; other < table.count; ++other)
+                                if (layout_shown.key[who][other] != SDL_SCANCODE_UNKNOWN &&
+                                    layout_shown.key[who][other] == layout_shown.key[bind_player_][action])
+                                    layout_shown.key[who][other] = SDL_SCANCODE_UNKNOWN;
                 }
                 capture_action_ = -1;
                 save_bindings();
             }
             ui::gap(10);
+            const int keyboardLayout = about_.keyboard_layout ? about_.keyboard_layout(bind_player_) : bind_player_;
+            const bool inheritedKeys = keyboardLayout >= 0 && keyboardLayout < table.players && keyboardLayout != bind_player_;
+            if (capture_action_ >= 0 && !capture_gamepad_ && about_.physical_keyboard_capture && about_.physical_keyboard_capture() && about_.keyboard_binding) {
+                const auto key = about_.keyboard_binding(bind_player_);
+                if (key != SDL_SCANCODE_UNKNOWN) {
+                    if (key != SDL_SCANCODE_ESCAPE) bind(bind_player_, false, capture_action_,
+                        key == SDL_SCANCODE_BACKSPACE || key == SDL_SCANCODE_DELETE ? SDL_SCANCODE_UNKNOWN : key, {});
+                    capture_action_ = -1;
+                }
+            }
             constexpr float kChip = 170.0f, kChipGap = 10.0f;
             Card buttons(width);
             static const char* const kNth[recomp::kBindMaxPlayers] = {"first", "second", "third", "fourth"};
             const std::string whose = "Player " + std::to_string(bind_player_ + 1);
             const std::string what = std::string("The keyboard and the ") + kNth[bind_player_] +
-                                     " gamepad. Click a button here, then press the key or the gamepad button for it.";
+                                     " assigned gamepad. Click a button here, then press a key, button or stick direction.";
             row(width, table.players < 2 ? "Buttons" : whose.c_str(),
                 table.players < 2 ? "The keyboard and the gamepad. Click a button here, then press the key or the gamepad button for it."
                                   : what.c_str(),
@@ -4163,13 +4181,15 @@ void App::controllers_page(float width) {
                         bool waiting = capture_action_ == action && capture_gamepad_ == (gamepad != 0);
                         std::string label = waiting ? (gamepad ? "Press a button..." : "Press a key...")
                                             : gamepad ? pad_label(layout_shown.pad[bind_player_][action])
-                                                      : key_label(layout_shown.key[bind_player_][action]);
+                                                      : key_label(layout_shown.key[inheritedKeys ? keyboardLayout : bind_player_][action]);
                         ImRect rect;
                         ImGui::SetCursorScreenPos(at + ImVec2(gamepad ? px(kChip + kChipGap) : 0.0f, 0));
+                        ImGui::BeginDisabled(inheritedKeys && !gamepad);
                         if (ui::key_chip(gamepad ? "##pad" : "##key", label.c_str(), waiting, kChip, rect)) {
                             capture_action_ = action;
                             capture_gamepad_ = gamepad != 0;
                         }
+                        ImGui::EndDisabled();
                     }
                 });
                 ImGui::PopID();
@@ -4177,7 +4197,7 @@ void App::controllers_page(float width) {
             buttons.end();
             ui::gap(8);
             ui::text("While a button waits: Esc leaves it as it was, Backspace leaves it with nothing. Giving a key or a button that is in use "
-                     "swaps the two. A gamepad's left stick always works as the directions.",
+                     "swaps within that player. Both players can use the same keys on separate keyboards. Either stick can be assigned.",
                      Font::Regular, ui::size::kDetail, p.secondary, width);
             ui::gap(24);
             if (capture_action_ >= 0) {
@@ -4188,7 +4208,30 @@ void App::controllers_page(float width) {
         }
     }
 
-    if (!about_.controls.empty()) {
+    if (about_.controller_settings) {
+        size_t which = bind_slot_ >= 0 ? static_cast<size_t>(bind_slot_) : controls_slot_;
+        if (bind_slot_ < 0 && slots_.size() > 1) {
+            std::vector<std::string> games;
+            for (const auto &one : slots_) games.push_back(one->name);
+            int selected = static_cast<int>(which);
+            Card scope(width);
+            row(width, "Input options for", "Additional controller settings belong to one game, even when its key layout is shared.", 280, 36, [&] {
+                if (ui::dropdown("##input-options-game", games, selected, 280)) controls_slot_ = which = static_cast<size_t>(selected);
+            });
+            scope.end(); ui::gap(16);
+        }
+        const size_t before = slot_; slot_ = which;
+        auto page = context(width); slot_ = before;
+        if (bind_player_ < slots_[which]->about->bindings.players) {
+            about_.controller_settings(page, bind_player_);
+        } else {
+            ui::text("This game has fewer players. Choose one of its players above to edit input options.",
+                     Font::Regular, ui::size::kDetail, p.secondary, width);
+        }
+        ui::gap(24);
+    }
+    if (about_.global_controls) { auto page = context(width); about_.global_controls(page); }
+    else if (!about_.controls.empty()) {
         ui::text(about_.controls_heading, Font::Semibold, ui::size::kDetail, p.secondary);
         ui::gap(10);
         Card layout(width);

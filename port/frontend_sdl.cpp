@@ -5,6 +5,8 @@
 #include "game_info.h"
 
 #include "bindings.h"
+#include "device_settings.h"
+#include "raw_keyboards.h"
 #include "port.h"
 #include "png_write.h"
 #include "present.h"
@@ -87,9 +89,9 @@ namespace {
                key == SDL_SCANCODE_LEFT || key == SDL_SCANCODE_RIGHT;
     }
 
-    uint16_t ReadKeyboard(const bool *keys, int player) {
+    uint16_t ReadKeyboard(const bool *keys, int player, bool shortcuts = true) {
         uint16_t pad = 0;
-        const bool zoomHeld = KeyZoomHeld(keys);
+        const bool zoomHeld = shortcuts && KeyZoomHeld(keys);
         for (int action = 0; action < Table().table.count; action++) {
             const SDL_Scancode key = g_bindings.key[player][action];
             if (zoomHeld && KeyZoom(key)) {
@@ -171,6 +173,10 @@ namespace {
 } // namespace
 
 int RunWindowed(Port &port) {
+    const auto root = DeviceSettingsFolder(port.opt.settingsPath, port.opt.deviceSettingsPath, InCollection());
+    auto keyboardConfig = LoadKeyboards((root / "keyboards.ini").string());
+    RawKeyboards keyboards;
+    if (keyboardConfig.enabled) SDL_SetHintWithPriority(SDL_HINT_WINDOWS_RAW_KEYBOARD, "0", SDL_HINT_OVERRIDE);
     SDL_SetHint(SDL_HINT_AUDIO_DEVICE_SAMPLE_FRAMES, "256");
     if (!port.opt.settingsPath.empty()) {
         g_bindings = LoadBindings(port.opt.settingsPath, Table());
@@ -288,6 +294,10 @@ int RunWindowed(Port &port) {
         }
     };
     sayPresenter();
+    if (keyboardConfig.enabled && !keyboards.Open(window)) {
+        std::fprintf(stderr, "%s\n", keyboards.Error().c_str());
+        presenter.Close(); SDL_DestroyWindow(window); SDL_Quit(); return 1;
+    }
     // The Display page's Shader changed in the menu: another preset in the same window, or the window made again
     // for or without OpenGL, where it is and as large
     auto followShader = [&]() {
@@ -307,7 +317,8 @@ int RunWindowed(Port &port) {
         if (!next.empty() && presenter.Shaded()) {
             if (presenter.SetPreset(next, shaderError)) {
                 preset = next;
-                sayPresenter();
+                if (keyboardConfig.enabled && !keyboards.Retarget(window)) { port.quit = true; return; }
+        sayPresenter();
             } else {
                 fprintf(stderr, "shader %s: %s; the one before is kept\n", next.c_str(), shaderError.c_str());
             }
@@ -370,7 +381,8 @@ int RunWindowed(Port &port) {
     std::vector<uint32_t> menuBase, menuPicture, shown;
     uint32_t menuWidth = 0, menuHeight = 0;
     bool menuDirty = false;
-    uint16_t previousPad = 0, heldAtClose = 0;
+    uint16_t previousPad = 0;
+    std::array<uint16_t, Machine::kMaxPlayers> previousPads{}, heldAtClose{};
     unsigned previousMenu = 0;
     int triggerHeld = 0;
     bool bothHeld = false; // a gamepad's Start and Select (Back) together: the menu
@@ -440,45 +452,11 @@ int RunWindowed(Port &port) {
     const double kFrameNs = 1e9 / Machine::kFramesPerSecond;
     uint64_t nextFrame = SDL_GetTicksNS();
     bool running = true;
-    while (running && !port.quit && (port.opt.frames == 0 || port.frame < port.opt.frames)) {
-        SDL_Event ev;
-        if (port.typing && (!port.net || port.connecting)) {
-            chatOpen(false); // (the match over, or waited for again)
-        }
-        while (SDL_PollEvent(&ev)) {
-            if (touch.Event(ev)) {
-                continue;
-            }
-            if (port.typing && ev.type == SDL_EVENT_TEXT_INPUT) {
-                if (openedByT && SDL_GetTicks() - openedByT < 250 && (!strcmp(ev.text.text, "t") || !strcmp(ev.text.text, "T"))) {
-                    openedByT = 0;
-                    continue;
-                }
-                openedByT = 0;
-                for (const char *c = ev.text.text; *c; c++) {
-                    if (*c >= 32 && *c < 127 && port.typed.size() < Netplay::kChatMost) {
-                        port.typed += *c;
-                    }
-                }
-                continue;
-            }
-            if (port.typing && ev.type == SDL_EVENT_KEY_DOWN) {
-                if (ev.key.scancode == SDL_SCANCODE_RETURN || ev.key.scancode == SDL_SCANCODE_KP_ENTER) {
-                    port.Say();
-                    chatOpen(false);
-                } else if (ev.key.scancode == SDL_SCANCODE_ESCAPE || ev.key.scancode == SDL_SCANCODE_AC_BACK) {
-                    chatOpen(false);
-                } else if (ev.key.scancode == SDL_SCANCODE_BACKSPACE && !port.typed.empty()) {
-                    port.typed.pop_back();
-                }
-                continue; // (every other key the line's, as text)
-            }
-            switch (ev.type) {
-            case SDL_EVENT_QUIT: running = false; break;
-            case SDL_EVENT_KEY_DOWN:
+    auto keyboardShortcut = [&](const SDL_KeyboardEvent &key, const bool *physicalKeys) {
+        SDL_Event ev{}; ev.key = key;
                 if (!port.menu.IsOpen() && !ev.key.repeat &&
                     (ev.key.scancode == SDL_SCANCODE_Q || ev.key.scancode == SDL_SCANCODE_E || ev.key.scancode == SDL_SCANCODE_W) &&
-                    KeyZoomHeld(SDL_GetKeyboardState(nullptr))) {
+                    KeyZoomHeld(physicalKeys)) {
                     if (ev.key.scancode == SDL_SCANCODE_W) {
                         port.zoom.Both();
                     } else {
@@ -520,6 +498,45 @@ int RunWindowed(Port &port) {
                            (ev.key.scancode == SDL_SCANCODE_RETURN && (ev.key.mod & SDL_KMOD_ALT))) {
                     SDL_SetWindowFullscreen(window, !(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN));
                 }
+
+    };
+    while (running && !port.quit && (port.opt.frames == 0 || port.frame < port.opt.frames)) {
+        SDL_Event ev;
+        if (port.typing && (!port.net || port.connecting)) {
+            chatOpen(false); // (the match over, or waited for again)
+        }
+        while (SDL_PollEvent(&ev)) {
+            if (touch.Event(ev)) {
+                continue;
+            }
+            if (port.typing && ev.type == SDL_EVENT_TEXT_INPUT) {
+                if (openedByT && SDL_GetTicks() - openedByT < 250 && (!strcmp(ev.text.text, "t") || !strcmp(ev.text.text, "T"))) {
+                    openedByT = 0;
+                    continue;
+                }
+                openedByT = 0;
+                for (const char *c = ev.text.text; *c; c++) {
+                    if (*c >= 32 && *c < 127 && port.typed.size() < Netplay::kChatMost) {
+                        port.typed += *c;
+                    }
+                }
+                continue;
+            }
+            if (port.typing && ev.type == SDL_EVENT_KEY_DOWN) {
+                if (ev.key.scancode == SDL_SCANCODE_RETURN || ev.key.scancode == SDL_SCANCODE_KP_ENTER) {
+                    port.Say();
+                    chatOpen(false);
+                } else if (ev.key.scancode == SDL_SCANCODE_ESCAPE || ev.key.scancode == SDL_SCANCODE_AC_BACK) {
+                    chatOpen(false);
+                } else if (ev.key.scancode == SDL_SCANCODE_BACKSPACE && !port.typed.empty()) {
+                    port.typed.pop_back();
+                }
+                continue; // (every other key the line's, as text)
+            }
+            switch (ev.type) {
+            case SDL_EVENT_QUIT: running = false; break;
+            case SDL_EVENT_KEY_DOWN:
+                if (!keyboardConfig.enabled) keyboardShortcut(ev.key, SDL_GetKeyboardState(nullptr));
                 break;
             case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
                 if (!port.menu.IsOpen() && Shoulder(ev.gbutton.button) && ZoomHeld(SDL_GetGamepadFromID(ev.gbutton.which))) {
@@ -573,6 +590,13 @@ int RunWindowed(Port &port) {
             }
         }
 
+        if (keyboardConfig.enabled) {
+            keyboards.PollFocus(); keyboardConfig = keyboards.State().ResolveConfig(keyboardConfig);
+            for (const auto &press : keyboards.State().TakePresses()) if (!port.typing && KeyboardHotkeyAllowed(keyboardConfig, press)) {
+                SDL_KeyboardEvent key{}; key.scancode=press.key; key.mod=press.mods; key.repeat=press.repeat;
+                keyboardShortcut(key, keyboards.State().ForPlayer(keyboardConfig,0).data());
+            }
+        }
         if (touch.TakeMenuPress()) {
             toggleMenu();
         }
@@ -602,12 +626,14 @@ int RunWindowed(Port &port) {
             uint16_t pads[Machine::kMaxPlayers] = {};
             int keyCount = 0;
             const bool *keys = SDL_GetKeyboardState(&keyCount);
+            if (keyboardConfig.enabled) { keys = keyboards.State().ForPlayer(keyboardConfig, 0).data(); keyCount = SDL_SCANCODE_COUNT; }
             if (keysAfterChat) {
                 keysAfterChat = std::any_of(keys, keys + keyCount, [](bool down) { return down; });
             }
-            if (!(SDL_GetModState() & SDL_KMOD_ALT) && !port.typing && !keysAfterChat) {
+            if ((keyboardConfig.enabled || !(SDL_GetModState() & SDL_KMOD_ALT)) && !port.typing && !keysAfterChat) {
                 for (int player = 0; player < Players(); player++) {
-                    pads[player] |= ReadKeyboard(keys, player);
+                    const int layout = player == 1 && keyboardConfig.enabled && keyboardConfig.mirrorP1 ? 0 : player;
+                    pads[player] |= keyboardConfig.enabled ? ReadKeyboard(keyboards.State().ForPlayer(keyboardConfig, player).data(), layout, player == 0) : ReadKeyboard(keys, player);
                 }
                 port.service = keys[SDL_SCANCODE_9] && !KeyBound(SDL_SCANCODE_9);
             }
@@ -664,12 +690,13 @@ int RunWindowed(Port &port) {
             }
             uint16_t pressed = all & ~previousPad;
             previousPad = all;
+            std::copy(std::begin(pads), std::end(pads), previousPads.begin());
             // Start and Select held together open and close the menu, whatever they are bound to (the second
             // of them to go down is not also a press in the menu; neither reaches the game until let go)
             if (both && !bothHeld) {
                 toggleMenu();
                 pressed = 0;
-                heldAtClose = previousPad;
+                heldAtClose = previousPads;
             }
             bothHeld = both;
             // The menu's buttons are the same whatever the game's are set to: the arrows, the d-pad and the
@@ -704,7 +731,7 @@ int RunWindowed(Port &port) {
                     menuDirty = true;
                 }
                 if (!port.menu.IsOpen()) {
-                    heldAtClose = previousPad;
+                    heldAtClose = previousPads;
                 }
             } else if (port.leaving) {
                 // (online, "Leave the match?": Confirm leaves it, Back stays; this side's player stands still meanwhile)
@@ -713,11 +740,11 @@ int RunWindowed(Port &port) {
                 } else if (menuPressed & recomp::kMenuBack) {
                     port.leaving = false;
                 }
-                heldAtClose = previousPad;
+                heldAtClose = previousPads;
             }
-            heldAtClose &= previousPad;
             for (int player = 0; player < Machine::kMaxPlayers; player++) {
-                port.pad[player] = pads[player] & ~heldAtClose;
+                heldAtClose[player] &= previousPads[player];
+                port.pad[player] = pads[player] & ~heldAtClose[player];
             }
         }
 

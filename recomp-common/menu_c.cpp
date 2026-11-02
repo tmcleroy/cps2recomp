@@ -35,7 +35,7 @@ void rmenu_configure(RMenu *menu, const RMenuConfig *c) {
         static const recomp::MenuRow::Kind kKinds[] = {
             recomp::MenuRow::Save, recomp::MenuRow::Load, recomp::MenuRow::Slot, recomp::MenuRow::Speed,
             recomp::MenuRow::Pages, recomp::MenuRow::Action, recomp::MenuRow::Quit, recomp::MenuRow::Resume,
-            recomp::MenuRow::Mute,
+            recomp::MenuRow::Mute, recomp::MenuRow::Page,
         };
         config.groups.back().push_back({kKinds[row.kind], row.id, Str(row.title), Str(row.description)});
     }
@@ -69,6 +69,25 @@ void rmenu_configure(RMenu *menu, const RMenuConfig *c) {
     if (c->muted && c->setMuted) {
         config.muted = [muted = c->muted, user = c->user] { return muted(user) != 0; };
         config.setMuted = [setMuted = c->setMuted, user = c->user](bool muted) { setMuted(user, muted ? 1 : 0); };
+    }
+    for (int i = 0; i < c->sliderCount; ++i) {
+        const auto &s = c->sliders[i];
+        config.sliders.push_back({Str(s.category), Str(s.title), Str(s.description), Str(s.suffix),
+            s.minimum, s.maximum, s.step, s.usual, s.decimals, s.signedValue});
+    }
+    if (c->sliderValue) config.sliderValue = [fn=c->sliderValue, user=c->user](size_t n) { return fn(user, static_cast<int>(n)); };
+    if (c->setSlider) config.setSlider = [fn=c->setSlider, user=c->user](size_t n, double v) { fn(user, static_cast<int>(n), v); };
+    if (c->sliderStep) config.sliderStep = [fn=c->sliderStep, user=c->user](size_t n, double v, int d, bool coarse) { return fn(user, static_cast<int>(n), v, d, coarse); };
+    for (int i = 0; i < c->pageCount; ++i) {
+        const auto &p = c->pages[i];
+        recomp::MenuPage page{Str(p.name), Str(p.parent), Str(p.description), p.counts};
+        for (int n = 0; n < p.detailCount; ++n) {
+            const auto &d = p.details[n];
+            recomp::MenuDetailRow detail{static_cast<recomp::MenuDetailRow::Kind>(d.kind), static_cast<size_t>(d.index), Str(d.text)};
+            if (d.visible) detail.visible = [fn=d.visible, user=c->user] { return fn(user); };
+            page.details.push_back(std::move(detail));
+        }
+        config.pages.push_back(std::move(page));
     }
     menu->menu.Configure(std::move(config));
 }
