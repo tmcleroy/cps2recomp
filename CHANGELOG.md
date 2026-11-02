@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Sliders
+
+Per-game Slider controls, inspired by MAMEPPK: main CPU (25–400%), audio CPU (25–400%), virtual video refresh (40–90 Hz), brightness/contrast (0–2) and gamma (0.1–3). Left/Right adjusts, Shift makes larger steps, Enter restores the selected default; Reset sliders affects only this game. Refresh does not change the monitor mode, and differs from emulation speed/internal turbo. Online uses native clocks. Native-Z80 audio can be tuned live; driver-based playback requires restarting with the native backend. New states record the audio clock/backend; old official states remain readable. This proposal requires the companion recomp-common numeric-slider API; it contains no equalizer or emulator DSP code.
+
 ## Unreleased
 
 - **The Punisher**, set `punisheru` (USA 930422): the second CPS-1 game, a beat-'em-up for two players (the Punisher

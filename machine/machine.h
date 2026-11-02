@@ -60,6 +60,10 @@ public:
     // Off: the frame's lines are not drawn (the picture keeps what it had). For frames whose picture nobody sees: a
     // rollback's frames run again, but for the last (port/port.h). Drawing reads the video memory and changes nothing.
     bool drawing = true;
+    double audioCpuPercent = 100;
+    double mainCpuPercent = 100;
+    double refreshHz = 8000000.0 / 512 / 262;
+    void SetClocks(double mainPercent, double audioPercent, double videoHz);
     static constexpr double kFramesPerSecond = 8000000.0 / 512 / 262;
 
     explicit Machine(const RomSet &roms);
@@ -245,6 +249,10 @@ private:
     bool boardTiming = false;
     bool m_palettePending = false; // (the game has set the palette's base: the DMA copies it at the next line)
     void RunSound(int cycles);
+    uint64_t AudioTime() const;
+    uint64_t AudioCycles(uint64_t boardTime) const;
+    int CpuCyclesPerLine() const;
+    int SoundCyclesPerLine() const;
     struct ChipWrite {
         uint8_t reg;
         uint16_t data;

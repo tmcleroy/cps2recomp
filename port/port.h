@@ -10,6 +10,7 @@
 #include "present.h"
 #include "soundtrack.h"
 #include "zoom.h"
+#include "tuning.h"
 
 #include <array>
 #include <cstdint>
@@ -257,6 +258,8 @@ struct Port {
     void Again(const std::string &why);
     std::string rejoin;
     uint64_t againAt = 0; // (joining: the tick to try again at)
+    void ApplyTuning();
+    mutable PictureTuning pictureTuning;
     void RunAhead();
     void SoundTest();
     void MusicTest();

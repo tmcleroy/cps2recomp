@@ -692,6 +692,8 @@ int RunWindowed(Port &port) {
             menuNow |= touch.Menu();
             unsigned menuPressed = menuNow & ~previousMenu;
             previousMenu = menuNow;
+            if ((menuPressed & (recomp::kMenuLeft | recomp::kMenuRight)) && (SDL_GetModState() & SDL_KMOD_SHIFT))
+                menuPressed |= recomp::kMenuFast;
             if (both) {
                 menuPressed = 0;
             }
@@ -848,7 +850,7 @@ int RunWindowed(Port &port) {
         presenter.Show(shown.data(), port.ShownWidth(), Video::kHeight, where, isZoomed ? &zoomed : nullptr);
 
         if (!port.opt.unthrottled && !FastForward()) {
-            nextFrame += static_cast<uint64_t>(kFrameNs);
+            nextFrame += static_cast<uint64_t>(1e9 / port.machine->refreshHz);
             const uint64_t now = SDL_GetTicksNS();
             if (nextFrame > now) {
                 SDL_DelayPrecise(nextFrame - now);

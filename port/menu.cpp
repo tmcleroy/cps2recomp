@@ -3,6 +3,8 @@
 //
 // The in-game menu (menu.h): the shared menu told what a CPS-2 game's is made of.
 #include "menu.h"
+#include "tuning.h"
+#include <cmath>
 
 #include <cstring>
 
@@ -83,6 +85,18 @@ void Menu::Open(bool withStates) {
         }
         config.commands.push_back({command.category, command.title, command.description});
     }
+    LoadCurrentTuning(cps2recomp::SettingsPath());
+    config.pages.push_back({"Slider controls", "", "Timing and picture values for this game only.", false});
+    for (const auto &info : kTuning)
+        config.sliders.push_back({"Slider controls", info.title, info.description, info.suffix,
+            info.minimum, info.maximum, info.step, info.usual, info.decimals});
+    config.sliderValue = [](size_t index) { return CurrentTuning().values[index]; };
+    config.setSlider = [this](size_t index, double value) {
+        if (!SetCurrentTuning(index, value)) m_menu.Note("Could not save this game's sliders.");
+        else if (index == static_cast<size_t>(Tune::AudioCpu) && !audioCpuLive && value != 100)
+            m_menu.Note("Reset game or restart with --sound z80 to apply the audio CPU clock.");
+    };
+    config.commands.push_back({"Slider controls", "Reset sliders", "Restores only this game's six sliders."});
     config.value = [](size_t feature) { return cps2recomp::FeatureSetting(cps2recomp::TheGame().features[feature].name); };
     config.setValue = [](size_t feature, int value) { cps2recomp::SetFeatureValue(cps2recomp::TheGame().features[feature].name, value); };
     // (of a long choice, those the launcher leaves in the menu: settings.ini's [menu], recomp-common/settings.h)
@@ -165,6 +179,9 @@ Menu::Action Menu::Press(unsigned buttons) {
     case recomp::Menu::Chosen::Load: return Action::Load;
     case recomp::Menu::Chosen::Quit: return Action::Quit;
     case recomp::Menu::Chosen::Command:
+        if (static_cast<size_t>(chosen.id) == cps2recomp::TheGame().commands.size()) {
+            CurrentTuning() = Tuning{}; SaveCurrentTuning(); return Action::None;
+        }
         m_command = static_cast<size_t>(chosen.id);
         return Action::Command;
     case recomp::Menu::Chosen::Action:

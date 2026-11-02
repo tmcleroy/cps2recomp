@@ -52,6 +52,8 @@ public:
     // The pages in the sidebar's order: the port's own, then the launcher's
     int page_count() const;
     void set_page(int page) { page_ = page; }
+    void set_capture_scroll(float value) { capture_scroll_ = value; }
+    void set_controls_player(int player) { bind_player_ = player >= 0 && player < 4 ? player : 0; }
     // A collection's: the page of the game with this id (--page ID), if it has one; "multi": the Multi game page
     void set_page(const std::string& id);
     bool busy() const;
@@ -357,6 +359,8 @@ private:
     int selected_pad_ = 0;
     recomp::Bindings bindings_{};  // (a collection's are every game's)
     std::vector<recomp::Bindings> own_bindings_;  // (a collection's: each game's own layout, for those that have one)
+    size_t controls_slot_ = 0;
+    float capture_scroll_ = -1;
     int bind_slot_ = -1;          // whose layout the Controllers page shows: every game's (-1), or one game's
     int bind_player_ = 0;         // whose buttons the Controllers page shows
     int capture_action_ = -1;      // the action waiting for a key or a button to be pressed for it, or -1

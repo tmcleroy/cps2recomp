@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 
 namespace cps2recomp {
 
@@ -147,6 +148,32 @@ void Machine::InterruptAck(unsigned) {
     UpdateInterruptLevel();
 }
 
+uint64_t Machine::AudioTime() const {
+    const uint64_t units = static_cast<uint64_t>(std::lround(audioCpuPercent * 10));
+    return soundCpu.cycles / units * 1000 + soundCpu.cycles % units * 1000 / units;
+}
+uint64_t Machine::AudioCycles(uint64_t boardTime) const {
+    const uint64_t units = static_cast<uint64_t>(std::lround(audioCpuPercent * 10));
+    return boardTime / 1000 * units + (boardTime % 1000 * units + 999) / 1000;
+}
+void Machine::SetClocks(double mainPercent, double audioPercent, double videoHz) {
+    mainCpuPercent = std::isfinite(mainPercent) ? std::clamp(std::round(mainPercent * 10) / 10, 25.0, 400.0) : 100;
+    audioPercent = std::isfinite(audioPercent) ? std::clamp(std::round(audioPercent * 10) / 10, 25.0, 400.0) : 100;
+    if (audioCpuPercent != audioPercent) {
+        const uint64_t at = AudioTime();
+        audioCpuPercent = audioPercent;
+        soundCpu.cycles = AudioCycles(at);
+    }
+    refreshHz = std::isfinite(videoHz) ? std::clamp(videoHz, 40.0, 90.0) : kFramesPerSecond;
+}
+int Machine::CpuCyclesPerLine() const {
+    if (mainCpuPercent == 100 && refreshHz == kFramesPerSecond) return static_cast<int>(m_cyclesPerLine * cpuSpeed);
+    return static_cast<int>(std::lround(m_cyclesPerLine * cpuSpeed * (mainCpuPercent / 100.0) * kFramesPerSecond / refreshHz));
+}
+int Machine::SoundCyclesPerLine() const {
+    return static_cast<int>(std::lround(kSoundCyclesPerLine * kFramesPerSecond / refreshHz));
+}
+
 void Machine::RunFrame() {
     // (the picture's width is the frame's: what is asked for while it runs is for the next)
     // (for tools: CPS2RECOMP_WIDE=n draws n more columns on each side whatever the game's sources ask, to see
@@ -205,15 +232,15 @@ void Machine::RunLine() {
 
     // (the CPU stops a little after the time it is given, and the next line is that much shorter for it)
     const uint64_t start = m_lineStart;
-    m_lineStart += static_cast<uint64_t>(m_cyclesPerLine * cpuSpeed);
+    m_lineStart += CpuCyclesPerLine();
     if (raster) {
-        cpu.Run(start + static_cast<uint64_t>(m_rasterCounter[2]) * 4, cpuMode);
+        cpu.Run(start + (mainCpuPercent == 100 && refreshHz == kFramesPerSecond ? static_cast<uint64_t>(m_rasterCounter[2]) * 4 : static_cast<uint64_t>(m_rasterCounter[2]) * 4 * CpuCyclesPerLine() / m_cyclesPerLine), cpuMode);
         m_rasterInterrupt = true;
         UpdateInterruptLevel();
     }
     cpu.Run(m_lineStart, cpuMode);
 
-    RunSound(kSoundCyclesPerLine);
+    RunSound(SoundCyclesPerLine());
 
     if (drawing && m_line >= Video::kFirstLine && m_line < Video::kFirstLine + Video::kHeight) {
         const int row = m_line - Video::kFirstLine;
@@ -227,17 +254,17 @@ void Machine::RunLine() {
 // stretch), a little past it, and then what has come due happens.
 void Machine::RunSound(int cycles) {
     m_soundTime += static_cast<uint64_t>(cycles);
-    while (soundCpu.cycles < m_soundTime) {
+    while (AudioTime() < m_soundTime) {
         const uint64_t next = std::min({m_soundTime, m_soundInterruptAt, m_sampleAt});
         if (m_soundRunning && soundSide != SoundSide::Driver) {
-            soundCpu.Run(next, soundMode);
+            soundCpu.Run(AudioCycles(next), soundMode);
         } else if (m_driverInterrupt) {
             // (where the Z80 would take it: as it next runs)
             m_driverInterrupt = false;
             soundDriver->Interrupt();
         }
-        soundCpu.cycles = std::max(soundCpu.cycles, next); // (held in reset or halted: time passes all the same)
-        while (m_soundInterruptAt <= soundCpu.cycles) {
+        soundCpu.cycles = std::max(soundCpu.cycles, AudioCycles(next)); // (held in reset or halted: time passes all the same)
+        while (m_soundInterruptAt <= AudioTime()) {
             m_soundInterruptAt += kSoundInterruptPeriod;
             if (m_soundRunning) {
                 if (soundSide != SoundSide::Driver) {
@@ -250,7 +277,7 @@ void Machine::RunSound(int cycles) {
                 }
             }
         }
-        while (m_sampleAt <= soundCpu.cycles) {
+        while (m_sampleAt <= AudioTime()) {
             if (!m_chipQueue.empty() && m_chipNext <= m_sampleAt) {
                 const ChipWrite write = m_chipQueue.front();
                 m_chipQueue.erase(m_chipQueue.begin());
@@ -393,7 +420,9 @@ uint32_t Machine::LineDma() {
 
 // 68000 cycles into the line
 int Machine::LineCycles() const {
-    return static_cast<int>(static_cast<int64_t>(cpu.cycles) - static_cast<int64_t>(m_lineStart - static_cast<uint64_t>(m_cyclesPerLine * cpuSpeed)));
+    if (mainCpuPercent == 100 && refreshHz == kFramesPerSecond)
+        return static_cast<int>(static_cast<int64_t>(cpu.cycles) - static_cast<int64_t>(m_lineStart - static_cast<uint64_t>(m_cyclesPerLine * cpuSpeed)));
+    return static_cast<int>(static_cast<int64_t>(cpu.cycles) - static_cast<int64_t>(m_lineStart - CpuCyclesPerLine())) * m_cyclesPerLine / CpuCyclesPerLine();
 }
 
 uint16_t Machine::Read16(uint32_t address) {

@@ -84,8 +84,8 @@ bool Movie::Save(const std::string &path) const {
 }
 
 namespace {
-    constexpr uint32_t kStateVersion = 8; // (5: the 68000's wait kept; 6: the custom soundtrack's place; 7: the board timing's palette copy;
-                                          // 8: widescreen's camera a frame ago)
+    constexpr uint32_t kStateVersion = 9; // (5: the 68000's wait kept; 6: the custom soundtrack's place; 7: the board timing's palette copy;
+                                          // 8: widescreen's camera a frame ago; 9: audio clock/backend header)
 
     bool ReadFile(const std::string &path, std::vector<uint8_t> &data) {
         FILE *f = fopen(path.c_str(), "rb");
@@ -346,6 +346,8 @@ bool Port::Init(std::string &error) {
     }
     // The sound program as ordinary code where there is one for it, unless the Z80's code is what is being
     // looked at
+    LoadCurrentTuning(opt.settingsPath);
+    if (opt.sound.empty() && CurrentTuning().Get(Tune::AudioCpu) != 100) opt.sound = "z80";
     if (opt.sound.empty()) {
         opt.sound = machine->soundDriver && opt.cpu == "native" && opt.recordEntries.empty() ? "driver" : "z80";
     }
@@ -357,6 +359,7 @@ bool Port::Init(std::string &error) {
         error = machine->soundDriver ? "--sound: driver, z80 or check" : "--sound: this game's sound program is not one there is a driver for";
         return false;
     }
+    ApplyTuning();
     machine->soundCpu.recording = !opt.recordEntries.empty();
     SetRewrites(opt.checkRewrites, opt.noRewrites);
     machine->cpu.watchLow = opt.watchLow;
@@ -555,6 +558,7 @@ void Port::MenuAct(Menu::Action action) {
         menu.Note("Every option is back as it first was.");
         return;
     case Menu::Action::Reset:
+        if (CurrentTuning().Get(Tune::AudioCpu) != 100) machine->soundSide = Machine::SoundSide::Z80;
         EndSessionFeatures();
         machine->Reset();
         menu.Close();
@@ -849,6 +853,7 @@ bool Port::Tick() {
 void Port::Shown(std::vector<uint32_t> &pixels, std::vector<SDL_Rect> *panels) const {
     const int across = ShownWidth();
     pixels.assign(machine->Picture(), machine->Picture() + across * Video::kHeight);
+    pictureTuning.Apply(pixels.data(), pixels.size(), CurrentTuning());
     DrawHud(pixels.data(), across, Video::kHeight, panels);
     // A line at the bottom, in the middle (`up` lines higher)
     auto status = [&](const char *text, int up) {
@@ -1100,6 +1105,9 @@ bool Port::SaveState(const std::string &path, std::string &error) {
     ar.Mark(0x43505332);
     uint32_t version = kStateVersion;
     ar.Pod(version);
+    uint32_t audioClock = static_cast<uint32_t>(std::lround(machine->audioCpuPercent * 10));
+    uint32_t soundBackend = static_cast<uint32_t>(machine->soundSide);
+    ar.Pod(audioClock); ar.Pod(soundBackend);
     machine->Serialize(ar);
     if (TheGame().state) {
         TheGame().state(ar);
@@ -1123,6 +1131,14 @@ bool Port::LoadState(const std::string &path, std::string &error) {
     ar.Pod(version);
     const bool known = version >= 5 && version <= kStateVersion;
     ar.version = version;
+    if (ar.Ok() && known && version >= 9) {
+        uint32_t clock = 1000, backend = 0; ar.Pod(clock); ar.Pod(backend);
+        if (clock < 250 || clock > 4000 || backend > static_cast<uint32_t>(Machine::SoundSide::Check)) {
+            error = "Invalid audio clock header"; return false;
+        }
+        machine->audioCpuPercent = clock / 10.0;
+        machine->soundSide = static_cast<Machine::SoundSide>(backend);
+    } else machine->audioCpuPercent = 100;
     if (ar.Ok() && known) {
         machine->Serialize(ar);
         if (TheGame().state) {
@@ -1134,6 +1150,7 @@ bool Port::LoadState(const std::string &path, std::string &error) {
         machine->Reset();
         return false;
     }
+    ApplyTuning();
     return true;
 }
 
@@ -1625,6 +1642,7 @@ void Port::PumpHost() {
 }
 
 void Port::MatchComing() {
+    machine->SetClocks(100, 100, Machine::kFramesPerSecond);
     fprintf(stderr, "online: someone joined: the match starts from the board's reset\n");
     ownFeatures.clear();
     for (const Feature &feature : TheGame().features) {
@@ -1809,7 +1827,16 @@ void Port::RapidFire() {
     }
 }
 
+void Port::ApplyTuning() {
+    const auto &tuning = CurrentTuning();
+    menu.audioCpuLive = machine->soundSide == Machine::SoundSide::Z80;
+    if (net) { machine->SetClocks(100, 100, Machine::kFramesPerSecond); return; }
+    const double audio = machine->soundSide == Machine::SoundSide::Z80 ? tuning.Get(Tune::AudioCpu) : 100;
+    machine->SetClocks(tuning.Get(Tune::MainCpu), audio, tuning.Get(Tune::Refresh));
+}
+
 void Port::RunFrame() {
+    ApplyTuning();
     ClearSpareRan();
     SoundtrackFollow();
     machine->SetBoardTiming(FeatureOn("arcade_timing"));

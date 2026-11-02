@@ -69,7 +69,7 @@ if (NOT GAME_SOURCES)
     set(GAME_SOURCES runtime/no_game.cpp)
 endif ()
 # (recomp-common/: the code the recomp ports share, a copy of recomp-common's; tools/sync-common.sh)
-set(PORT_SOURCES port/main.cpp port/frontend_sdl.cpp port/present.cpp port/shading.cpp port/zoom.cpp port/menu.cpp port/hud.cpp port/touch.cpp port/soundtrack.cpp port/netplay.cpp recomp-common/launcher/src/online.cpp recomp-common/launcher/src/run_program.cpp port/decoders.cpp recomp-common/menu.cpp recomp-common/settings.cpp runtime/game.cpp runtime/board.cpp runtime/spare.cpp fight/frames.cpp fight/training.cpp fight/colours.cpp fight/colour_editor.cpp fight/battle.cpp fight/alternative.cpp fight/session.cpp fight/tag.cpp fight/marvel.cpp beat/modes.cpp beat/model.cpp model/model.cpp ${GAME_SOURCES})
+set(PORT_SOURCES port/tuning.cpp port/main.cpp port/frontend_sdl.cpp port/present.cpp port/shading.cpp port/zoom.cpp port/menu.cpp port/hud.cpp port/touch.cpp port/soundtrack.cpp port/netplay.cpp recomp-common/launcher/src/online.cpp recomp-common/launcher/src/run_program.cpp port/decoders.cpp recomp-common/menu.cpp recomp-common/settings.cpp runtime/game.cpp runtime/board.cpp runtime/spare.cpp fight/frames.cpp fight/training.cpp fight/colours.cpp fight/colour_editor.cpp fight/battle.cpp fight/alternative.cpp fight/session.cpp fight/tag.cpp fight/marvel.cpp beat/modes.cpp beat/model.cpp model/model.cpp ${GAME_SOURCES})
 
 # (the sound files' decoders, third_party/, are other projects' code, compiled as they are)
 set_source_files_properties(port/decoders.cpp PROPERTIES COMPILE_OPTIONS "-w")
