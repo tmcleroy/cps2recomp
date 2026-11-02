@@ -44,6 +44,61 @@ namespace {
         return Var(c, Mem8(c, object + kSide) ? AtA5(0x800) : AtA5(0x400));
     }
 
+    // +A7 is shared by the arcade game's adaptive AI and damage tables. Read it
+    // at each damage calculation; never change it or keep a cached damage rank.
+    // A mixed human/CPU match supplies the two real reference profiles. Without
+    // that pairing (PvP or CPU/CPU), leave the original damage rules in place.
+    constexpr uint32_t kDamageRank = 0xA7;
+    struct DamageReferences {
+        bool mixed;
+        uint8_t human, cpu;
+    };
+    DamageReferences CurrentDamageReferences(M68K &c) {
+        const bool cpu0 = Mem8(c, Player(0) + kComputer) != 0;
+        const bool cpu1 = Mem8(c, Player(1) + kComputer) != 0;
+        if (cpu0 == cpu1) return {false, 0, 0};
+        return {true, Mem8(c, Player(cpu0 ? 1 : 0) + kDamageRank),
+                      Mem8(c, Player(cpu0 ? 0 : 1) + kDamageRank)};
+    }
+    uint8_t DamageRank(M68K &c, uint32_t player, bool incoming = false) {
+        const int policy = FeatureValue("damage_hits");
+        if (policy) {
+            const auto ref = CurrentDamageReferences(c);
+            if (ref.mixed) {
+                if (policy == 1) return incoming ? ref.cpu : ref.human;
+                if (policy == 2) return incoming ? ref.human : ref.cpu;
+            }
+        }
+        return Mem8(c, player + kDamageRank);
+    }
+
+    bool DamageCpuTable(M68K &c, uint32_t player) {
+        const int policy = FeatureValue("damage_hits");
+        if (policy && CurrentDamageReferences(c).mixed) {
+            if (policy == 1) return true;
+            if (policy == 2) return false;
+        }
+        return Mem8(c, player + kComputer) != 0;
+    }
+
+    // The original routines also handle alternate hits, throws and hold ticks.
+    // Replace only their rank-read instruction, with its flags and cycle count.
+    // Vanilla executes the original instruction without any register changes.
+    bool DamageRankRead(M68K &c, unsigned reg, unsigned playerReg, uint32_t resume) {
+        if (!FeatureOn("damage_hits") || !CurrentDamageReferences(c).mixed) return false;
+        SetLow8(c.d[reg], c.Add(c.d[reg], DamageRank(c, c.a[playerReg], playerReg == 1), 0, false, false));
+        c.pc = resume;
+        Spend(c, 12); // ADD.B d16(An),Dn
+        return true;
+    }
+    bool DamageCpuRead(M68K &c, uint32_t resume) {
+        if (!FeatureOn("damage_hits") || !CurrentDamageReferences(c).mixed) return false;
+        c.Logic(DamageCpuTable(c, c.a[1]) ? 1 : 0, 0);
+        c.pc = resume;
+        Spend(c, 12); // TST.B d16(An)
+        return true;
+    }
+
     // 010C1A: a hit on a player in the middle of an attack, or on a player with a weakness, is worth more (by
     // the attacker's +294 or the victim's: twice, a quarter more, a half more)
     void Multiplier(M68K &c) {
@@ -223,7 +278,7 @@ namespace {
         // The base: by the attack's strength and the attacker's own row
         SetLow8(c.d[2], Mem8(c, attack + (Mem8(c, attacker + 0x3E) ? kAttackHelperStrength : kAttackStrength)));
         SetLow16(c.d[2], static_cast<uint16_t>((c.d[2] & 0x1F) << 5));
-        SetLow8(c.d[2], static_cast<uint8_t>((c.d[2] & 0xFF) + Mem8(c, c.a[0] + 0xA7)));
+        SetLow8(c.d[2], static_cast<uint8_t>((c.d[2] & 0xFF) + DamageRank(c, c.a[0])));
         c.a[0] = kBaseTable;
         SetLow8(c.d[2], Mem8(c, c.a[0] + (c.d[2] & 0xFFFF)));
         // A random part, from a row the attack names (another when the attacker is low on health)
@@ -297,11 +352,11 @@ namespace {
             Call(c, At(0x010C76)); // (stunned)
         }
         // What the victim's character takes: a row by its character, a column by its own setting
-        c.a[0] = Mem8(c, victim + 0xA5) ? kTakesTableAuto : kTakesTable;
+        c.a[0] = DamageCpuTable(c, victim) ? kTakesTableAuto : kTakesTable;
         SetLow8(c.d[0], Mem8(c, victim + kCharacter));
         SetLow16(c.d[0], static_cast<uint16_t>((c.d[0] & 0x1F) << 5));
         SetLow16(c.d[4], c.d[0]);
-        SetLow8(c.d[0], static_cast<uint8_t>((c.d[0] & 0xFF) + Mem8(c, victim + 0xA7)));
+        SetLow8(c.d[0], static_cast<uint8_t>((c.d[0] & 0xFF) + DamageRank(c, victim, true)));
         SetLow8(c.d[3], Mem8(c, c.a[0] + (c.d[0] & 0xFFFF)));
         // How the victim was hit
         c.d[0] = 0x1F;
@@ -384,6 +439,24 @@ void RegisterDamage() {
                              "combo always does the same damage. (On the board each hit's damage varies a little.)"});
     game.features.push_back({"no_stun", "Cheats", "No stun", "Player 1 is never stunned (no stun builds up)."});
     game.features.push_back({"no_stun_2", "Cheats", "No stun, player 2", "Player 2 is never stunned (no stun builds up)."});
+#ifdef INPUTLAB_SFA2
+    game.features.push_back({"damage_hits", "Cheats", "Damage hits",
+        "Vanilla keeps the original damage rules. Equal to human gives both sides the damage of the current "
+        "human attacking the CPU; Equal to CPU gives both the damage of the current CPU attacking the human. "
+        "Follows the CPU's live rank, which depends on difficulty and can change during play, so CPU damage "
+        "is not always higher. Character, move, combo, blocking, health and random modifiers remain. "
+        "Applies in human-versus-CPU matches; PvP and CPU-versus-CPU retain their original damage rules. "
+        "The computer's AI is unchanged.",
+        kFeatureOwn, {"Vanilla", "Equal to human", "Equal to CPU"}});
+    AddHook(0x01090E, "DamageAttackerRank", [](M68K &c) { return DamageRankRead(c, 2, 0, 0x010912); });
+    AddHook(0x010A08, "DamageVictimClass", [](M68K &c) { return DamageCpuRead(c, 0x010A0C); });
+    AddHook(0x010A20, "DamageVictimRank", [](M68K &c) { return DamageRankRead(c, 0, 1, 0x010A24); });
+    AddHook(0x00F18C, "AlternateDamageAttackerRank", [](M68K &c) { return DamageRankRead(c, 2, 0, 0x00F190); });
+    AddHook(0x00F246, "AlternateDamageVictimClass", [](M68K &c) { return DamageCpuRead(c, 0x00F24A); });
+    AddHook(0x00F25E, "AlternateDamageVictimRank", [](M68K &c) { return DamageRankRead(c, 0, 1, 0x00F262); });
+    AddHook(0x026696, "ThrowDamageAttackerRank", [](M68K &c) { return DamageRankRead(c, 2, 6, 0x02669A); });
+    AddHook(0x026734, "HoldDamageAttackerRank", [](M68K &c) { return DamageRankRead(c, 1, 6, 0x026738); });
+#endif
     AddRewrite(At(0x0108E2), "TakeDamage", TakeDamage, kFreeFlags, 1320);
 }
 

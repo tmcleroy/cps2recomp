@@ -12,6 +12,7 @@ namespace cps2recomp {
 void RegisterCoins(); // coins.cpp
 void CoinsFrame(Machine &machine);
 void RegisterCheats(); // cheats.cpp
+void RegisterInputLabDamage(); // inputlab_damage.cpp
 void CheatsState(Archive &ar);
 void RegisterTitle(); // title.cpp
 void RegisterBoard(); // board.cpp
@@ -47,6 +48,7 @@ void RegisterGame() {
     RegisterWidescreen();
     RegisterCoins();
     RegisterCheats();
+    RegisterInputLabDamage();
     RegisterTitle();
     RegisterBoard();
     RegisterMusic();

@@ -15,6 +15,7 @@
 //   times before, if any), and after each match won becomes the opponent just beaten (009BB2).
 #include "modes.h"
 #include "vsav.h"
+#include "hidden_selection.h"
 
 namespace cps2recomp {
 
@@ -87,7 +88,7 @@ namespace {
         // kicks his second); and with the feature, Oboro Bishamon the same way
         const uint8_t character = Ram8(me + kCharacter);
         const int number = Ram8(me + kNumber);
-        if (Ram8(Var(c, kNoCodes)) == 0 && character == kGallon && (Ram16(me + kHeldNow) & kStartHeld)) {
+        if (!HiddenFor(number) && Ram8(Var(c, kNoCodes)) == 0 && character == kGallon && (Ram16(me + kHeldNow) & kStartHeld)) {
             if (TwoPunches(pressed)) {
                 colours = 0;
                 SetRam8(me + kCharacter, kDarkGallon);
@@ -98,8 +99,7 @@ namespace {
                 SetRam8(me + kCharacter, kDarkGallon);
             }
         }
-        if (HiddenFor(number) && (character == kGallon || character == kBishamon)) {
-            SetRam8(me + kCharacter, character == kGallon ? kDarkGallon : kOboro);
+        if (HiddenFor(number) && (character == kDarkGallon || character == kOboro)) {
             colours = (pressed & kPunches) || !(pressed & kKicks) ? 0 : 1;
         }
         // The same character as the other player, who has chosen: the next colours (of two, for the hidden ones)
@@ -121,6 +121,16 @@ namespace {
         }
         c.d[1] = colours;
         SetRam8(me + kColours, static_cast<uint8_t>(colours));
+    }
+
+    // D3 contains the game's newly pressed buttons before either branch can confirm.
+    bool ToggleHiddenChoice(M68K &c) {
+        const uint32_t me = c.a[6];
+        if (HiddenFor(Ram8(me + kNumber)) && (c.d[3] & kStartHeld)) {
+            SetRam8(me + kCharacter, static_cast<uint8_t>(inputlab::ToggleVampire(
+                Ram8(me + kCursor), Ram8(me + kCharacter))));
+        }
+        return false;
     }
 
     // 020C98. Called every frame of the choosing with D3 the buttons newly pressed: counts Start on the "?"
@@ -183,11 +193,20 @@ int HiddenForm(int n, int character) {
 }
 
 void RegisterChoosing() {
+#ifdef INPUTLAB_VSAV
+    AddHook(0x020A4C, "ToggleHiddenChoice", ToggleHiddenChoice);
+#endif
     AddRewrite(At(0x020B38), "ChooseColours", ChooseColours, kFreeFlags, 365);
     AddRewrite(At(0x020C98), "CountShadowCode", CountShadowCode, kFreeFlags);
     AddHook(family::kHiddenAtColours, "HiddenAtColours", HiddenAtColours);
     AddHook(family::kHiddenShadow, "HiddenShadow", HiddenShadow);
-    TheGame().features.push_back({"hidden_characters", "Game", "Hidden characters", family::kHiddenWords, 0,
+    TheGame().features.push_back({"hidden_characters", "Cheats", "Hidden characters",
+#ifdef INPUTLAB_VSAV
+        "Highlight Gallon or Bishamon and press START to toggle Dark Gallon or Oboro Bishamon. Confirm with a punch for their first colours or a kick for their second. The question mark gives Shadow, who becomes each opponent beaten. For player 1, player 2 or both; alternative modes too.",
+#else
+        family::kHiddenWords,
+#endif
+        kFeatureOwn,
                                   {"Off", "Player 1", "Player 2", "Both"}});
 }
 

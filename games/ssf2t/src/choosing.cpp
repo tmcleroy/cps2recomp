@@ -17,6 +17,7 @@
 #include "state.h"
 
 namespace cps2recomp {
+void ApplyInputLabCharacter(uint32_t player);
 
 namespace {
     using namespace ssf2t;
@@ -52,7 +53,11 @@ namespace {
     bool Final(M68K &c) {
         const uint32_t player = c.a[4] & 0xFFFFFF;
         const int n = PlayerOf(player);
-        if (n < 0 || !FeatureOn("hidden_characters")) {
+        if (n < 0) {
+            return false;
+        }
+        if (!FeatureOn("hidden_characters")) {
+            ApplyInputLabCharacter(player);
             return false;
         }
         const uint16_t pressed = g_pressed[n];
@@ -72,6 +77,7 @@ namespace {
             }
             SetRam8(player + kColourChoice, colours);
         }
+        ApplyInputLabCharacter(player);
         return false;
     }
 } // namespace

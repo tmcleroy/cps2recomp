@@ -211,3 +211,8 @@ Fighter*, *Super Gem Fighter*, *Pocket Fighter*, *Vampire Savior*, *Vampire Hunt
 and their characters are trademarks of Marvel Characters, Inc.; *Alien vs. Predator* and *Cadillacs and Dinosaurs* are
 trademarks of their owners; "CPS-1", "CPS-2" and "QSound" are names and trademarks of their owners, used here only to
 say what the programs work with.
+
+
+## New Cheats
+
+Per-game Damage hits policies for SFA, SFA2, SFZ2AL and Super Turbo; Super Turbo character/boss, palette and internal-speed selectors; START-based hidden-character selection. [Every option and its limits](docs/CHEATS.md). All new selectors default to Off/Vanilla.

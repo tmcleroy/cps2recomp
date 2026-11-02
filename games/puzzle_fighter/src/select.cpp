@@ -13,6 +13,7 @@
 // A player chooses with the stick among eight characters, four to a row, and a button takes the one the
 // cursor is on (the second button: in its other colours). Three more can be had by a code (HiddenChoice).
 #include "spf2.h"
+#include "hidden_selection.h"
 
 #include <utility>
 
@@ -509,7 +510,6 @@ namespace {
     // 0077F2. A frame of a player choosing a character.
     void ChoosingCharacter(M68K &c, int n) {
         const uint32_t character = kCharacters[n], chosen = kChosen[n];
-        uint16_t kick = 0;
         ShowChoiceTimer(c, character);
         ShowPortrait(c, n);
         if (!SecondsOut(character + kChoiceSecondsLeft, character + kChoiceFrames)) {
@@ -518,8 +518,18 @@ namespace {
                 FollowCode(c, character, chosen, character + kCodes + 4 * code);
             }
             const uint16_t pressed = Pressed(character);
-            kick = HiddenFor(n) ? pressed & kKicks : 0;
-            if (!(pressed & kButtons) && !kick) {
+            if (HiddenFor(n) && (pressed & kStartHeld)) {
+                const uint8_t normal = Code8(c, kCharacterAt + Ram8(chosen + kCursor));
+                const uint8_t next = static_cast<uint8_t>(inputlab::CyclePuzzle(normal, Ram8(character + kCharacter)));
+                SetRam8(character + kCharacter, next);
+                SetRam8(chosen, next);
+                SetAct(c, character, kActWaiting);
+                SetColours(c, character);
+                ShowPortrait(c, n);
+                Sound(c, kSoundCursor);
+                if (!(pressed & kButtons)) return;
+            }
+            if (!(pressed & kButtons)) {
                 // The cursor moves, but not off the end of a row of four on to the other row
                 const int8_t move = static_cast<int8_t>(Code8(c, kCursorMoves + (pressed & kStick)));
                 if (!(pressed & kStick) || move == 0) {
@@ -544,13 +554,7 @@ namespace {
         }
         // Chosen, or out of time
         SetRam8(kCharactersChosen, Ram8(kCharactersChosen) | (1 << n));
-        HiddenChoice(character, chosen);
-        if (kick) {
-            // ("Hidden characters": a kick chooses one of them outright, as the game's leftover at 0076EC does)
-            const uint8_t hidden = static_cast<uint8_t>(kHiddenTimed + (kick & kFirstKick ? 0 : kick & (kFirstKick << 1) ? 1 : 2));
-            SetRam8(character + kCharacter, hidden);
-            SetRam8(chosen, hidden);
-        }
+        if (!HiddenFor(n)) HiddenChoice(character, chosen);
         c.a[6] = character;
         c.a[4] = chosen;
         c.d[7] = static_cast<uint32_t>(n);
@@ -1391,12 +1395,11 @@ namespace {
 } // namespace
 
 void RegisterSelect() {
-    TheGame().features.push_back({"hidden_characters", "Game", "Hidden characters",
-                                  "At the choice of characters a kick chooses one of the three hidden characters outright, with no "
-                                  "code: light kick Devilot, medium kick Akuma, hard kick Dan. (The board's codes still work.) "
-                                  "A person playing one of them sends three quarters of the usual attack, as on the board. "
-                                  "For player 1, player 2 or both.",
-                                  0, {"Off", "Player 1", "Player 2", "Both"}});
+    TheGame().features.push_back({"hidden_characters", "Cheats", "Hidden characters",
+        "Highlight any character and press START to cycle between that character, Devilot, Akuma and Dan. "
+        "Confirm with the first button for their first colours or the second button for their second. "
+        "Moving the cursor returns to the normal character. For player 1, player 2 or both. The original codes still work with this cheat off.",
+        kFeatureOwn, {"Off", "Player 1", "Player 2", "Both"}});
     // (the last number is the time a call is charged)
     constexpr uint32_t kScratch = kFreeD0 | kFreeD1 | kFreeD2 | kFreeD3 | kFreeD4 | kFreeD5 | kFreeD6 | kFreeD7 | kFreeA0 | kFreeA1 |
                                   kFreeA2 | kFreeA3 | kFreeA4 | kFreeA6 | kFreeFlags;

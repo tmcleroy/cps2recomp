@@ -12,6 +12,7 @@
 #include "modes.h"
 #include "session.h"
 #include "sfa2.h"
+#include "hidden_selection.h"
 #include "state.h"
 
 #include <algorithm>
@@ -83,9 +84,44 @@ namespace {
         }
     }
 
-    // 0628D8: a player has chosen on the character screen (A4 its record), after the game's own codes for the
-    // hidden forms (holding Start on Chun-Li, 0628B2): the hidden form goes in here, where the game puts its own,
-    // so that it sets everything up for that form (its plate, face and colours: 062902)
+    // Reuse the selector's secret-code flag, already cleared on entry and when the
+    // cursor moves. It lives in native RAM, so save states keep the selected variant.
+    // The stock preview has no safe graphics for every hidden form: keep the base
+    // character until confirmation and show the choice in the HUD instead.
+    int g_hiddenShown[2] = {-1, -1}; // display cache, refreshed from the selector every frame
+    bool SkipHoldStartCode(M68K &c) {
+        const uint32_t record = c.a[4] & 0xFFFFFF;
+        const int n = record == Player(0) ? 0 : record == Player(1) ? 1 : -1;
+        if (n >= 0 && HiddenFormFor(n)) { c.pc = 0x062852; return true; }
+        return false;
+    }
+    bool ToggleHiddenChoice(M68K &c) {
+        const uint32_t record = c.a[4] & 0xFFFFFF, selector = c.a[6] & 0xFFFFFF;
+        const int n = record == Player(0) ? 0 : record == Player(1) ? 1 : -1;
+        if (n >= 0) {
+            g_hiddenShown[n] = -1;
+            const int base = Ram8(record + kCharacter);
+            const int other = inputlab::ToggleAlpha2(base);
+            if (HiddenFormFor(n) && other != base) {
+                if (c.d[0] & 0x80) SetRam8(selector + 0x67, Ram8(selector + 0x67) ^ 0x80);
+                if (Ram8(selector + 0x67) & 0x80) g_hiddenShown[n] = other;
+            }
+        }
+        return false;
+    }
+    bool KeepToggledChoice(M68K &c) {
+        const uint32_t record = c.a[4] & 0xFFFFFF;
+        const int n = record == Player(0) ? 0 : record == Player(1) ? 1 : -1;
+        if (n >= 0 && HiddenFormFor(n)) {
+            if (Ram8((c.a[6] & 0xFFFFFF) + 0x67) & 0x80) {
+                SetRam8(record + kCharacter, static_cast<uint8_t>(inputlab::ToggleAlpha2(Ram8(record + kCharacter))));
+            }
+            c.pc = 0x0628D8;
+            return true;
+        }
+        return false;
+    }
+
     bool CharacterChosen(M68K &c) {
         const uint32_t record = c.a[4] & 0xFFFFFF; // (the address bus's 24 bits: A4 may hold FFFF8400)
         const int n = record == (Player(0) & 0xFFFFFF) ? 0 : record == (Player(1) & 0xFFFFFF) ? 1 : -1;
@@ -103,11 +139,11 @@ namespace {
         for (int n = 0; n < 2; n++) {
             if (Wanted().characters[n] >= 0) {
                 SetRam8(Player(n) + kCharacter, static_cast<uint8_t>(Wanted().characters[n]));
+                HiddenForm(n); // modes choose their fighters without the character screen
             }
             if (Wanted().colours[n] >= 0) {
                 SetRam8(Player(n) + kColourChoice, static_cast<uint8_t>(Wanted().colours[n]));
             }
-            HiddenForm(n); // (the modes' fighters, which are not chosen on the character screen)
         }
         return false;
     }
@@ -299,6 +335,18 @@ void TrainingBeforeFrame(Machine &machine) {
 }
 void TrainingFrame(Machine &machine) {
     session::Frame(machine);
+#ifdef INPUTLAB_SFA2
+    if (Ram16(kMode) == 2 && Ram16(kGameStep) == kGameChoosing) {
+        std::vector<HudLine> choices;
+        for (int n = 0; n < 2; ++n) {
+            if (!HiddenFormFor(n) || g_hiddenShown[n] < 0) continue;
+            const int hidden = g_hiddenShown[n];
+            const char *name = hidden == 21 ? "Zangief (classic)" : hidden == 22 ? "Dhalsim (classic)" : kCharacterNames[hidden];
+            choices.push_back({n == 0 ? 0.03f : 0.97f, 0.90f, n == 0 ? -1 : 1, name});
+        }
+        SetHud(std::move(choices));
+    }
+#endif
 }
 void TrainingState(Archive &ar) {
     session::State(ar);
@@ -322,10 +370,20 @@ void RegisterTraining() {
     AddHook(kPlayerDispatch, "PlayerStep", PlayerStep);
     AddHook(At(0x00797C), "ChooseStage", ChooseStage);
     AddHook(At(0x007914), "ChooseCharacters", ChooseCharacters);
+#ifdef INPUTLAB_SFA2
+    AddHook(0x0627F6, "SkipHoldStartCode", SkipHoldStartCode);
+    AddHook(0x062894, "ToggleHiddenChoice", ToggleHiddenChoice);
+    AddHook(0x0628A6, "KeepToggledChoice", KeepToggledChoice);
+#else
     AddHook(At(0x0628D8), "CharacterChosen", CharacterChosen);
-    game.features.push_back({"hidden_forms", "Game", "Hidden characters",
-                             family::kHiddenWords,
-                             0, {"Off", "Player 1", "Player 2", "Both"}});
+#endif
+    game.features.push_back({"hidden_forms", "Cheats", "Hidden characters",
+#ifdef INPUTLAB_SFA2
+        "Highlight Ryu or Akuma and press START to toggle Evil Ryu or Shin Akuma. Highlight Chun-Li, Dhalsim or Zangief and press START to toggle their classic forms. Confirm with a punch or kick for the colours. Shin Akuma has the same palette for both. For player 1, player 2 or both.",
+#else
+        family::kHiddenWords,
+#endif
+        kFeatureOwn, {"Off", "Player 1", "Player 2", "Both"}});
     session::Description d;
     d.player1 = kPlayer1;
     d.playerSize = kPlayerSize;

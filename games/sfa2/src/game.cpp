@@ -18,6 +18,9 @@ void RegisterTraining(); // training.cpp
 void RegisterInput();    // input.cpp
 void RegisterCollision(); // collision.cpp
 void RegisterDamage();    // damage.cpp
+#ifdef INPUTLAB_SFZ2AL
+void RegisterInputLabDamage(); // sfz2al/src/inputlab_damage.cpp
+#endif
 void RegisterHit();       // hit.cpp
 void RegisterThrows();    // throws.cpp
 void RegisterPlayer();    // player.cpp
@@ -76,6 +79,9 @@ void RegisterGame() {
     RegisterInput();
     RegisterCollision();
     RegisterDamage();
+#ifdef INPUTLAB_SFZ2AL
+    RegisterInputLabDamage();
+#endif
     RegisterHit();
     RegisterThrows();
     RegisterPlayer();
@@ -118,7 +124,7 @@ void RegisterGame() {
     // port adds (game.h, rewritesNeeded): training mode, the modes of the sources' own, widescreen, the cheats
     // that work inside them (the damage, the clock)
     TheGame().rewritesNeeded = [] {
-        for (const char *name : {"widescreen", "infinite_time", "no_damage", "no_damage_2", "one_hit", "fixed_damage", "no_stun", "no_stun_2"}) {
+        for (const char *name : {"widescreen", "infinite_time", "no_damage", "no_damage_2", "one_hit", "fixed_damage", "no_stun", "no_stun_2", "damage_hits"}) {
             if (FeatureOn(name)) {
                 return true;
             }
