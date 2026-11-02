@@ -84,6 +84,9 @@ each other.
   timer, rounds); cheats are off.
 - **On screen:** both players' **names**, the ping (and the input delay, if you like), and the **win streak** of a
   player who keeps winning.
+- **FT5 / FT10:** in Marvel vs. Capcom and X-Men vs. Street Fighter, the host can choose **Set format** on the
+  **Online** page before connecting. Both players see the game score and the first player to reach the target wins
+  the set. After both players confirm the result, it is shown for two seconds and both return to the launcher.
 - **Chat** with the other player during a match: press T (or a gamepad's right stick, or the touch screen's Chat) and
   type, on a keyboard or your system's on-screen keyboard. It goes straight between the two games.
 - A dropped connection waits for the other player to come back with the same code.

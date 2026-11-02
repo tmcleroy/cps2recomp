@@ -26,6 +26,17 @@ ROM=${ROM:-rom/$GAME}
 JOIN_ROM=${JOIN_ROM:-$ROM}
 frames=${1:-3000}
 arcade=${ARCADE:-}
+# FIRST_TO=0|1|2: host's Casual/FT5/FT10 choice. The guest deliberately asks for a different format.
+first_to=${FIRST_TO:-}
+case "$first_to" in ""|0|1|2) ;; *) echo "FIRST_TO must be 0, 1 or 2"; exit 1 ;; esac
+guest_set=""
+if [ -n "$first_to" ]; then
+    if ! "build/$GAME/$GAME" --list-features | grep -q '^online_set'; then
+        echo "FAILED: this game has not opted in to online sets"
+        exit 1
+    fi
+    guest_set="online_set=$(( (first_to + 1) % 3 ))"
+fi
 work=work/$GAME/check
 mkdir -p "$work"
 : > "$work/online-host.ini"
@@ -35,6 +46,7 @@ rm -f "$work/online-host.txt" "$work/online-join.txt" "$work/online-host.eeprom"
 play=$("build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '($2=="Game"||$2=="Cheats"||$2=="Display") && NF==5 &&
     $1 !~ /^(display_|window_size|run_ahead|custom_soundtrack|widescreen_walls|custom_colours)/ {print $1}' | paste -sd, -)
 play="${play:+$play,}widescreen"
+if [ -n "$first_to" ]; then play="$play,online_set=$first_to"; fi
 # (the match has them but for the cheats, which are off on both sides: the replay is given the same)
 cheats=$("build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$2=="Cheats" {print $1}')
 match=$(printf '%s\n' "$play" | tr ',' '\n' | grep -vxF "$cheats" | paste -sd, -)
@@ -43,15 +55,25 @@ side() { # host | join, then the program's arguments
     name=$1; shift
     rom=$ROM; [ "$name" = join ] && rom=$JOIN_ROM
     "build/$GAME/$GAME" --rom "$rom" --headless --frames "$frames" --settings "$work/online-$name.ini" \
-        --eeprom "$work/online-$name.eeprom" --hash-log "$work/online-$name.txt" --net-fake 50:25:5 "$@" 2> "$work/online-$name.err"
+        --eeprom "$work/online-$name.eeprom" --hash-log "$work/online-$name.txt" --net-service off --net-fake 50:25:5 "$@" 2> "$work/online-$name.err"
 }
 side host --auto 11:0:1 --features "$play" --host "$port" --record "$work/online-host.mov" ${arcade:+--net-arcade} \
     --net-name "Host P1" --net-say "hello from the host" &
 host=$!
 if [ -n "$arcade" ]; then sleep 4; else sleep 0.5; fi
 status=0
-side join --auto 12:0:1 --join "127.0.0.1:$port" --net-name "Joiner" --net-say "good luck!" || { echo "FAILED: the joining side stopped"; tail -3 "$work/online-join.err"; status=1; }
+side join --auto 12:0:1 --features "$guest_set" --join "127.0.0.1:$port" --net-name "Joiner" --net-say "good luck!" || { echo "FAILED: the joining side stopped"; tail -3 "$work/online-join.err"; status=1; }
 wait "$host" || { echo "FAILED: the host stopped"; tail -3 "$work/online-host.err"; status=1; }
+if [ -n "$first_to" ]; then
+    case "$first_to" in 0) format=Casual ;; 1) format=FT5 ;; 2) format=FT10 ;; esac
+    for name in host join; do
+        if ! grep -qx "online: set format $format" "$work/online-$name.err"; then
+            echo "FAILED: $name did not take the host's $format choice"
+            status=1
+        fi
+    done
+    if [ "$status" = 0 ]; then echo "ok: both sides took the host's $format choice"; fi
+fi
 # (each side's log ends where it last had the other's controls: the shorter is what both have)
 lines=$(wc -l < "$work/online-host.txt" | tr -d ' ')
 joined=$(wc -l < "$work/online-join.txt" | tr -d ' ')
@@ -64,6 +86,15 @@ elif cmp -s <(head -n "$lines" "$work/online-host.txt") <(head -n "$lines" "$wor
 else
     echo "FAILED: the two sides differ from frame $(diff <(head -n "$lines" "$work/online-host.txt") <(head -n "$lines" "$work/online-join.txt") | grep '^<' | head -1 | cut -d' ' -f2)"
     status=1
+fi
+if [ -n "$first_to" ]; then
+    scores() { awk -v last="$lines" '/^online: set FT[0-9]+ frame / && $5 <= last' "$1"; }
+    if cmp -s <(scores "$work/online-host.err") <(scores "$work/online-join.err"); then
+        echo "ok: set-score events match through the last shared confirmed frame"
+    else
+        echo "FAILED: the two sides awarded different set scores"
+        status=1
+    fi
 fi
 # (each side knows both names, and has the other's line of the chat: sent straight to it, through the lost packets)
 for name in host join; do

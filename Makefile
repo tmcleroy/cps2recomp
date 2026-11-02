@@ -43,7 +43,11 @@ check-widescreen: port
 else
 
 .PHONY: check audit example smoke check-common clean games collection collection-app android
-check: audit check-common smoke
+check: audit check-common check-first-to smoke
+
+.PHONY: check-first-to
+check-first-to:
+	@sh tools/check_first_to.sh
 
 audit:
 	@tools/audit.sh

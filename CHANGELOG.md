@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **First-to sets online:** Marvel vs. Capcom and X-Men vs. Street Fighter offer Casual, FT5 and FT10 under
+  **Online > Set format**. The host's choice applies to both players. Confirmed two-player results award game wins,
+  and both players return to the launcher after agreeing on the final score and showing the winner briefly. Casual is the
+  default, including in Pure. Both players need this updated online protocol.
+
 - **Every game's songs, listed** (#234): [docs/SONGS.md](docs/SONGS.md) names each song a custom soundtrack's files
   can replace, game by game, without starting the game first (`--list-songs` prints one game's; `tools/songs.py`
   writes the page). Super Street Fighter II Turbo's second version of each stage's tune is now described as what it

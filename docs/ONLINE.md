@@ -7,6 +7,38 @@ Deck and Windows can play each other.
 
 ## Starting a match
 
+### First to five or ten
+
+Marvel vs. Capcom and X-Men vs. Street Fighter offer **Online > Set format**: **Casual** (the default, including
+Pure), **FT5** or **FT10**. The host chooses before connecting; the joining player's choice is replaced by the
+host's for that session. Other games do not offer this setting yet. Both players must use a build with this feature.
+
+FT5 means five complete game wins, FT10 ten. A strip at the top centre shows the names around `0 FT5 0` (or FT10),
+and a banner announces the set winner. A loss does not erase earlier wins. Only confirmed two-player results count: draws and fights
+against the computer do not award points. Predictions replaced during rollback do not count.
+
+Once the target is reached, both games confirm the same final score. Gameplay freezes while the winner is shown
+for two seconds, then both game windows close and return to the launcher. Start another match there for a fresh set;
+there is no mutual rematch button yet. A terminal-started game needs its launcher executable beside it.
+On Windows an already-open matching launcher is brought forward; otherwise the launcher is started without autoplay.
+A disconnect before the target is reached is an interrupted set, not a forfeit; reconnecting starts a fresh score. These are casual sets, with no ranking or server
+record of the winner. Offline play and recorded game inputs are unchanged; offline replays do not display set scores.
+
+From a terminal, the host can add `--features online_set=1` for FT5 or `--features online_set=2` for FT10;
+`online_set=0` is Casual. For example, after building the game:
+
+```sh
+build/mvsc/mvsc --rom rom/mvsc --host 7845 --net-service off --features online_set=1
+```
+
+For the local second player, in another terminal:
+
+```sh
+build/mvsc/mvsc --rom rom/mvsc --join 127.0.0.1:7845 --net-service off
+```
+
+### Connecting
+
 Each player needs the game and its ROM set. The launcher's **Online** page (in the sidebar) has it all:
 
 - **Open matches**: the matches other players are hosting in the lobby, in every game, each with **Join**. A match in a

@@ -28,6 +28,7 @@ namespace {
 void RegisterBattle() {
     battle::Description d;
     d.result = kResult;
+    d.onlineSets = true;
     d.roundsToWin = 1; // (a tag match is decided in one round: online play's win streaks)
     d.cameraXAt = marvel::CameraXAt;
     d.cameraYAt = marvel::CameraYAt;

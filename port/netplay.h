@@ -16,6 +16,8 @@
 // (a desync), and the match stops, saying so.
 #pragma once
 
+#include "first_to.h"
+
 #include <array>
 #include <cstdint>
 #include <deque>
@@ -61,9 +63,11 @@ public:
     static constexpr int kDefaultPort = 7845;
     // The packets' layout (2: the host's state sent at the start); two copies must have the same to play, and the
     // lobby shows only matches of this one (the launcher asks with it too)
-    static constexpr int kProtocol = 6; // (3: the version said in the hello and to the service; 4: the welcome's flags;
+    static constexpr int kProtocol = 9; // (3: the version said in the hello and to the service; 4: the welcome's flags;
                                         // 5: the welcome's program words, so two regions' sets play together;
-                                        // 6: each player's name in the hello and the welcome, and the chat)
+                                        // 6: each player's name in the hello and the welcome, and the chat;
+                                        // 8: host-selected first-to sets; 9: agreed set completion;
+                                        // 7 reserved for the online test-switch contribution)
     static constexpr int kMostAhead = 8;   // frames run on guessed controls at most
     static constexpr int kKept = 16;       // states kept (more than the most a rollback goes back)
     static constexpr int kInputs = 128;    // controls kept, each side's
@@ -148,6 +152,9 @@ public:
     bool Ready(uint64_t frame);
     // The frame, with this side's player's controls: rollback first if a guess was wrong, then the frame itself
     void Frame(Port &port, uint16_t controls);
+    void BeginSet(); // after the host's features and starting state have been taken by both players
+    const FirstTo &Set() const { return set; }
+    bool SetFinished() const { return setFinished; }
     // Why the match is over ("" while it goes on); and whether that is a failure (a desync, the other side lost)
     std::string ended;
     bool failed = false;
@@ -168,6 +175,11 @@ public:
 
 private:
     Settings settings;
+    FirstTo set;
+    int peerTarget = 0, peerScore[2] = {};
+    uint64_t setSent = 0, setAgreed = 0;
+    bool setFinished = false;
+    void FinishSet();
     UdpSocket socket;
     // (the handshake: the hello or the welcome, sent again until answered)
     std::vector<uint8_t> greeting;
@@ -224,6 +236,7 @@ private:
         std::vector<uint8_t> state; // the game before the frame
         uint16_t used = 0;          // the other side's controls it was run with
         uint32_t hash = 0;          // the game after it, last run (when hashed)
+        FirstTo::Frame result;     // replaced on rollback; scored only when this frame is confirmed
     };
     std::array<Kept, kKept> kept;
     uint64_t confirmed = 0;  // the frames before this were run with the other side's real controls

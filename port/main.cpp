@@ -822,7 +822,9 @@ bool Port::Tick() {
             if (!net->ended.empty()) {
                 // (the other side gone: a window waits for them again; the host's leaving ends the joining side's)
                 const bool again = !opt.headless && (net->Hosting() ? net->left || net->lost : net->lost);
-                if (hostedFromMenu) {
+                if (net->SetFinished()) {
+                    quit = true;
+                } else if (hostedFromMenu) {
                     BackToSolo(again); // (the other side gone: still hosted, the player's own game again)
                 } else if (again) {
                     Again(net->ended);
@@ -944,6 +946,11 @@ void Port::Shown(std::vector<uint32_t> &pixels, std::vector<SDL_Rect> *panels) c
         if (!cameIn) {
             status("PRESS START TO JOIN", said++ * 14);
         }
+        if (net->Set().Winner() >= 0) {
+            const std::string result = "PLAYER " + std::to_string(net->Set().Winner() + 1) + " WINS THE FT" +
+                                       std::to_string(net->Set().Target()) + " SET";
+            status(result.c_str(), said++ * 14);
+        }
     }
     // (--net-arcade: the host playing while it waits; the wait, and the match's code to give, at the bottom)
     if (net && connecting && net->Arcade()) {
@@ -985,7 +992,42 @@ void Port::Shown(std::vector<uint32_t> &pixels, std::vector<SDL_Rect> *panels) c
                 panels->push_back({static_cast<int>(x) - 3, static_cast<int>(y) - 2, static_cast<int>(width) + 7, 12});
             }
         };
-        for (int side = 0; side < 2; side++) {
+        if (net->Set().Target()) {
+            // Keep the score centred even when the players' names have different lengths.
+            constexpr float size = 1;
+            // Whole font dots stay sharp; compact padding keeps the strip clear of the life bars.
+            auto smallText = [&](float x, const std::string &text, recomp::text::Color colour) {
+                canvas.Text(std::floor(x), 2, size, 0, colour, text.c_str());
+            };
+            const std::string left = std::to_string(net->Set().Score(0));
+            const std::string format = "FT" + std::to_string(net->Set().Target());
+            const std::string right = std::to_string(net->Set().Score(1));
+            const float leftWidth = recomp::text::TextWidth(left.c_str(), size);
+            const float formatWidth = recomp::text::TextWidth(format.c_str(), size);
+            const float rightWidth = recomp::text::TextWidth(right.c_str(), size);
+            const float centre = (across - formatWidth) / 2.0f;
+            const float leftAt = centre - 6 - leftWidth;
+            const float rightAt = centre + formatWidth + 6;
+            canvas.Fill(0, 0, across, 11, {20, 22, 30, 220});
+            smallText(leftAt, left, {0, 220, 220, 255});
+            smallText(centre, format, {255, 210, 80, 255});
+            smallText(rightAt, right, {0, 220, 220, 255});
+            if (!FeatureOn("online_hide_names")) {
+                for (int side = 0; side < 2; ++side) {
+                    std::string name = net->Name(side);
+                    if (name.empty()) {
+                        name = "Player " + std::to_string(side + 1);
+                    }
+                    const float width = recomp::text::TextWidth(name.c_str(), size);
+                    const float x = side == 0 ? leftAt - 9 - width : rightAt + rightWidth + 9;
+                    smallText(x, name, {255, 255, 255, 255});
+                }
+            }
+            if (panels) {
+                panels->push_back({0, 0, across, 11});
+            }
+        }
+        for (int side = 0; side < 2 && !net->Set().Target(); side++) {
             float y = 38.0f;
             const std::string name = net->Name(side);
             if (!FeatureOn("online_hide_names") && !name.empty()) {
@@ -1804,6 +1846,7 @@ void Port::ArcadeFrame() {
 
 void Port::Matched() {
     connecting = false;
+    net->BeginSet();
     chatHintUntil = tick + kChatTicks;
     // (the host's player, playing while it waited, is in already; the joining side is told so in the welcome)
     cameIn = net->Arcade() && cameIn;
@@ -2378,7 +2421,7 @@ bool ParseArgs(int argc, char **argv, port::Options &o) {
 // their ROM set in it before (its --play), or at its first page to choose one. The launcher is the game's own, or
 // the collection's (cps2recomp-launcher: then at this game's page, or --play ID). True: it was started.
 #ifndef __ANDROID__
-bool StartLauncher() {
+bool StartLauncher(bool play = true) {
     const char *base = SDL_GetBasePath();
     if (!base) {
         return false;
@@ -2395,6 +2438,32 @@ bool StartLauncher() {
         }
     }
     bool setUp = false;
+#ifdef _WIN32
+    if (!play) {
+        struct Existing { std::filesystem::path exe; HWND window = nullptr; } existing{std::filesystem::u8path(launcher)};
+        EnumWindows([](HWND window, LPARAM value) -> BOOL {
+            auto &found = *reinterpret_cast<Existing *>(value);
+            if (!IsWindowVisible(window)) return TRUE;
+            DWORD id = 0;
+            GetWindowThreadProcessId(window, &id);
+            HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, id);
+            if (!process) return TRUE;
+            wchar_t path[32768];
+            DWORD length = static_cast<DWORD>(std::size(path));
+            std::error_code error;
+            const bool same = QueryFullProcessImageNameW(process, 0, path, &length) &&
+                              std::filesystem::equivalent(found.exe, std::filesystem::path(path), error);
+            CloseHandle(process);
+            if (same) { found.window = window; return FALSE; }
+            return TRUE;
+        }, reinterpret_cast<LPARAM>(&existing));
+        if (existing.window) {
+            ShowWindow(existing.window, SW_RESTORE);
+            SetForegroundWindow(existing.window);
+            return true;
+        }
+    }
+#endif
     // (the launcher's own folder and file; the collection's keeps each game's file in a section of its own. In
     // portable mode the folder is in user/ beside the launcher, as the launcher has it: recomp-common/folders.h)
     const std::string name = recomp::FolderName(collection ? "CPS-2 Recomp" : GAME_NAME);  // (as the launcher names it)
@@ -2410,8 +2479,8 @@ bool StartLauncher() {
         prefs.load();
         setUp = !prefs.get(collection ? "game." GAME_ID : "game", "rom").empty();
     }
-    const char *own[] = {launcher.c_str(), setUp ? "--play" : nullptr, nullptr};
-    const char *theirs[] = {launcher.c_str(), setUp ? "--play" : "--page", GAME_ID, nullptr};
+    const char *own[] = {launcher.c_str(), play && setUp ? "--play" : nullptr, nullptr};
+    const char *theirs[] = {launcher.c_str(), play && setUp ? "--play" : "--page", GAME_ID, nullptr};
     SDL_Process *process = SDL_CreateProcess(collection ? theirs : own, false);
     if (!process) {
         return false;
@@ -2628,10 +2697,15 @@ int main(int argc, char **argv) {
             return 5;
         }
         fprintf(stderr, "online: %s\n", p.net->ended.c_str());
-        if (!p.opt.headless) {
+        if (!p.opt.headless && !p.net->SetFinished()) {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, GAME_NAME, p.net->ended.c_str(), nullptr);
         }
     }
+#ifndef __ANDROID__
+    if (!p.opt.headless && p.net && p.net->SetFinished() && !StartLauncher(false)) {
+        fprintf(stderr, "online: set finished; the launcher could not be opened.\n");
+    }
+#endif
     if (p.opt.checkRewrites && !ReportRewrites()) {
         return 4;
     }

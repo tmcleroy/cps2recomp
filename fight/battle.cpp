@@ -2035,10 +2035,34 @@ int battle::RoundsToWin() {
     return d.roundsToWin;
 }
 
+bool battle::OnlineSets() {
+    return g_described && d.onlineSets;
+}
+
+bool battle::TwoPeopleNow() {
+    if (!OnlineSets()) {
+        return false;
+    }
+    for (int side = 0; side < 2; ++side) {
+        const uint32_t player = Player(side);
+        if (!Ram8(player + d.active) || (Ram8(player + d.computer) != 0) != d.computerIsZero) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void battle::Register(const Description &description) {
     d = description;
     g_described = true;
     Game &game = TheGame();
+    if (d.onlineSets) {
+        game.features.push_back({"online_set", "Online", "Set format",
+                                 "The host chooses Casual, first to 5 games or first to 10 games before connecting. "
+                                 "Both players see the score. After both confirm the winner, the result is shown briefly, "
+                                 "then both return to the launcher. Offline play is unchanged.",
+                                 0, {"Casual", "FT5", "FT10"}});
+    }
     game.pages.push_back({kSurvival, kModes, "One opponent after another on the health you have left. How many can you beat?"});
     game.pages.push_back({kEndless, kModes, "Two fighters the game plays, for as long as you like. Touch the controls to take one over."});
     game.commands.push_back({"survival_start", kSurvival, "Start",
