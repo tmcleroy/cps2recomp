@@ -2277,6 +2277,8 @@ bool ParseArgs(int argc, char **argv, port::Options &o) {
             // session, switched in the game's menu only, are not in it)
             fputs(port::LauncherFeatureList().c_str(), stdout);
             exit(0);
+        } else if (a == "--input-devices") {
+            o.deviceSettingsPath = next();
         } else if (a == "--settings") {
             o.settingsPath = next();
         } else if (a == "--shader") {

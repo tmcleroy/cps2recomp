@@ -109,3 +109,11 @@ if(LAUNCHER_UPDATE_REPO)
     target_sources(launcher PRIVATE ${RECOMP_LAUNCHER_DIR}/src/update.cpp)
     target_compile_definitions(launcher PRIVATE LAUNCHER_UPDATE_REPO="${LAUNCHER_UPDATE_REPO}")
 endif()
+
+# Optional host presentation policy. Explicit --size and hidden-renderer captures keep their dimensions.
+if(LAUNCHER_ROOMY_WINDOW)
+    target_compile_definitions(launcher PRIVATE LAUNCHER_ROOMY_WINDOW)
+endif()
+if(LAUNCHER_CONTENT_MAX_WIDTH)
+    target_compile_definitions(launcher PRIVATE LAUNCHER_CONTENT_MAX_WIDTH=${LAUNCHER_CONTENT_MAX_WIDTH})
+endif()

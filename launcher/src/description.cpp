@@ -8,6 +8,7 @@
 // that tools/gamecfg.py --collection writes from them all.
 
 #include "launcher.h"
+#include "device_controls.h"
 
 #include "../../machine/romset.h"
 #include "../../port/bindings.h"
@@ -227,6 +228,9 @@ launcher::Description describe_game(const GameInfo& game) {
             args.push_back("--features");
             args.push_back(features);
         }
+        if (!launch.controls_folder.empty()) {
+            args.push_back("--input-devices"); args.push_back(launch.controls_folder.string());
+        }
         return args;
     };
     d.saves_folder = true;
@@ -255,6 +259,7 @@ launcher::Description describe_game(const GameInfo& game) {
     // (its own table: a collection's game has the one every game shares, Collection::bindings, unless it is given a
     // layout of its own on the Controllers page)
     d.bindings = port::MakeBoundTable(*game.players ? atoi(game.players) : 2, game.buttons, false).table;
+    d.hardware_controls = DrawGamepadControls;
     d.controls_heading = "WHILE PLAYING";
     d.controls = {{"Keys", keep(std::string("Esc, F1, the left stick's click, or Start and Select together: the in-game menu (") + (forAll ? "training mode and the other modes" : "the game's options") + ", save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   " + (forAll ? "Backspace: start over (training)   " : "") + "F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)")}};
     return d;

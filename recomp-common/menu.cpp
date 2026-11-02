@@ -4,6 +4,8 @@
 #include "menu.h"
 
 #include "text.h"
+#include <cmath>
+#include <cstdio>
 
 #include <algorithm>
 #include <cstring>
@@ -14,7 +16,7 @@ using namespace text;
 
 namespace {
     // (after MenuRow's kinds, which the first page's rows keep)
-    enum { kRowSave, kRowLoad, kRowSlot, kRowSpeed, kRowAction, kRowQuit, kRowResume, kRowCommand, kRowPage, kRowFeature, kRowBack, kRowMute };
+    enum { kRowSave, kRowLoad, kRowSlot, kRowSpeed, kRowAction, kRowQuit, kRowResume, kRowCommand, kRowPage, kRowFeature, kRowBack, kRowMute, kRowSlider, kRowHeading };
 } // namespace
 
 void Menu::Configure(MenuConfig config) {
@@ -48,7 +50,8 @@ bool Menu::Exists(const std::string &page) const {
     if (page.empty()) {
         return true;
     }
-    if (std::any_of(m_config.features.begin(), m_config.features.end(), [&](const MenuFeature &f) { return f.category == page; }) ||
+    if (std::any_of(m_config.sliders.begin(), m_config.sliders.end(), [&](const MenuSlider &f) { return f.category == page; }) ||
+        std::any_of(m_config.features.begin(), m_config.features.end(), [&](const MenuFeature &f) { return f.category == page; }) ||
         std::any_of(m_config.commands.begin(), m_config.commands.end(), [&](const MenuCommand &c) { return c.category == page; }) ||
         std::any_of(m_config.pages.begin(), m_config.pages.end(), [&](const MenuPage &p) { return p.name == page && !p.rows.empty(); })) {
         return true;
@@ -153,6 +156,7 @@ void Menu::Fill() {
                             }
                         }
                     };
+                    for (const MenuSlider &slider : m_config.sliders) addPage(slider.category);
                     for (const MenuFeature &feature : m_config.features) {
                         addPage(feature.category);
                     }
@@ -165,6 +169,18 @@ void Menu::Fill() {
             }
         }
     } else {
+        const auto *detailPage = PageOf(m_page);
+        if (detailPage && !detailPage->details.empty()) {
+            for (const auto &detail : detailPage->details) {
+                if (detail.visible && !detail.visible()) continue;
+                const int kind = detail.kind == MenuDetailRow::Feature ? kRowFeature : detail.kind == MenuDetailRow::Slider ? kRowSlider :
+                                 detail.kind == MenuDetailRow::Command ? kRowCommand : kRowHeading;
+                m_rows.push_back({kind, detail.index, detail.text});
+            }
+            m_rows.push_back({kRowBack, 0, ""});
+            m_selected = std::clamp(m_selected, 0, static_cast<int>(m_rows.size()) - 1);
+            return;
+        }
         // (the page's own Speed and Mute rows first)
         for (const MenuPage &page : m_config.pages) {
             for (const MenuRow::Kind kind : page.name == m_page ? page.rows : std::vector<MenuRow::Kind>()) {
@@ -174,6 +190,9 @@ void Menu::Fill() {
                     m_rows.push_back({kRowMute, 0, ""});
                 }
             }
+        }
+        for (size_t i = 0; i < m_config.sliders.size(); ++i) {
+            if (m_page == m_config.sliders[i].category) m_rows.push_back({kRowSlider, i, ""});
         }
         for (size_t i = 0; i < m_config.commands.size(); i++) {
             if (m_page == m_config.commands[i].category) {
@@ -200,6 +219,13 @@ void Menu::Open() {
     Fill(); // (on the page, and the row, it was closed on)
     m_open = true;
 }
+void Menu::Refresh() {
+    if (m_rows.empty()) { Fill(); return; }
+    const Row chosen = m_rows[m_selected];
+    Fill();
+    for (size_t n = 0; n < m_rows.size(); ++n)
+        if (m_rows[n].kind == chosen.kind && m_rows[n].index == chosen.index && m_rows[n].page == chosen.page) { m_selected = static_cast<int>(n); break; }
+}
 
 Menu::Chosen Menu::Buttons(unsigned pressed) {
     if (!m_open || !pressed || m_rows.empty()) {
@@ -216,15 +242,25 @@ Menu::Chosen Menu::Buttons(unsigned pressed) {
     }
     const int count = static_cast<int>(m_rows.size());
     if (pressed & kMenuUp) {
-        m_selected = (m_selected + count - 1) % count;
+        do { m_selected = (m_selected + count - 1) % count; } while (m_rows[m_selected].kind == kRowHeading);
     }
     if (pressed & kMenuDown) {
-        m_selected = (m_selected + 1) % count;
+        do { m_selected = (m_selected + 1) % count; } while (m_rows[m_selected].kind == kRowHeading);
     }
     const Row row = m_rows[static_cast<size_t>(m_selected)];
     const bool press = pressed & kMenuConfirm;
     // Rows with several values: Left and Right go through them (Confirm goes on to the next, around)
     const int step = (pressed & kMenuLeft) ? -1 : (press || (pressed & kMenuRight)) ? 1 : 0;
+    if (row.kind == kRowSlider && step && m_config.setSlider) {
+        const auto &slider = m_config.sliders[row.index];
+        if (slider.step <= 0 || slider.maximum <= slider.minimum) return {};
+        const double old = m_config.sliderValue ? m_config.sliderValue(row.index) : slider.usual;
+        const double unit = slider.step * ((pressed & kMenuFast) ? 10 : 1);
+        const double next = press ? slider.usual : m_config.sliderStep ? m_config.sliderStep(row.index, old, step, pressed & kMenuFast)
+                                                                     : std::round((old + step * unit) / slider.step) * slider.step;
+        m_config.setSlider(row.index, std::clamp(next, slider.minimum, slider.maximum));
+        return {};
+    }
     if (row.kind == kRowSlot && step) { // 1-9, around
         SetSlot(m_slot + step);
         return {};
@@ -268,6 +304,7 @@ Menu::Chosen Menu::Buttons(unsigned pressed) {
             }
             m_config.setValue(row.index, to);
         }
+        Fill(); // A mode may reveal/hide detail controls (e.g. Shelf versus Peak Q).
         return {};
     }
     if (!press) {
@@ -309,6 +346,8 @@ void Menu::Draw(uint32_t *pixels, int width, int height) const {
         title = "Resume";
         rowDescription = "Back to the game.";
         switch (row.kind) {
+        case kRowHeading:
+            title = row.page; rowDescription.clear(); break;
         case kRowSave:
             title = "Save state";
             rowDescription = "Keeps the game as it is now in the slot.";
@@ -371,6 +410,17 @@ void Menu::Draw(uint32_t *pixels, int width, int height) const {
             title = "Back";
             rowDescription = Parent(m_page).empty() ? "To the first page (Left does the same)." : "To the " + Parent(m_page) + " page (Left does the same).";
             break;
+        case kRowSlider: {
+            const auto &slider = m_config.sliders[row.index];
+            const double chosen = m_config.sliderValue ? m_config.sliderValue(row.index) : slider.usual;
+            char number[64];
+            snprintf(number, sizeof(number), slider.signedValue ? "%+.*f" : "%.*f", slider.decimals, chosen);
+            title = slider.title;
+            value = std::string(number) + slider.suffix;
+            valueColor = std::abs(chosen - slider.usual) < 0.000001 ? dim : on;
+            rowDescription = slider.description;
+            break;
+        }
         case kRowFeature: {
             const MenuFeature &feature = m_config.features[row.index];
             const int chosen = m_config.value ? m_config.value(row.index) : 0;
@@ -388,7 +438,10 @@ void Menu::Draw(uint32_t *pixels, int width, int height) const {
         }
     };
     // (the hint is one line unless the picture is a narrow one)
-    const std::string hint = "Up/Down: choose   Left/Right or " + m_config.confirmName + ": change   " + m_config.closeName + ": close";
+    const bool sliderPage = std::any_of(m_rows.begin(), m_rows.end(), [](const Row &r) { return r.kind == kRowSlider; });
+    const std::string hint = sliderPage ? "Up/Down: choose  Left/Right: adjust  Shift: faster  " + m_config.confirmName +
+        (m_rows[m_selected].kind == kRowSlider ? ": default  " : ": change  ") + m_config.closeName + ": close"
+        : "Up/Down: choose   Left/Right or " + m_config.confirmName + ": change   " + m_config.closeName + ": close";
     const int hintLines = TextLines(hint.c_str(), d, inner);
     // (rows closer together when there are many; and when even that does not fit, the rows about the chosen
     // one are shown)
@@ -405,8 +458,8 @@ void Menu::Draw(uint32_t *pixels, int width, int height) const {
     constexpr float kDivider = 9; // (the room a line between groups takes)
     const float dividers = static_cast<float>(std::count_if(m_rows.begin(), m_rows.end(), [](const Row &row) { return row.divider; }));
     const float room = height / d - around - dividers * kDivider;
-    const size_t shown = std::min(m_rows.size(), static_cast<size_t>(std::max(room / 15.0f, 1.0f)));
-    const float rowHeight = std::clamp(room / shown, 15.0f, 22.0f) * d;
+    const size_t shown = std::min(m_rows.size(), static_cast<size_t>(std::max(room / (sliderPage ? 26.0f : 15.0f), 1.0f)));
+    const float rowHeight = std::clamp(room / shown, sliderPage ? 26.0f : 15.0f, sliderPage ? 28.0f : 22.0f) * d;
     const size_t first = std::min(static_cast<size_t>(std::max(m_selected - static_cast<int>(shown) / 2, 0)), m_rows.size() - shown);
     const float panelHeight = pad + 16 * d + 6 * d + shown * rowHeight + dividers * kDivider * d + 8 * d + descriptionLines * kLineHeight * d + 4 * d + hintLines * kLineHeight * d + pad;
     const float px = (width - panelWidth) / 2, py = (height - panelHeight) / 2;
@@ -435,7 +488,15 @@ void Menu::Draw(uint32_t *pixels, int width, int height) const {
         std::string title, value, rowDescription;
         Color valueColor = white;
         Describe(m_rows[i], title, value, valueColor, rowDescription);
-        const float ty = y + (rowHeight - 14 * d) / 2;
+        const float ty = y + (sliderPage ? 2 * d : (rowHeight - 14 * d) / 2);
+        if (m_rows[i].kind == kRowHeading) {
+            const float textWidth = TextWidth(title.c_str(), 1.5f * d);
+            const float at = x + (inner - textWidth) / 2;
+            canvas.Fill(x, ty + 5 * d, std::max((inner - textWidth) / 2 - 6 * d, 0.0f), d, dim);
+            canvas.Fill(at + textWidth + 6 * d, ty + 5 * d, std::max((inner - textWidth) / 2 - 6 * d, 0.0f), d, dim);
+            canvas.Text(at, ty, 1.5f * d, 0, dim, title.c_str());
+            continue;
+        }
         canvas.Text(x, ty, 2 * d, 0, white, title.c_str());
         if (!value.empty()) {
             // (a value too long for the room beside the title: in the small letters, and cut short if even
@@ -453,6 +514,17 @@ void Menu::Draw(uint32_t *pixels, int width, int height) const {
                 }
                 canvas.Text(x + inner - TextWidth(small.c_str(), d), ty + 4 * d, d, 0, valueColor, small.c_str());
             }
+        }
+        if (m_rows[i].kind == kRowSlider) {
+            const auto &slider = m_config.sliders[m_rows[i].index];
+            const double chosen = m_config.sliderValue ? m_config.sliderValue(m_rows[i].index) : slider.usual;
+            const float fraction = static_cast<float>(std::clamp((chosen - slider.minimum) / (std::max(slider.maximum - slider.minimum, 0.000001)), 0.0, 1.0));
+            const float usual = static_cast<float>((slider.usual - slider.minimum) / std::max(slider.maximum - slider.minimum, 0.000001));
+            const float by = y + rowHeight - 5 * d;
+            canvas.Fill(x, by, inner, 2 * d, {65, 70, 82, 255});
+            canvas.Fill(x, by, inner * fraction, 2 * d, on);
+            canvas.Fill(x + inner * usual, by - d, d, 4 * d, dim);
+            canvas.Fill(x + (inner - 2 * d) * fraction, by - d, 2 * d, 4 * d, selected ? white : on);
         }
         if (selected) {
             description = rowDescription;

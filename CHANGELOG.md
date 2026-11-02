@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Physics Assignment Joysticks
+
+Assign physical gamepads independently of SDL enumeration order. A lone controller can feed P2 while P1 uses a keyboard; explicit devices are reserved before automatic slots. Ambiguous identities are not assigned. Buttons, triggers and signed directions of either stick can be bound; the default left stick remains until explicit stick-direction bindings are supplied. This feature changes device routing, not game physics. Shared UI requires the companion recomp-common controller-extension API.
+
 ## Unreleased
 
 - **The Punisher**, set `punisheru` (USA 930422): the second CPS-1 game, a beat-'em-up for two players (the Punisher

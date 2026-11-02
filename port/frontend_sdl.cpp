@@ -5,6 +5,8 @@
 #include "game_info.h"
 
 #include "bindings.h"
+#include "device_settings.h"
+#include "gamepad_assignment.h"
 #include "port.h"
 #include "png_write.h"
 #include "present.h"
@@ -114,13 +116,15 @@ namespace {
             if (zoomHeld && (Shoulder(input.button) || DPad(input.button))) {
                 continue;
             }
-            if ((input.button >= 0 && SDL_GetGamepadButton(gp, static_cast<SDL_GamepadButton>(input.button))) ||
-                (input.axis >= 0 && SDL_GetGamepadAxis(gp, static_cast<SDL_GamepadAxis>(input.axis)) > kDead)) {
+            if (recomp::PadInputPressed(gp, input)) {
                 pad |= Table().bits[action];
             }
         }
-        const int x = zoomHeld ? 0 : SDL_GetGamepadAxis(gp, SDL_GAMEPAD_AXIS_LEFTX);
-        const int y = zoomHeld ? 0 : SDL_GetGamepadAxis(gp, SDL_GAMEPAD_AXIS_LEFTY);
+        bool explicitDirections = false;
+        for (int action = 0; action < std::min(4, Table().table.count); ++action)
+            explicitDirections = explicitDirections || recomp::IsStickAxis(g_bindings.pad[player][action].axis);
+        const int x = zoomHeld || explicitDirections ? 0 : SDL_GetGamepadAxis(gp, SDL_GAMEPAD_AXIS_LEFTX);
+        const int y = zoomHeld || explicitDirections ? 0 : SDL_GetGamepadAxis(gp, SDL_GAMEPAD_AXIS_LEFTY);
         if (x < -kDead) pad |= kLeft;
         if (x > kDead) pad |= kRight;
         if (y < -kDead) pad |= kUp;
@@ -171,6 +175,8 @@ namespace {
 } // namespace
 
 int RunWindowed(Port &port) {
+    const auto root = DeviceSettingsFolder(port.opt.settingsPath, port.opt.deviceSettingsPath, InCollection());
+    const auto assignment = LoadGamepadAssignments((root / "gamepads.ini").string());
     SDL_SetHint(SDL_HINT_AUDIO_DEVICE_SAMPLE_FRAMES, "256");
     if (!port.opt.settingsPath.empty()) {
         g_bindings = LoadBindings(port.opt.settingsPath, Table());
@@ -639,14 +645,17 @@ int RunWindowed(Port &port) {
             pads[0] |= touch.Read(port.menu.IsOpen());
             bool trigger = false, both = false;
             const bool stepOnTrigger = !PadInputBound(g_bindings, Table(), {-1, SDL_GAMEPAD_AXIS_LEFT_TRIGGER});
-            for (size_t i = 0; i < gamepads.size() && static_cast<int>(i) < Players(); i++) {
-                pads[i] |= ReadGamepad(gamepads[i], static_cast<int>(i));
+            const auto assigned = ResolveGamepadAssignments(assignment, DescribeGamepads(gamepads));
+            for (size_t i = 0; i < gamepads.size(); ++i) {
+                const int player = AssignedGamepadPlayer(SDL_GetGamepadID(gamepads[i]), assigned);
+                if (player < 0 || player >= Players()) continue;
+                pads[player] |= ReadGamepad(gamepads[i], player);
                 const bool left = stepOnTrigger && SDL_GetGamepadAxis(gamepads[i], SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > kDead;
                 trigger = trigger || left;
                 hurry = hurry || (multi && left);
                 // (while the game runs, the left trigger is its player's Tag: kTag; in a Multi game run, fast forward)
                 if (left && !port.paused && !multi) {
-                    pads[i] |= kTag;
+                    pads[player] |= kTag;
                 }
                 both = both || (SDL_GetGamepadButton(gamepads[i], SDL_GAMEPAD_BUTTON_START) &&
                                 SDL_GetGamepadButton(gamepads[i], SDL_GAMEPAD_BUTTON_BACK));

@@ -27,6 +27,7 @@ enum : unsigned {
     kMenuLeft = 4,
     kMenuRight = 8,
     kMenuConfirm = 16, // chooses a row, changes it, goes into a page (as Right does)
+    kMenuFast = 64, // coarse slider adjustment (Shift)
     kMenuBack = 32,    // leaves a page for the one it was reached from; on the first page, closes the menu
 };
 
@@ -67,6 +68,14 @@ struct MenuCommand {
     std::string title;
     std::string description;
 };
+struct MenuDetailRow {
+    enum Kind { Feature, Slider, Command, Heading } kind;
+    size_t index = 0;
+    std::string text;
+    std::function<bool()> visible;
+    MenuDetailRow(Kind kind, size_t index = 0, std::string text = {}, std::function<bool()> visible = {})
+        : kind(kind), index(index), text(std::move(text)), visible(std::move(visible)) {}
+};
 
 // More about a page than its name, for the pages that need it. A page is a category of features and
 // commands; one with a parent is reached from the parent's page, not from the first.
@@ -77,9 +86,22 @@ struct MenuPage {
     bool counts = true;      // its row says how many of its features are on
     // Speed and Mute rows at the top of this page, rather than on the first page (other kinds are left out here)
     std::vector<MenuRow::Kind> rows = {};
+    std::vector<MenuDetailRow> details = {}; // Optional ordered, grouped controls.
+};
+
+struct MenuSlider {
+    std::string category, title, description, suffix;
+    double minimum, maximum, step, usual;
+    int decimals = 2;
+    bool signedValue = false;
 };
 
 struct MenuConfig {
+    std::vector<MenuSlider> sliders;
+    std::function<double(size_t)> sliderValue;
+    std::function<void(size_t, double)> setSlider;
+    std::function<double(size_t, double, int, bool)> sliderStep; // Optional non-linear adjustment.
+
     // The first page, in groups; a line is drawn between groups.
     std::vector<std::vector<MenuRow>> groups;
     std::vector<MenuFeature> features;
@@ -118,6 +140,7 @@ public:
     // the player was on are kept where they still exist.
     void Configure(MenuConfig config);
     void Open();
+    void Refresh();
     void Close() {
         m_open = false;
     }

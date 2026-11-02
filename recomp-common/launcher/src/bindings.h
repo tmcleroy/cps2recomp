@@ -28,11 +28,14 @@ inline constexpr int kBindPlayers = 2;    // how many players a table has unless
 inline constexpr int kBindMaxPlayers = 4; // ... and the most it can say
 inline constexpr int kBindMaxActions = 32;
 
-// A gamepad's button, or one of its triggers, or nothing
+// A gamepad button, trigger or signed stick direction, or nothing
 struct PadInput {
     int button = -1; // SDL_GamepadButton
-    int axis = -1;   // SDL_GamepadAxis (a trigger)
-    bool operator==(const PadInput &other) const { return button == other.button && axis == other.axis; }
+    int axis = -1;   // SDL_GamepadAxis
+    int direction = 1; // -1 or +1 for a stick half-axis; triggers use +1
+    bool operator==(const PadInput &other) const {
+        return button == other.button && axis == other.axis && (axis < 0 || direction == other.direction);
+    }
     bool operator!=(const PadInput &other) const { return !(*this == other); }
 };
 
@@ -79,24 +82,43 @@ inline std::string KeyText(SDL_Scancode key) {
 inline SDL_Scancode KeyFromText(const std::string &text) {
     return text == "none" ? SDL_SCANCODE_UNKNOWN : SDL_GetScancodeFromName(text.c_str());
 }
+inline constexpr int kPadThreshold = 16000;
+inline bool IsStickAxis(int axis) {
+    return axis >= SDL_GAMEPAD_AXIS_LEFTX && axis <= SDL_GAMEPAD_AXIS_RIGHTY;
+}
 inline std::string PadText(PadInput input) {
     const char *name = input.button >= 0 ? SDL_GetGamepadStringForButton(static_cast<SDL_GamepadButton>(input.button))
-                       : input.axis >= 0 ? SDL_GetGamepadStringForAxis(static_cast<SDL_GamepadAxis>(input.axis))
-                                         : nullptr;
-    return name && *name ? name : "none";
+                       : input.axis >= 0 ? SDL_GetGamepadStringForAxis(static_cast<SDL_GamepadAxis>(input.axis)) : nullptr;
+    if (!name || !*name) return "none";
+    return std::string(name) + (input.button < 0 && IsStickAxis(input.axis) ? (input.direction < 0 ? "-" : "+") : "");
 }
 inline PadInput PadFromText(const std::string &text) {
-    PadInput input;
-    if (text != "none") {
-        input.button = SDL_GetGamepadButtonFromString(text.c_str());
-        if (input.button < 0) {
-            input.axis = SDL_GetGamepadAxisFromString(text.c_str());
-            if (input.axis != SDL_GAMEPAD_AXIS_LEFT_TRIGGER && input.axis != SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) {
-                input.axis = -1;
-            }
-        }
-    }
-    return input;
+    if (text.empty() || text == "none") return {};
+    const int button = SDL_GetGamepadButtonFromString(text.c_str());
+    if (button >= 0) return {button, -1};
+    const char sign = text.back();
+    const bool signedAxis = sign == '-' || sign == '+';
+    const std::string name = signedAxis ? text.substr(0, text.size() - 1) : text;
+    const int axis = SDL_GetGamepadAxisFromString(name.c_str());
+    if (signedAxis && IsStickAxis(axis)) return {-1, axis, sign == '-' ? -1 : 1};
+    if (!signedAxis && (axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)) return {-1, axis};
+    return {}; // Stick axes require a direction; preserve rejection of ambiguous/invalid values.
+}
+// Shared by the launcher's capture path and the native virtual-controller tests.
+inline PadInput PadInputFromEvent(const SDL_Event &event) {
+    if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) return {event.gbutton.button, -1};
+    if (event.type != SDL_EVENT_GAMEPAD_AXIS_MOTION) return {};
+    const int axis = event.gaxis.axis, value = event.gaxis.value;
+    if (IsStickAxis(axis) && (value < -kPadThreshold || value > kPadThreshold)) return {-1, axis, value < 0 ? -1 : 1};
+    if ((axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) && value > kPadThreshold) return {-1, axis};
+    return {};
+}
+inline bool PadInputPressed(SDL_Gamepad *gamepad, PadInput input) {
+    if (!gamepad) return false;
+    if (input.button >= 0) return SDL_GetGamepadButton(gamepad, static_cast<SDL_GamepadButton>(input.button));
+    if (input.axis < 0) return false;
+    const int value = SDL_GetGamepadAxis(gamepad, static_cast<SDL_GamepadAxis>(input.axis));
+    return input.direction < 0 ? value < -kPadThreshold : value > kPadThreshold;
 }
 inline std::string BindingSection(bool gamepad, int player) {
     return (gamepad ? "gamepad" : "keyboard") + std::to_string(player + 1);
@@ -153,6 +175,19 @@ inline bool PadInputBound(const Bindings &b, const BindTable &table, PadInput in
         }
     }
     return false;
+}
+
+inline void BindKeyboardKey(Bindings &bindings, const BindTable &table, int player, int action,
+                            SDL_Scancode key, bool playerScoped = false) {
+    if (player < 0 || player >= table.players || action < 0 || action >= table.count) return;
+    const auto was = bindings.key[player][action];
+    for (int who = 0; who < table.players; ++who) {
+        if (playerScoped && who != player) continue;
+        for (int other = 0; other < table.count; ++other)
+            if ((who != player || other != action) && key != SDL_SCANCODE_UNKNOWN && bindings.key[who][other] == key)
+                bindings.key[who][other] = who == player ? was : SDL_SCANCODE_UNKNOWN;
+    }
+    bindings.key[player][action] = key;
 }
 
 } // namespace recomp

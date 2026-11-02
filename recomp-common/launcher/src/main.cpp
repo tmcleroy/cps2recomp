@@ -38,6 +38,7 @@
 #include "imgui_impl_sdlrenderer3.h"
 #include "imgui_internal.h"
 #include "ui.h"
+#include "window_layout.h"
 
 namespace {
 
@@ -258,6 +259,7 @@ int main(int argc, char** argv) {
     std::string play_id, page_id;
     std::vector<std::string> extra;  // (after --: the game's)
     int width = 980, height = 660;
+    bool explicit_size = false;
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "--") == 0) {
             extra.assign(argv + i + 1, argv + argc);
@@ -265,6 +267,7 @@ int main(int argc, char** argv) {
         } else if (std::strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             screenshot_prefix = argv[++i];
         } else if (std::strcmp(argv[i], "--size") == 0 && i + 1 < argc) {
+            explicit_size = true;
             if (std::sscanf(argv[++i], "%dx%d", &width, &height) != 2 || width < 320 || height < 240) {
                 width = 980, height = 660;
             }
@@ -303,8 +306,15 @@ int main(int argc, char** argv) {
     // (no bigger than the screen: a small one, or one with large text, has less room than the launcher would take)
     int window_width = static_cast<int>(width * scale), window_height = static_cast<int>(height * scale);
     int least_width = static_cast<int>(600 * scale), least_height = static_cast<int>(400 * scale);
-    SDL_Rect usable;
+    SDL_Rect usable{}, initial{};
+    bool fitted = false;
     if (SDL_GetDisplayUsableBounds(SDL_GetPrimaryDisplay(), &usable)) {
+#ifdef LAUNCHER_ROOMY_WINDOW
+        if (!explicit_size && screenshot_prefix.empty()) {
+            initial = launcher::InitialLauncherBounds(usable, scale);
+            window_width = initial.w; window_height = initial.h; fitted = true;
+        }
+#endif
         window_width = std::min(window_width, usable.w);
         window_height = std::min(window_height, usable.h);
         least_width = std::min(least_width, usable.w);
@@ -319,7 +329,11 @@ int main(int argc, char** argv) {
     }
     SDL_SetWindowMinimumSize(window, least_width, least_height);
     SDL_SetRenderVSync(renderer, 1);
-    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    if (fitted) {
+        int top = 0, left = 0, bottom = 0, right = 0;
+        SDL_GetWindowBordersSize(window, &top, &left, &bottom, &right);
+        SDL_SetWindowPosition(window, initial.x, initial.y - top / 2);
+    } else SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();

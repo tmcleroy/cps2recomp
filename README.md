@@ -211,3 +211,8 @@ Fighter*, *Super Gem Fighter*, *Pocket Fighter*, *Vampire Savior*, *Vampire Hunt
 and their characters are trademarks of Marvel Characters, Inc.; *Alien vs. Predator* and *Cadillacs and Dinosaurs* are
 trademarks of their owners; "CPS-1", "CPS-2" and "QSound" are names and trademarks of their owners, used here only to
 say what the programs work with.
+
+
+## Physics Assignment Joysticks
+
+Assign physical gamepads independently of SDL enumeration order. A lone controller can feed P2 while P1 uses a keyboard; explicit devices are reserved before automatic slots. Ambiguous identities are not assigned. Buttons, triggers and signed directions of either stick can be bound; the default left stick remains until explicit stick-direction bindings are supplied. This feature changes device routing, not game physics. Shared UI requires the companion recomp-common controller-extension API.
