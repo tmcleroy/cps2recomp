@@ -222,3 +222,8 @@ Fighter*, *Super Gem Fighter*, *Pocket Fighter*, *Vampire Savior*, *Vampire Hunt
 and their characters are trademarks of Marvel Characters, Inc.; *Alien vs. Predator* and *Cadillacs and Dinosaurs* are
 trademarks of their owners; "CPS-1", "CPS-2" and "QSound" are names and trademarks of their owners, used here only to
 say what the programs work with.
+
+
+## Neutralize Opposing Directions
+
+Optional MAME-style opposing-direction cancellation per game and player, off in Pure. Left+Right and Up+Down cancel independently after input sources merge. Open Controllers in the in-game menu or use the launcher feature selector. No motion scripting, timing buffer or extra frame queue is added.

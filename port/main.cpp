@@ -19,6 +19,7 @@
 #include "../runtime/spare.h"
 #include "../runtime/guest.h"
 #include "port.h"
+#include "bindings.h"
 #include "../recomp-common/folders.h"
 #include "../recomp-common/proxy.h"
 #include "../recomp-common/settings.h"
@@ -146,6 +147,15 @@ namespace {
 // Every game's features that come from the port itself (after the game's own: RegisterGame), for the game and
 // for the list the launcher asks for (--list-features)
 void RegisterPortFeatures() {
+    static constexpr const char *names[] = {"neutralize_directions_1", "neutralize_directions_2",
+        "neutralize_directions_3", "neutralize_directions_4"};
+    static constexpr const char *titles[] = {"Neutralize Opposing Directions — Player 1", "Neutralize Opposing Directions — Player 2",
+        "Neutralize Opposing Directions — Player 3", "Neutralize Opposing Directions — Player 4"};
+    for (int player = 0; player < GamePlayers(); ++player) {
+        TheGame().features.push_back({names[player], "Controllers", titles[player],
+            "MAME-style neutral cancellation: Left+Right cancels horizontally and Up+Down vertically. "
+            "Left+Down+Right leaves Down. Applies after keyboard, gamepad and touch merge. This game/player only.", kFeatureOwn});
+    }
     // (run_ahead: Port::RunAhead)
     TheGame().features.push_back({"run_ahead", "Game", "Run-ahead",
                                   "Shows the game a frame or two further on than it is, so that what you press is seen sooner than "

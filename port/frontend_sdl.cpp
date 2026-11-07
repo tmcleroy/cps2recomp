@@ -5,6 +5,7 @@
 #include "game_info.h"
 
 #include "bindings.h"
+#include "neutralize.h"
 #include "port.h"
 #include "png_write.h"
 #include "present.h"
@@ -721,7 +722,8 @@ int RunWindowed(Port &port) {
             }
             heldAtClose &= previousPad;
             for (int player = 0; player < Machine::kMaxPlayers; player++) {
-                port.pad[player] = pads[player] & ~heldAtClose;
+                const bool neutral = FeatureOn(NeutralizeFeatureName(player));
+                port.pad[player] = (neutral ? NeutralizeOpposingDirections(pads[player]) : pads[player]) & ~heldAtClose;
             }
         }
 

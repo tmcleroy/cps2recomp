@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Neutralize Opposing Directions
+
+Optional MAME-style opposing-direction cancellation per game and player, off in Pure. Left+Right and Up+Down cancel independently after input sources merge. Open Controllers in the in-game menu or use the launcher feature selector. No motion scripting, timing buffer or extra frame queue is added.
+
 ## Unreleased
 
 - **Favourite stages**: in the in-game menu, Enter or A on a list of stages (training's, the stage viewer's, the endless
