@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Alien vs. Predator's free play with a chute each**: with the Board page's Players on "Three, a chute each", free
+  play now gives each player a credit on their own count (the game keeps one for each chute then), so players 2 and 3
+  can join too; before, only the first player's count was filled.
 - **Alien vs. Predator's player mode as the board has it**: the Board page's hook worked out the two variables
   the game reads from the player mode with modes 0 and 2 the other way round, so a board as it left the factory (two
   players, one chute) played as three players with a chute each, taking the third player's coin and start, and

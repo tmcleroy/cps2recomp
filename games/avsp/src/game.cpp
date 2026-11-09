@@ -128,8 +128,18 @@ namespace {
             TitleFrame(machine);
             return; // (free play and the cheats are not the board's own game)
         }
-        if (FeatureOn("free_play") && Ram8(kCredits) < 3) {
-            SetRam8(kCredits, 3); // (three: every player can join)
+        if (FeatureOn("free_play")) {
+            if (Ram8(kOneChute) != 0) {
+                if (Ram8(kCredits) < 3) {
+                    SetRam8(kCredits, 3); // (three: every player can join)
+                }
+            } else {
+                for (int n = 0; n < kPlayers; n++) { // (a chute each: every player's own count)
+                    if (Ram8(ChuteCredits(n)) < 1) {
+                        SetRam8(ChuteCredits(n), 1);
+                    }
+                }
+            }
         }
         for (int n = 0; n < kPlayers; n++) {
             const uint32_t p = Player(n);

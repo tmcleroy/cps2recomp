@@ -36,8 +36,11 @@ constexpr ShowPart Part(uint16_t step) {
     }
 }
 
-// The credits (byte, 0-9; found from dumps after one, two and three coins; 0016B4 holds it at 9)
+// The credits (byte, 0-9; found from dumps after one, two and three coins; 0016B4 holds it at 9). Each coin chute has
+// a record of 8 bytes from 186 (00167E), with its own count at +6: 18C, 194, 19C. With one chute for all (kOneChute)
+// every coin goes to the first, 18C; with a chute each (player mode 0) each player's coins go to their own (0016C4)
 constexpr uint32_t kCredits = kVars + 0x18C;
+constexpr uint32_t ChuteCredits(int n) { return kCredits + 8u * static_cast<uint32_t>(n); }
 
 // The settings as the game uses them, taken from the settings memory's record (FF0EF0) by 003C5E at the board's
 // start (called at 000D1A, returns to 000D20) and again when the test menu is left (0B3C64, returns to 0B3C6A).
