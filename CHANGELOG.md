@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Alien vs. Predator's player mode as the board has it**: the Board page's hook worked out the two variables
+  the game reads from the player mode with modes 0 and 2 the other way round, so a board as it left the factory (two
+  players, one chute) played as three players with a chute each, taking the third player's coin and start, and
+  "Three, a chute each" played as two. They are now worked out as the game's own 003C5E does (found comparing work RAM
+  with MAME frame by frame).
 - **Other games' stages are drawn by the game showing them**: a borrowed stage's board keeps only what its code hands
   over each frame, and the game's own renderer draws the stage from that, with the fighters over it (the same picture;
   the other board no longer draws one of its own).

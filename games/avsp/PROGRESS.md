@@ -20,8 +20,9 @@
   9 free play), continue 1BE, flip 1B2, demo sound 1AD, sound 1D2, player mode 1CE (0 three players with a chute
   each, 1 three on one chute, 2 two: the factory's), difficulty 1CF (0-7 for 1-8; 3), extend 1D0 (0 none, 1-3 only
   at 100,000/400,000/1,000,000, 4-7 first and every; 1), lives 1D1 (0-3 start and continue 1/2/3/5, 4-7 start
-  1/2/3/5 and continue one more; 4). From the player mode it works out a third player (1C5) and a chute each (1C6),
-  which the game reads. The Board page hooks the two returns (000D20, 0B3C6A).
+  1/2/3/5 and continue one more; 4). From the player mode it works out one chute for all (1C5: modes 1 and 2) and two
+  players only (1C6: mode 2), which the game reads (003D3C-003D5A). The Board page hooks the two returns (000D20,
+  0B3C6A).
 - **The show** (A5+00, word; not A5+02, a countdown, which "Straight to the title" read at first): 2-C as the board
   starts, then 0, then the attract's parts, one every four steps from 4 to 68 (the step between is the next part's
   setting up; the table at 004706 has their routines): 4 and 38 the notices (486A), 8 and 3C QSound's (4C14), C and

@@ -51,9 +51,10 @@ constexpr uint32_t kSetExtend = kVars + 0x1D0;     // 0 none; 1-3 only at 100000
                                                    // 100000/400000, 400000/500000, 800000/600000, 1200000/1000000 (1)
 constexpr uint32_t kSetLives = kVars + 0x1D1;      // 0-3 start and continue with 1, 2, 3, 5; 4-7 start 1, 2, 3, 5 and
                                                    // continue with one more (4: start 1, continue 2)
-// ... and what 003C5E works out from the player mode (the game reads these, not kSetPlayerMode): a third player,
-// and a chute of each player's own
-constexpr uint32_t kThreePlayers = kVars + 0x1C5, kThreeChutes = kVars + 0x1C6;
+// ... and what 003C5E works out from the player mode (the game reads these, not kSetPlayerMode; 003D3C-003D5A):
+// one coin chute for all (1 unless the mode is 0), and two players only (1 unless the mode is 0 or 1). With both 0
+// the game keeps a credit count for each player (00160A) and takes the third player's coin and start
+constexpr uint32_t kOneChute = kVars + 0x1C5, kTwoPlayers = kVars + 0x1C6;
 
 // The scene the game is in (word, two for each: 0, 2, 4...; cleared before a game, set to 2 by 0082DC as the players start
 // after round 1's story, stepped on by 00C860 and the like) and the round shown for it (word, from the table at 00CCA0: scenes 0-2 are round 1, 3-4 round 2, 5

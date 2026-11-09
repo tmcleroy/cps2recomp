@@ -51,8 +51,8 @@ namespace {
         for (size_t n = 0; n < std::size(kSettings); n++) {
             g_board[n] = Ram8(kSettings[n].variable);
         }
-        g_boardThree[0] = Ram8(kThreePlayers);
-        g_boardThree[1] = Ram8(kThreeChutes);
+        g_boardThree[0] = Ram8(kOneChute);
+        g_boardThree[1] = Ram8(kTwoPlayers);
         for (const Setting &setting : kSettings) {
             const int choice = FeatureValue(setting.name);
             if (choice > 0) {
@@ -62,8 +62,8 @@ namespace {
         }
         // (as 003C5E works them out from the player mode)
         const uint8_t mode = Ram8(kSetPlayerMode);
-        SetRam8(kThreePlayers, mode != 2 ? 1 : 0); // (traced: the factory's 2 is two players)
-        SetRam8(kThreeChutes, mode == 0 ? 1 : 0);
+        SetRam8(kOneChute, mode != 0 ? 1 : 0); // (003D3C-003D5A; the factory's 2 is two players on one chute)
+        SetRam8(kTwoPlayers, mode != 0 && mode != 1 ? 1 : 0);
     }
     bool SettingsRead(M68K &) {
         PutChoices();
@@ -118,8 +118,8 @@ namespace {
             for (size_t n = 0; n < std::size(kSettings); n++) {
                 SetRam8(kSettings[n].variable, g_board[n]);
             }
-            SetRam8(kThreePlayers, g_boardThree[0]);
-            SetRam8(kThreeChutes, g_boardThree[1]);
+            SetRam8(kOneChute, g_boardThree[0]);
+            SetRam8(kTwoPlayers, g_boardThree[1]);
             g_chosen = false;
         }
         ModesFrame(machine);
