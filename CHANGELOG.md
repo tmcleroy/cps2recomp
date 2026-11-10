@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.5.0
+
+**Five more games, and the whole Street Fighter II family brought up to the other fighting games**: Super Street
+Fighter II: The New Challengers, Street Fighter II: The World Warrior on the classic CPS-1 board, Cyberbots, and two
+shoot-'em-ups with the practice mode: Progear, and Dimahoo, the first vertical game, its picture shown upright. The
+World Warrior, Champion Edition and Hyper Fighting now have training mode and everything else Super Turbo has, and
+Cyberbots' stages come to the other games. Also a camera zoom that follows the distance between the fighters, the
+picture drawn on the GPU by default, and online matches that keep the host's settings.
+
 - **Dimahoo** (`dimahoou`, USA 000121; the European set and the Japanese *Great Mahou Daisakusen* of the same date play
   too), Raizing's vertical shoot-'em-up and the collection's third shooter, on the toolkit's `shmup/`: free play (the
   board's own), straight to the title, start at stage, the Board page (difficulty, ships, bombs, extra ships, one loop or
