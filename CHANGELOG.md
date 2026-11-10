@@ -11,6 +11,11 @@ World Warrior, Champion Edition and Hyper Fighting now have training mode and ev
 Cyberbots' stages come to the other games. Also a camera zoom that follows the distance between the fighters, the
 picture drawn on the GPU by default, and online matches that keep the host's settings.
 
+**Known issue:** in Vampire Savior 2 and Vampire Hunter 2, widescreen shows a blank strip at one end of ten of the other
+games' stages: the nine of 1.4.0 (Darkstalkers' and Night Warriors' Demitri's, Night Warriors' Donovan's, Alpha 2's
+Dan's, Alpha 3's Ken's, Sodom's, Guy's and Dhalsim's, and Super Turbo's Dee Jay's) and Cyberbots' space stage. Their own
+stages, and every other game, are not affected.
+
 - **Dimahoo** (`dimahoou`, USA 000121; the European set and the Japanese *Great Mahou Daisakusen* of the same date play
   too), Raizing's vertical shoot-'em-up and the collection's third shooter, on the toolkit's `shmup/`: free play (the
   board's own), straight to the title, start at stage, the Board page (difficulty, ships, bombs, extra ships, one loop or
