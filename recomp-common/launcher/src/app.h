@@ -84,6 +84,7 @@ private:
         std::string id;                  // a collection's game's (a port's: "")
         std::string name;                // its name; its player folder is named by it
         std::string series;              // a collection's game's series (launcher::CollectionGame::series), or ""
+        std::string released, hardware;  // (launcher::CollectionGame's: for sorting and the hardware choice)
         std::string exe;                 // its program, beside the launcher
         std::string file_section;        // launcher.ini: where its file is ("game", or "game.<id>")
         std::string video_section;       // its Display switches ("video", or "video.<id>")
@@ -95,6 +96,7 @@ private:
         launcher::FileCheck file;        // (under mutex_ when checked on a thread)
         std::atomic<bool> checking{false};
         std::thread checker;
+        bool nearby_tried = false;       // (Description::find_nearby was asked: once, when it had no usable file)
         std::vector<int> values_before;  // its features' values when it was started (a collection's: what its menu changed)
         GameProcess game;                // its program, while it runs (a collection's games can run at once)
         bool was_running = false;
@@ -141,6 +143,15 @@ private:
     // after those that are, in the collection's order). The player changes it by dragging a game's row in the
     // sidebar, or with Move up and Move down on the game's page.
     void load_order();
+    // launcher.ini [games] sort: "" (the player's order), "name" or "released": the order load_order() makes, the
+    // player's own order kept beneath it (a game dragged while sorted makes what is shown the player's order)
+    std::string sort_by() const;
+    // The hardware the collection's games name (none, or one: no choice offered), and the one chosen
+    // (launcher.ini [games] hardware; "": all)
+    std::vector<std::string> hardwares() const;
+    std::string hardware_chosen() const;
+    // Whether the game is on the list as the hardware chosen has it
+    bool on_hardware(size_t which) const;
     // order_ with each series' games together, where its first game with a page is (else its first game)
     void group_order();
     // The games with a page as the places of the sidebar's list, in the player's order: a game, or a series' games
@@ -168,6 +179,11 @@ private:
     // Game file.
     void choose_game_file(size_t which);
     void use_game_file(size_t which, const std::string& path);
+    // A file the folder the download was unpacked to had for a game, its check already done: its file, unless the
+    // player chose one meanwhile, or the game's is usable (Description::find_beside)
+    void adopt_file(size_t which, const std::string& path, const launcher::FileCheck& file);
+    // That folder looked in, once, for the games that have no usable file (on a thread; frame() takes what it found)
+    void look_beside();
     void play(size_t which, const std::vector<std::string>& extra = {});
     // A collection's: every game's file looked for in a folder (on a thread), or a file or folder given to
     // whichever game takes it
@@ -343,6 +359,20 @@ private:
     std::vector<std::pair<size_t, std::string>> found_;  // (under mutex_) what it found: (game, file)
     bool found_ready_ = false;                          // (under mutex_)
     std::string find_message_;
+
+    // The folder the download was unpacked to, looked in for the games that have no file (Description::find_beside)
+    struct FoundBeside {
+        size_t which;
+        std::string path;
+        launcher::FileCheck file;  // (the game's own check's, done on that thread)
+    };
+    std::atomic<bool> beside_wanted_{false};  // (a game's description has find_beside)
+    std::atomic<bool> beside_started_{false};
+    std::atomic<bool> beside_running_{false};  // (until frame() has taken what it found)
+    std::atomic<bool> stopping_{false};        // (the launcher is closing: the look stops after the game it is on)
+    std::thread beside_;
+    std::vector<FoundBeside> beside_found_;  // (under mutex_)
+    bool beside_ready_ = false;              // (under mutex_)
 
     char feature_search_[128] = {};  // what the Features page is narrowed to ("": all of them)
     bool focus_search_ = false;      // Ctrl+F (or Cmd+F): into the search box

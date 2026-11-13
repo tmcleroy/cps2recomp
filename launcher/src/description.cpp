@@ -9,6 +9,8 @@
 
 #include "launcher.h"
 
+#include "romcheck.h"
+
 #include "../../machine/romset.h"
 #include "../../port/bindings.h"
 #include "../../port/i18n.h"
@@ -161,6 +163,84 @@ std::vector<std::filesystem::path> rom_set_candidates(const GameInfo& game, cons
     return list;
 }
 
+// The sets each game plays, for the check of the `roms` folder beside the launcher (romcheck.h): its own set's files,
+// then those of each other region of it (game.cfg's other_set, which has its own program files and key and the set's
+// graphics, sound and samples)
+std::vector<romcheck::Game> rom_games_of(const GameInfo* list, size_t count) {
+    auto add = [](std::vector<romcheck::Need>& into, const std::vector<cps2recomp::RomFile>& from) {
+        for (const cps2recomp::RomFile& file : from) {
+            into.push_back({file.name, file.crc});
+        }
+    };
+    std::vector<romcheck::Game> games;
+    for (size_t n = 0; n < count; n++) {
+        const GameInfo& game = list[n];
+        const cps2recomp::RomList roms = cps2recomp::ParseRomList(game.program, game.graphics, game.sound_program, game.samples, game.key,
+                                                                  game.rom_set, game.rom_parent, game.board, game.cps_b, game.other_set);
+        romcheck::Game one;
+        one.id = game.id;
+        one.name = game.name;
+        one.set = game.rom_set;
+        one.parent = game.rom_parent;
+        romcheck::Region own;
+        own.id = game.rom_set;
+        own.name = game.rom_name;
+        add(own.files, roms.program);
+        add(own.files, roms.graphics);
+        add(own.files, roms.soundProgram);
+        add(own.files, roms.samples);
+        add(own.files, roms.key);
+        one.regions.push_back(std::move(own));
+        for (const cps2recomp::RomList::Other& other : roms.others) {
+            romcheck::Region region;
+            region.id = other.set;
+            region.name = other.name;
+            add(region.files, other.program);
+            add(region.files, roms.graphics);
+            add(region.files, roms.soundProgram);
+            add(region.files, roms.samples);
+            add(region.files, other.key);
+            one.regions.push_back(std::move(region));
+        }
+        games.push_back(std::move(one));
+    }
+    return games;
+}
+
+// The report of a `roms` folder (romcheck.h), made once for it: which of its zips is which game's, by the files inside
+// them rather than by their names. A collection asks for each of its games in turn, so this is kept.
+const romcheck::Report& roms_report(const std::filesystem::path& folder) {
+    static std::filesystem::path made_for;
+    static romcheck::Report report;
+    if (made_for != folder) {
+        made_for = folder;
+        report = romcheck::scan(folder, romcheck::games());
+    }
+    return report;
+}
+
+// The `roms` folder the download ships beside the launcher (Description::find_beside): this game's set by its name,
+// which is what a release has, and what costs nothing to look for. Only when no zip is named for it does the folder's
+// report say which one is its, and that reads every zip there.
+std::vector<std::filesystem::path> rom_set_beside(const GameInfo& game, const std::filesystem::path& install_folder) {
+    const std::filesystem::path folder = install_folder / "roms";
+    std::vector<std::filesystem::path> list;
+    std::error_code error;
+    for (const std::filesystem::path& one : rom_set_candidates(game, folder)) {
+        if (std::filesystem::exists(one, error)) {
+            list.push_back(one);
+        }
+    }
+    if (list.empty()) {
+        for (const romcheck::Result& one : roms_report(folder).games) {
+            if (one.ok && !one.path.empty() && one.id == game.id) {
+                list.push_back(std::filesystem::u8path(one.path));
+            }
+        }
+    }
+    return list;
+}
+
 struct FeatureSwitch {
     std::string name, title, detail;
 };
@@ -241,6 +321,8 @@ launcher::Description describe_game(const GameInfo& game) {
     d.check = [game](const std::string& path) { return check_rom_set(game, path); };
     d.find_nearby = [game](const std::filesystem::path& folder) { return rom_set_nearby(game, folder); };
     d.candidates = [game](const std::filesystem::path& folder) { return rom_set_candidates(game, folder); };
+    // (a release ships its sets in a `roms` folder beside the launcher: the one the game is for becomes its own)
+    d.find_beside = [game](const std::filesystem::path& install_folder) { return rom_set_beside(game, install_folder); };
     const std::vector<FeatureSwitch> switches = feature_switches(game.display);
     // What the game is started with: the player's ROM set (read only) and their saves folder
     const std::string extra = game.extra_set ? game.extra_set : "";
@@ -531,12 +613,36 @@ const launcher::Collection& launcher::describe_collection() {
 #define LAUNCHER_OTHER_SET ""
 #endif
 
+namespace {
+
+// The one game of a port's own launcher, from the LAUNCHER_* definitions
+const GameInfo& only_game() {
+    static const GameInfo game = {LAUNCHER_GAME_EXE, LAUNCHER_GAME_NAME, LAUNCHER_ROM_SET, LAUNCHER_ROM_PARENT, LAUNCHER_ROM_NAME,
+                                  LAUNCHER_ROM_PROGRAM, LAUNCHER_ROM_GRAPHICS, LAUNCHER_ROM_SOUND_PROGRAM, LAUNCHER_ROM_SAMPLES,
+                                  LAUNCHER_ROM_KEY, LAUNCHER_DISPLAY_SWITCHES, LAUNCHER_PLAYERS, LAUNCHER_BUTTONS,
+                                  LAUNCHER_BOARD, LAUNCHER_CPS_B, "", "", LAUNCHER_OTHER_SET, "", ""};
+    return game;
+}
+
+}  // namespace
+
 const launcher::Description& launcher::describe() {
-    static const Description about = describe_game({LAUNCHER_GAME_EXE, LAUNCHER_GAME_NAME, LAUNCHER_ROM_SET, LAUNCHER_ROM_PARENT, LAUNCHER_ROM_NAME,
-                                                    LAUNCHER_ROM_PROGRAM, LAUNCHER_ROM_GRAPHICS, LAUNCHER_ROM_SOUND_PROGRAM, LAUNCHER_ROM_SAMPLES,
-                                                    LAUNCHER_ROM_KEY, LAUNCHER_DISPLAY_SWITCHES, LAUNCHER_PLAYERS, LAUNCHER_BUTTONS,
-                                                    LAUNCHER_BOARD, LAUNCHER_CPS_B, "", "", LAUNCHER_OTHER_SET, ""});
+    static const Description about = describe_game(only_game());
     return about;
 }
 
 #endif
+
+// The games whose sets the launcher looks for in its `roms` folder when it opens (romcheck.h): every game of the
+// collection's, or the one game of a port's own launcher
+const std::vector<romcheck::Game>& romcheck::games() {
+    static const std::vector<romcheck::Game> list = [] {
+#ifdef LAUNCHER_COLLECTION
+        return rom_games_of(kGames, sizeof kGames / sizeof kGames[0]);
+#else
+        return rom_games_of(&only_game(), 1);
+#endif
+    }();
+    return list;
+}
+

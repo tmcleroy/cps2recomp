@@ -186,7 +186,7 @@ const launcher::Description& the_description() {
 // Who a game is, as the launcher keeps it: a port's one game, or one of a collection's.
 struct Target {
     const launcher::Description* about = nullptr;
-    std::string id, name, folder_name, exe, series, file_section = "game", video_section = "video"; // (folder_name: its folder's, a collection's game's)
+    std::string id, name, folder_name, exe, series, released, hardware, file_section = "game", video_section = "video"; // (folder_name: its folder's, a collection's game's)
     std::filesystem::path folder;
 };
 
@@ -203,6 +203,8 @@ std::vector<Target> targets() {
             target.folder_name = game.folder && *game.folder ? game.folder : game.name;
             target.exe = game.exe;
             target.series = game.series ? game.series : "";
+            target.released = game.released ? game.released : "";
+            target.hardware = game.hardware ? game.hardware : "";
             target.file_section = std::string("game.") + game.id;
             target.video_section = std::string("video.") + game.id;
             const char* own = game.home_env && *game.home_env ? std::getenv(game.home_env) : nullptr;
@@ -653,6 +655,8 @@ App::App(SDL_Window* window)
         slot->name = target.name;
         slot->exe = target.exe;
         slot->series = target.series;
+        slot->released = target.released;
+        slot->hardware = target.hardware;
         slot->file_section = target.file_section;
         slot->video_section = target.video_section;
         slot->folder = target.folder;
@@ -692,13 +696,9 @@ App::App(SDL_Window* window)
         if (!remembered.empty()) {
             use_game_file(which, remembered);
         }
-        if (one.about->game_page && one.about->find_nearby && !one.checking && !one.file.usable()) {
-            // Nothing usable remembered: the port may know of one near the program
-            std::string nearby = one.about->find_nearby(base_path());
-            if (!nearby.empty()) {
-                use_game_file(which, nearby);
-            }
-        }
+        // (a file the port knows of near the program, or in the folder the download was unpacked to, is looked for
+        // once the check of a remembered one is done: frame(), which knows whether it turned out usable)
+        beside_wanted_ = beside_wanted_ || (one.about->game_page && one.about->find_beside);
     }
     find_shared();
     if (!collection_ && about_.game_page && (about_.open_on_game_page || about_.own_pages_after_game)) {
@@ -734,6 +734,7 @@ App::App(SDL_Window* window)
 }
 
 App::~App() {
+    stopping_ = true;  // (a look in the folder the download was unpacked to ends after the game it is on)
     for (auto& one : slots_) {
         if (one->checker.joinable()) {
             one->checker.join();
@@ -741,6 +742,9 @@ App::~App() {
     }
     if (finder_.joinable()) {
         finder_.join();
+    }
+    if (beside_.joinable()) {
+        beside_.join();
     }
 }
 
@@ -760,14 +764,15 @@ bool App::busy() const {
         return true;
     }
 #endif
-    return finding_ || any_running();
+    return finding_ || beside_running_ || any_running();
 }
 
 bool App::ready_for_keys() const {
     if (!collection_) {
         return !busy();
     }
-    return !finding_ && std::none_of(slots_.begin(), slots_.end(), [](const auto& one) { return one->checking.load(); });
+    return !finding_ && !beside_running_ &&
+           std::none_of(slots_.begin(), slots_.end(), [](const auto& one) { return one->checking.load(); });
 }
 
 bool App::any_running() const {
@@ -790,11 +795,37 @@ std::vector<size_t> App::titled() const {
     for (size_t which : order_) {
         const Slot& one = *slots_[which];
         std::lock_guard<std::mutex> lock(mutex_);
-        if (one.has_program() && !one.file_path.empty() && !one.checking && one.file.usable()) {
+        if (one.has_program() && !one.file_path.empty() && !one.checking && one.file.usable() && on_hardware(which)) {
             list.push_back(which);
         }
     }
     return list;
+}
+
+std::string App::sort_by() const {
+    const std::string by = prefs_.get("games", "sort");
+    return by == "name" || by == "released" ? by : std::string();
+}
+
+std::vector<std::string> App::hardwares() const {
+    std::vector<std::string> list;
+    for (const auto& one : slots_) {
+        if (!one->hardware.empty() && one->has_program() && std::find(list.begin(), list.end(), one->hardware) == list.end()) {
+            list.push_back(one->hardware);
+        }
+    }
+    return list.size() > 1 ? list : std::vector<std::string>();
+}
+
+std::string App::hardware_chosen() const {
+    const std::string chosen = prefs_.get("games", "hardware");
+    const std::vector<std::string> list = hardwares();
+    return std::find(list.begin(), list.end(), chosen) != list.end() ? chosen : std::string();
+}
+
+bool App::on_hardware(size_t which) const {
+    const std::string chosen = hardware_chosen();
+    return chosen.empty() || slots_[which]->hardware == chosen;
 }
 
 bool App::installed_only() const {
@@ -803,7 +834,7 @@ bool App::installed_only() const {
 
 bool App::shown(size_t which) const {
     const Slot& one = *slots_[which];
-    if (!one.has_program()) {
+    if (!one.has_program() || !on_hardware(which)) {
         return false;
     }
     if (!installed_only()) {
@@ -903,6 +934,23 @@ void App::load_order() {
         if (std::find(order_.begin(), order_.end(), which) == order_.end()) {
             order_.push_back(which);
         }
+    }
+    // (sorted: by name, or by when they came out, the unknown last; each series where its first game falls)
+    const std::string by = sort_by();
+    auto lower = [](std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return s;
+    };
+    if (by == "name") {
+        std::stable_sort(order_.begin(), order_.end(), [&](size_t a, size_t b) { return lower(slots_[a]->name) < lower(slots_[b]->name); });
+    } else if (by == "released") {
+        std::stable_sort(order_.begin(), order_.end(), [&](size_t a, size_t b) {
+            const std::string &x = slots_[a]->released, &y = slots_[b]->released;
+            if (x.empty() != y.empty()) {
+                return y.empty();
+            }
+            return x != y ? x < y : lower(slots_[a]->name) < lower(slots_[b]->name);
+        });
     }
     group_order();
 }
@@ -1027,6 +1075,7 @@ void App::reorder(const std::vector<size_t>& list) {
             ids += (ids.empty() ? "" : ",") + slots_[one]->id;
         }
         prefs_.set("games", "order", ids);
+        prefs_.set("games", "sort", ""); // (a game moved: what is shown is the player's own order now)
         prefs_.save();
     });
 }
@@ -1289,6 +1338,27 @@ void App::use_game_file(size_t which, const std::string& path) {
     });
 }
 
+// A file the folder the download was unpacked to had for a game (Description::find_beside), its check already done
+// on that thread: it becomes the game's unless the player chose one meanwhile, or the game's is usable. On this
+// thread, so that launcher.ini is written by one thread only.
+void App::adopt_file(size_t which, const std::string& path, const launcher::FileCheck& file) {
+    Slot& one = *slots_[which];
+    if (one.checking) {
+        return;  // (a file being checked is the player's: theirs stays)
+    }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!one.file_path.empty() && one.file.usable()) {
+            return;
+        }
+        one.file_path = path;
+        one.file = file;
+    }
+    // Remember where it is; the file itself is only ever read.
+    prefs_.set(one.file_section, one.about->file_key, path);
+    prefs_.save();
+}
+
 // A collection's: the file or folder dropped or chosen, for whichever of the games it is. A folder is looked in
 // for each game's file (its description's candidates); the folder itself may be one game's. On a thread (a
 // check may read a large file); frame() takes what was found.
@@ -1330,6 +1400,68 @@ void App::find_in(const std::string& path) {
             found_ready_ = true;
         }
         finding_ = false;
+        wake();
+    });
+}
+
+// The folder the download was unpacked to (folders.h: the app's own on macOS, the AppImage's), looked in for the
+// games that have no usable file: what each game's description says may be there (Description::find_beside), tried
+// in turn with the game's own check, so that a file it says is good is one Play will start. One thread for all of
+// them, and one read of each file. frame() takes what it found.
+void App::look_beside() {
+    if (beside_started_) {
+        return;
+    }
+    if (beside_.joinable()) {
+        beside_.join();
+    }
+    beside_started_ = true;
+    const std::filesystem::path install = recomp::InstallFolder(program_folder_);
+    std::vector<std::pair<size_t, const launcher::Description*>> games;
+    for (size_t which = 0; which < slots_.size(); which++) {
+        Slot& one = *slots_[which];
+        if (!one.about->game_page || !one.about->find_beside || !one.has_program()) {
+            continue;
+        }
+        bool usable = false;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            usable = !one.file_path.empty() && one.file.usable();
+        }
+        if (!usable) {
+            games.push_back({which, one.about});
+        }
+    }
+    if (games.empty()) {
+        return;
+    }
+    beside_running_ = true;
+    beside_ = std::thread([this, install, games] {
+        std::vector<FoundBeside> found;
+        for (const auto& [which, about] : games) {
+            if (stopping_) {
+                break;
+            }
+            for (const std::filesystem::path& one : about->find_beside(install)) {
+                if (stopping_) {
+                    break;
+                }
+                std::error_code error;
+                if (!std::filesystem::is_regular_file(one, error)) {
+                    continue;
+                }
+                launcher::FileCheck file = about->check(one.u8string());
+                if (file.usable()) {
+                    found.push_back({which, one.u8string(), std::move(file)});
+                    break;
+                }
+            }
+        }
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            beside_found_ = std::move(found);
+            beside_ready_ = true;
+        }
         wake();
     });
 }
@@ -1556,6 +1688,8 @@ void App::frame() {
     int picked_choice = -1;
     std::vector<std::pair<size_t, std::string>> found;
     bool found_ready = false;
+    std::vector<FoundBeside> beside;
+    bool beside_ready = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         picked.swap(picked_);
@@ -1567,6 +1701,9 @@ void App::frame() {
         found.swap(found_);
         found_ready = found_ready_;
         found_ready_ = false;
+        beside.swap(beside_found_);
+        beside_ready = beside_ready_;
+        beside_ready_ = false;
     }
     if (!picked.empty() && picked_choice >= 0) {
         set_folder_choice(picked_for_, picked_choice, picked);
@@ -1594,6 +1731,39 @@ void App::frame() {
             }
             find_message_ = TrFormat("Found {} ({} of {}).", {names, std::to_string(found.size()), std::to_string(here)});
         }
+    }
+    // A file the folder the download was unpacked to had for a game that has none: its check was the game's own
+    if (beside_ready) {
+        beside_running_ = false;
+        for (const FoundBeside& one : beside) {
+            adopt_file(one.which, one.path, one.file);
+        }
+    }
+    // A game whose file was remembered and is not one it can play: the port may know of one near the program (a
+    // build inside the source tree), and then of one in the folder the download was unpacked to. Both are looked
+    // for once, when no check is going on, so that the answer is about the file the game will have.
+    for (size_t which = 0; which < slots_.size(); which++) {
+        Slot& one = *slots_[which];
+        if (!one.about->game_page || !one.about->find_nearby || one.nearby_tried || one.checking) {
+            continue;
+        }
+        bool usable = false;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            usable = !one.file_path.empty() && one.file.usable();
+        }
+        if (usable) {
+            continue;
+        }
+        one.nearby_tried = true;
+        std::string nearby = one.about->find_nearby(program_folder_);
+        if (!nearby.empty()) {
+            use_game_file(which, nearby);
+        }
+    }
+    if (beside_wanted_ && !beside_started_ &&
+        std::none_of(slots_.begin(), slots_.end(), [](const auto& one) { return one->checking.load(); })) {
+        look_beside();
     }
     // A game that ended may have changed its settings.ini (its menu's features): what it left is what is shown
     // and kept
@@ -3256,12 +3426,51 @@ void App::library_page(float width) {
     ui::gap(10);
     Card games(width);
     bool first = true;
+    // The games' order: the player's own (dragged in the sidebar), by name, or by when they came out
+    {
+        static const std::vector<std::string> kSorts = {"Your order", "Name", "Release date"};
+        const std::string by = sort_by();
+        int chosen = by == "name" ? 1 : by == "released" ? 2 : 0;
+        row(width, "Sort", "The order of the games here and in the sidebar. Dragging a game in the sidebar makes the order shown your own.", 190.0f, 36.0f, [&] {
+            if (ui::dropdown("##sort", kSorts, chosen, 190.0f)) {
+                keep_page([&] {
+                    prefs_.set("games", "sort", chosen == 1 ? "name" : chosen == 2 ? "released" : "");
+                    prefs_.save();
+                    load_order();
+                });
+            }
+        });
+        first = false;
+    }
+    // Which hardware's games are listed, where the games name more than one
+    if (const std::vector<std::string> list = hardwares(); !list.empty()) {
+        std::vector<std::string> names = {Tr("All")};
+        names.insert(names.end(), list.begin(), list.end());
+        const std::string now = hardware_chosen();
+        int chosen = 0;
+        for (size_t i = 0; i < list.size(); i++) {
+            chosen = list[i] == now ? static_cast<int>(i) + 1 : chosen;
+        }
+        inset_separator(width);
+        row(width, "Hardware", "List every game, or only those of one arcade board (here and in the sidebar).", 190.0f, 36.0f, [&] {
+            if (ui::dropdown("##hardware", names, chosen, 190.0f)) {
+                keep_page([&] {
+                    prefs_.set("games", "hardware", chosen > 0 ? list[static_cast<size_t>(chosen) - 1] : "");
+                    prefs_.save();
+                    group_order();
+                });
+            }
+        });
+    }
     // Only the games the player has, for one who plays one or two of them (once one is set up)
     if (!titled().empty()) {
+        if (!first) {
+            inset_separator(width);
+        }
         const bool only = installed_only();
         size_t hidden = 0;
         for (size_t which = 0; which < slots_.size(); which++) {
-            hidden += slots_[which]->has_program() && !shown(which);
+            hidden += slots_[which]->has_program() && on_hardware(which) && !shown(which);
         }
         std::string detail = !only ? std::string("Leave out the games you have not set up, here and on the Features and Controllers pages.")
                              : hidden == 0 ? std::string("Every game is set up.")

@@ -75,6 +75,19 @@ bool system_dark() {
     return SDL_GetSystemTheme() != SDL_SYSTEM_THEME_LIGHT;
 }
 
+// The scale the player's display settings ask the UI to take (a Windows desktop at 150%: 1.5; macOS: 1, its window
+// coordinates already being points). SDL_GetWindowDisplayScale is the pixel density instead (2 on a Retina Mac),
+// which the renderer and ImGui's font rasterizer take into account themselves: scaling the style by it draws the
+// whole launcher twice as large, and pushes a row's control out of its card.
+float content_scale(SDL_Window* window) {
+    SDL_DisplayID display = window ? SDL_GetDisplayForWindow(window) : 0;
+    if (!display) {
+        display = SDL_GetPrimaryDisplay();
+    }
+    const float scale = SDL_GetDisplayContentScale(display);
+    return scale > 0.0f ? scale : 1.0f;
+}
+
 // --press: keys as the window would get them, and the buttons of a gamepad that exists only in the program.
 struct Presser {
     SDL_Window* window = nullptr;
@@ -346,7 +359,7 @@ int main(int argc, char** argv) {
     ImGui_ImplSDL3_SetGamepadMode(ImGui_ImplSDL3_GamepadMode_AutoAll);
 
     ui::set_dark(system_dark());
-    ui::apply_style(SDL_GetWindowDisplayScale(window));
+    ui::apply_style(content_scale(window));
     App app(window);
     if (!page_id.empty()) {
         app.set_page(page_id);
@@ -389,7 +402,16 @@ int main(int argc, char** argv) {
             }
             if (event.type == SDL_EVENT_SYSTEM_THEME_CHANGED) {
                 ui::set_dark(system_dark());
-                ui::apply_style(ui::scale());
+                ui::apply_style(content_scale(window));
+            }
+            // (the launcher on another display, with another scale setting: drawn as that display asks)
+            if ((event.type == SDL_EVENT_WINDOW_DISPLAY_CHANGED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) &&
+                event.window.windowID == SDL_GetWindowID(window)) {
+                const float asked = content_scale(window);
+                if (asked != ui::scale()) {
+                    ui::apply_style(asked);
+                    ui::load_fonts();
+                }
             }
             ui::request_frames(3);
         }

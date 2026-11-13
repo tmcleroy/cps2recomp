@@ -11,6 +11,10 @@ once; a feature changed in a game's own menu is set for the others too when you 
 **Controllers** page sets the keys and buttons for all of them; its Layout for chooses a game, and Its own layout
 gives that game keys and buttons apart from the others', under the game's own names for its buttons.
 
+A release that ships its sets beside the launcher — a `roms` folder of zips — has them found when it opens: each
+game whose set is there has it chosen for it, after the game's own check of it, and nothing is moved. A zip that is
+named for no game is found by the files in it.
+
 The games are in your order: drag a game's row in the sidebar up or down to keep the ones you play most at the top
 (with a gamepad or the keyboard, **Move up** and **Move down** on its page, under Play). The Games page lists them
 the same way. Playing only one or two of the games? Switch on **Only the games you have** on the Games page, and the
