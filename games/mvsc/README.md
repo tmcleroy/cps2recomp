@@ -12,7 +12,7 @@ call in.
 It has everything the other fighting games here have: a full **training mode** (hit boxes, frame data and a frame
 meter, input display, combo readout, a dummy that records, replays and guards), the **alternative modes** (attract
 mode, the stage and model viewers, survival, endless battle, ring out), **tag-team co-op and 2 vs 2** for up to four
-players, **widescreen**, **custom colours** with a colour editor, the **hidden characters** with no code, and the features every game shares: free play, straight to the
+players (online too, each on their own machine or two at one), the Dreamcast's **Cross Fever**, **widescreen**, **custom colours** with a colour editor, the **hidden characters** with no code, and the features every game shares: free play, straight to the
 title, the board's operator settings, cheats, save states, run-ahead, arcade timing, a custom soundtrack.
 
 > **Beta.** The game plays from start to ending and its code is checked instruction by instruction, but it has
@@ -135,10 +135,39 @@ modes page (or the launcher's Features page) chooses how.
 - **Fighting**: the controls are whoever plays the character on point. The partner tags in by pressing a strong
   punch and a strong kick together; the one on point can still tag out the same way, and team supers work as on the
   board. A knock-out, a tag or a team super changes who is on point exactly when the game does.
+- A team that starts with its second character (all three punches held as the choosing ends) still has each person
+  playing the character they chose.
 - A small label under each side's bars (P1-P4) says who is on point.
 - The launcher's Controllers page has keys and buttons for four players.
+- Online, a 2 vs 2 match is four people on up to four machines, all joining with the host's code: each on their own
+  machine, or two at one with its player 1 and player 2 controls (People at this machine, on the Online page). The
+  host's are players 1 (and 3), the others' the rest in the order they came ([online play](../../docs/ONLINE.md)).
 
 ![The model viewer: Mega Man on white, twice his size](../../docs/screenshots/mvsc/model-viewer.png)
+
+### Cross Fever
+
+The Dreamcast's mode for four people, on the board's game: "Cross Fever" on the Alternative modes page, with Tag team on
+(2 vs 2, or co-op). As on the Dreamcast, each character is moved by its own person all the time, where on the board a
+side's one panel moves both of its characters:
+
+- In a **Duo Team Attack** (down, down-back, back with a strong punch and a strong kick together; it takes the hyper
+  combo gauge's levels) the partner comes in beside the character on point, and each of the two is moved by its own
+  person, both teams' at once when both are in theirs: specials, hypers and all. The attack lasts twice as long, its
+  time taken off every other step of the game.
+- The person on point tags out (a strong punch and a strong kick), calls the special partner and starts the Duo Team
+  Attack; the partner's buttons move only the partner's character, so the partner can't call a tag in.
+- Both teams' hyper combo gauges fill slowly by themselves, besides what the fighting gives: one point every seventh
+  step of the game, so a level in 1,008 steps (14.5 seconds at seven steps in six frames), not during the team's own Duo
+  Team Attack.
+- Start is the taunt of whoever is on point, and holding it keeps taunting. (On the Dreamcast Start alone pauses, so
+  its taunt is the taunt button, light punch unless changed, with Start; holding both keeps taunting there.)
+- The rest is the board's, which the Dreamcast's game shares: how long the attack lasts (by the gauge's levels, and half
+  the bar) and which of the two stays in when it ends (by what each is doing).
+
+Online it is the host's choice, as Tag team is.
+
+![Cross Fever: both teams in their Duo Team Attacks, each of the four characters moved by its own person](../../docs/screenshots/mvsc/cross-fever.png)
 
 ## Widescreen
 

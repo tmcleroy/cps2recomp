@@ -80,8 +80,8 @@ Every fighting game has a full training mode, from the in-game menu (not yet the
 
 ## Online play
 
-Two players on two machines, with **rollback** netcode. Any mix of macOS, Linux, the Steam Deck and Windows can play
-each other.
+Two players on two machines, or four on up to four in the tag-team games, with **rollback** netcode. Any mix of macOS,
+Linux, the Steam Deck and Windows can play each other.
 
 - **Host** a match from the launcher, or from the game you're playing (its menu's **Online** page: you play on until
   someone joins), and give the other player its **code**: they type it on the launcher's **Online** page. If you've
@@ -94,17 +94,20 @@ each other.
   (best effort: the same set is surest).
 - Each player presses Start to come in, as at the arcade. The match uses the host's board settings (difficulty,
   timer, rounds); cheats are off.
-- **Ball battle and tag team online**: the host switches the match to either from Esc's overlay (and back to
-  versus), and each player picks their own fighters there.
-- **On screen:** both players' **names**, the ping (and the input delay, if you like), and the **win streak** of a
+- **Four players**: in the tag-team games, with Tag team at 2 vs 2 on the host, a match is four people, each on their
+  own machine or two at a machine (**People at this machine** on the Online page), all joining with the one code.
+- **Ball battle and tag team online**: in two-person matches, the host switches to either from Esc's overlay (and
+  back to versus), and each player picks their own fighters there.
+- **On screen:** the players' **names**, the ping (and the input delay, if you like), and the **win streak** of a
   player who keeps winning.
 - **FT5 / FT10:** in Marvel vs. Capcom and X-Men vs. Street Fighter, the host can choose **Set format** on the
-  **Online** page before connecting. Both players see the game score and the first player to reach the target wins
-  the set. After both players confirm the result, it is shown for two seconds and both return to the launcher.
+  **Online** page before connecting. Everyone sees the team score and the first side to reach the target wins
+  the set. After the participating machines agree on the result, it is shown for two seconds and they return to
+  the launcher.
 - **Watch** a match: a host who allows spectators has **Watch** on its lobby entry once the match is under way. Up to
   eight viewers follow it, a moment behind, without touching it.
-- **Chat** with the other player during a match: press T (or a gamepad's right stick, or the touch screen's Chat) and
-  type, on a keyboard or your system's on-screen keyboard. It goes straight between the two games.
+- **Chat** with the other players during a match: press T (or a gamepad's right stick, or the touch screen's Chat) and
+  type, on a keyboard or your system's on-screen keyboard. It goes between the playing machines.
 - A dropped connection waits for the other player to come back with the same code.
 
 **[More about online play →](docs/ONLINE.md)**: the lobby, the waiting room, joining by address, and how rollback works.

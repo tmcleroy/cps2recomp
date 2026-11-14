@@ -41,6 +41,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: tools/audit.sh
       - run: tools/sync-common.sh --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Introduction service regressions (no game or deployed service)
+        run: node --test online/test/*.test.js
+      - name: Cross Fever reset and save-state regression (no game data)
+        run: make check-crossfever-reset
+      - name: First-to scoring and confirmation regressions (no game data)
+        run: make check-first-to
 
   # Whether anything but words changed (the README, docs/, a changelog): the builds are skipped when not
   changes:
@@ -127,6 +136,11 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ccache
           CMAKE_CXX_COMPILER_LAUNCHER: ccache
         run: tools/release/linux.sh
+      - name: Protocol reconnect and admission regressions (no game data)
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/build/deps/sdl-${{ matrix.system }}/lib/pkgconfig
+          SDL_STATIC: 1
+        run: tools/check_netplay.sh
       - name: Start the programs with no display
         run: |
           tar -xzf build/release/CPS2Recomp-${{ matrix.system }}.tar.gz -C "$RUNNER_TEMP"

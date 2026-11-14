@@ -33,6 +33,16 @@ public:
     bool Ok() const {
         return m_ok;
     }
+    // Some preview builds shared a version number with upstream but added different marked parts. Look without
+    // consuming bytes, so the game's compatibility path can distinguish an absent part from a required one.
+    bool NextMark(uint32_t mark) const {
+        if (m_saving || m_at > m_data.size() || m_data.size() - m_at < sizeof(mark)) {
+            return false;
+        }
+        uint32_t value;
+        memcpy(&value, m_data.data() + m_at, sizeof(value));
+        return value == mark;
+    }
     void Bytes(void *p, size_t size) {
         if (m_saving) {
             const uint8_t *bytes = static_cast<const uint8_t *>(p);

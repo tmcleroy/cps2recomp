@@ -83,6 +83,11 @@ the partner's tag buttons (HP+HK) passed while a round is fought; elsewhere the 
 Start and coins. Players 3 and 4 never reach the board (a six-button game reads the kicks on their lines). Its `Frame`
 puts a P1-P4 label under each side's bars. A game describes where the point character and the choosing are
 (`tag::Description`), and when a mode of its own works the controls instead. X-Men vs. Street Fighter is the first.
+`tag::Held` is what each of the four holds before the routing, for a game's mode in which each character reads its own
+person's controls, both of a team's at once when both are in the fight (Marvel vs. Capcom's Cross Fever:
+`games/mvsc/src/crossfever.cpp`).
+Online the host's choice is the match's (`kFeatureMatch`), and a 2 vs 2 match is four people on up to four machines,
+one or two at each (`port/netplay.h`, [ONLINE.md](ONLINE.md)).
 
 ## The fighting modes
 

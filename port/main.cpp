@@ -13,6 +13,7 @@
 #include "i18n.h"
 #include "../runtime/board.h"
 #include "../fight/battle.h"
+#include "../fight/tag.h"
 #include "../fight/guest_stages.h"
 #include "png_write.h"
 #include "present.h"
@@ -116,10 +117,11 @@ namespace {
 } // namespace
 
 namespace {
-    constexpr uint32_t kStateVersion = 11; // (5: the 68000's wait kept; 6: the custom soundtrack's place; 7: the board timing's palette copy;
+    constexpr uint32_t kStateVersion = 12; // (5: the 68000's wait kept; 6: the custom soundtrack's place; 7: the board timing's palette copy;
                                           // 8: widescreen's camera a frame ago; 9: a guest board's, runtime/guest.h;
-                                          // 10: classic CPS-1 sound, machine/cps1_sound.h; 11: the tag team's swaps under
-                                          // way, the games' livetag.cpp, for online rollback)
+                                          // 10: classic CPS-1 sound, machine/cps1_sound.h; 11: live tag swaps (upstream),
+                                          // or MVC starting order/Cross Fever clock (the four-player preview);
+                                          // 12: both branches combined; legacy MVC 11 parts are identified by their marks)
 
     // (a path is UTF-8 text: by its wide name on Windows, where a folder with an accent is not in the system's code page)
     FILE *OpenFile(const std::string &path, const wchar_t *wideMode, const char *mode) {
@@ -609,8 +611,8 @@ void RegisterPortFeatures() {
     }
     // (online play's readout, each player's own: Port::Shown)
     TheGame().features.push_back({"online_ping", "Online", "Ping",
-                                  "During an online match, the time a packet takes to the other player and back, at the bottom of "
-                                  "the picture (\"PING 42 ms\").",
+                                  "During an online match, the time a packet takes to the other player and back (the farthest of "
+                                  "them, with more than two machines), at the bottom of the picture (\"PING 42 ms\").",
                                   kFeatureEnhanced});
     TheGame().commands.push_back({"online_host", "Online", "Host a match",
                                   "Others can join you online while you play on as you like (modes, the menu, save states): "
@@ -627,6 +629,15 @@ void RegisterPortFeatures() {
                                   "During an online match, how many frames each player's own controls are held back, at the bottom "
                                   "of the picture (\"DELAY 2\"): the host chooses it.",
                                   0});
+    // (a match of four, tag team's 2 vs 2 on the host: the people at each machine, netplay.h)
+    if (std::any_of(TheGame().features.begin(), TheGame().features.end(), [](const Feature &f) { return !strcmp(f.name, tag::kFeature); })) {
+        TheGame().features.push_back({"online_people", "Online", "People at this machine",
+                                      "In an online match of four (Tag team at 2 vs 2 on the host): 1, each of the four on their own "
+                                      "machine, or 2, with this machine's player 1 and player 2 controls (two machines of two, or one "
+                                      "of two with two of one). The match begins when all four are there. In a match of two, one at "
+                                      "each machine.",
+                                      0, {"1", "2"}});
+    }
     // (display_picture: the GPU's picture, --video gpu, unless the CPU's is chosen, --video native; docs/NATIVE_VIDEO.md; read
     // as the game starts. It was display_gpu, off by default, while the GPU's was a test.)
     TheGame().features.push_back({"display_picture", "Display", "Picture drawn by",
@@ -1295,6 +1306,19 @@ std::string InvitationLine(const Netplay &net) {
            : net.Invitation() == "away"   ? net.Invited() + " couldn't be invited"
                                           : "Invited " + net.Invited();
 }
+
+// (online) the side of the screen a board player (0-3) plays for, -1 for none: as tag team's mode has the people
+// (fight/tag.h), or the board's own two
+int ScreenSide(int player) {
+    for (int side = 0; side < 2; side++) {
+        for (int pick = 0; pick < 2; pick++) {
+            if (tag::Person(side, pick) == player) {
+                return side;
+            }
+        }
+    }
+    return -1;
+}
 } // namespace
 
 bool Port::Tick() {
@@ -1561,7 +1585,7 @@ void Port::Shown(std::vector<uint32_t> &pixels, std::vector<SDL_Rect> *panels, b
     if (net && !connecting) {
         char text[64] = "";
         if (net->Silent() > 1000) {
-            snprintf(text, sizeof(text), "WAITING FOR THE OTHER PLAYER");
+            snprintf(text, sizeof(text), net->Machines() > 2 ? "WAITING FOR THE OTHER PLAYERS" : "WAITING FOR THE OTHER PLAYER");
         } else if (FeatureOn("online_ping") && FeatureOn("online_delay")) {
             snprintf(text, sizeof(text), "PING %d ms   DELAY %d", net->Ping(), net->Delay());
         } else if (FeatureOn("online_ping")) {
@@ -1577,7 +1601,7 @@ void Port::Shown(std::vector<uint32_t> &pixels, std::vector<SDL_Rect> *panels, b
             status("PRESS START TO JOIN", said++ * 14);
         }
         if (net->Set().Winner() >= 0) {
-            const std::string result = "PLAYER " + std::to_string(net->Set().Winner() + 1) + " WINS THE FT" +
+            const std::string result = std::string(tag::Chosen() == tag::kOff ? "PLAYER " : "TEAM ") + std::to_string(net->Set().Winner() + 1) + " WINS THE FT" +
                                        std::to_string(net->Set().Target()) + " SET";
             status(result.c_str(), said++ * 14);
         }
@@ -1622,6 +1646,8 @@ void Port::Shown(std::vector<uint32_t> &pixels, std::vector<SDL_Rect> *panels, b
                 panels->push_back({static_cast<int>(x) - 3, static_cast<int>(y) - 2, static_cast<int>(width) + 7, 12});
             }
         };
+        // Each teammate keeps their player number; first-to scores remain team scores.
+        const bool teams = tag::Chosen() != tag::kOff;
         if (net->Set().Target()) {
             // Keep the score centred even when the players' names have different lengths.
             constexpr float size = 1;
@@ -1642,7 +1668,7 @@ void Port::Shown(std::vector<uint32_t> &pixels, std::vector<SDL_Rect> *panels, b
             smallText(leftAt, left, {0, 220, 220, 255});
             smallText(centre, format, {255, 210, 80, 255});
             smallText(rightAt, right, {0, 220, 220, 255});
-            if (!FeatureOn("online_hide_names")) {
+            if (!teams && !FeatureOn("online_hide_names")) {
                 for (int side = 0; side < 2; ++side) {
                     std::string name = net->Name(side);
                     if (name.empty()) {
@@ -1657,11 +1683,25 @@ void Port::Shown(std::vector<uint32_t> &pixels, std::vector<SDL_Rect> *panels, b
                 panels->push_back({0, 0, across, 11});
             }
         }
-        for (int side = 0; side < 2 && !net->Set().Target(); side++) {
+        for (int side = 0; side < 2 && (!net->Set().Target() || teams); side++) {
             float y = 38.0f;
-            const std::string name = net->Name(side);
-            if (!FeatureOn("online_hide_names") && !name.empty()) {
-                under(side, y, name, {255, 255, 255, 255});
+            std::vector<std::pair<std::string, bool>> lines; // (each line, and whether it is drawn bright)
+            bool named = false;
+            const int point = tag::OnPoint(side);
+            for (int player = 0; player < Machine::kMaxPlayers; player++) {
+                if (ScreenSide(player) != side || net->MachineOf(player) < 0) {
+                    continue;
+                }
+                const std::string name = net->Name(player);
+                named = named || !name.empty();
+                if (teams) {
+                    lines.push_back({"P" + std::to_string(player + 1) + (name.empty() ? "" : " " + name), point < 0 || point == player});
+                } else if (!name.empty()) {
+                    lines.push_back({name, true});
+                }
+            }
+            for (size_t n = 0; named && n < lines.size() && !FeatureOn("online_hide_names"); n++) {
+                under(side, y, lines[n].first, lines[n].second ? recomp::text::Color{255, 255, 255, 255} : recomp::text::Color{150, 150, 160, 255});
                 y += 12;
             }
             if (streak[side] >= 2) {
@@ -2478,21 +2518,22 @@ void Port::Say() {
     std::string line = typed;
     typing = false;
     typed.clear();
-    if (!net || connecting) {
+    if (!net || connecting || net->Watching()) {
         return;
     }
     net->Say(line);
-    const std::string name = net->Name(net->Local());
+    const std::string name = net->MachineName(net->Local());
     if (line.find_first_not_of(' ') != std::string::npos) {
         chat.push_back({(name.empty() ? "You" : name) + ": " + line.substr(0, Netplay::kChatMost), tick + kChatTicks, true});
     }
 }
 
 void Port::HearChat() {
-    const std::string name = net->Name(1 - net->Local());
-    for (const std::string &line : net->TakeHeard()) {
+    for (const auto &[machine, line] : net->TakeHeard()) {
+        const std::string name = net->MachineName(machine);
         fprintf(stderr, "online: chat: %s: %s\n", name.empty() ? "(no name)" : name.c_str(), line.c_str());
-        chat.push_back({(name.empty() ? "Them" : name) + ": " + line, tick + kChatTicks, false});
+        chat.push_back({(name.empty() ? (net->Machines() > 2 ? "Player " + std::to_string(net->Player(machine, 0) + 1) : "Them") : name) + ": " + line,
+                        tick + kChatTicks, false});
     }
     while (!chat.empty() && (chat.size() > kChatLines || chat.front().until <= tick)) {
         chat.pop_front();
@@ -2622,7 +2663,7 @@ void Port::BackToSolo(bool stillHosting) {
             settings.renewSecret = net->Secret();
         }
         if (!connecting) {
-            net->Leave();
+            net->Leave(stillHosting);
             net->Report(true);
         }
     }
@@ -2696,13 +2737,13 @@ std::vector<Port::OnlineRow> Port::OnlineRows() const {
         return rows;
     }
     const int me = net->Local();
-    if (net->Hosting()) {
+    if (net->Players() == 2 && net->Hosting()) {
         rows.push_back({0, "", ""});
     }
-    if (FindFeature(me == 0 ? "court_one" : "court_two")) {
+    if (net->Players() == 2 && FindFeature(me == 0 ? "court_one" : "court_two")) {
         rows.push_back({1, me == 0 ? "court_one" : "court_two", "Ball battle: your fighter"});
     }
-    if (FindFeature("team_size")) {
+    if (net->Players() == 2 && FindFeature("team_size")) {
         const int size = FeatureValue("team_size") == 1 ? 3 : 2;
         static const char *const kOrder[3] = {"first", "second", "third"};
         for (int n = 0; n < size; n++) {
@@ -2772,7 +2813,9 @@ void Port::HearEvents() {
         if (text.rfind("hello,", 0) == 0) {
             continue; // (a player's own fighters as they came in with: not news)
         }
-        const std::string who = player == net->Local() ? "You" : net->Name(player).empty() ? (player == 0 ? "The host" : "Player 2") : net->Name(player);
+        const std::string name = net->MachineName(player);
+        const std::string who = !net->Watching() && player == net->Local() ? "You"
+                                : name.empty() ? (player == 0 ? "The host" : "Player " + std::to_string(player + 1)) : name;
         for (size_t at = 0; at < text.size();) {
             const size_t comma = std::min(text.find(',', at), text.size());
             const std::string item = text.substr(at, comma - at);
@@ -2793,7 +2836,7 @@ void Port::HearEvents() {
             }
             if (!said.empty()) {
                 fprintf(stderr, "online: %s\n", said.c_str());
-                chat.push_back({said, tick + kChatTicks, player == net->Local()});
+                chat.push_back({said, tick + kChatTicks, !net->Watching() && player == net->Local()});
             }
         }
     }
@@ -2869,8 +2912,14 @@ void Port::Matched() {
     // (the host's player, playing while it waited, is in already; the joining side is told so in the welcome)
     cameIn = net->Watching() || (net->Arcade() && cameIn);
     otherIn = net->Watching() || (!net->Hosting() && net->HostIn());
-    fprintf(stderr, "online: player 1 %s, player 2 %s\n", net->Name(0).empty() ? "(no name)" : net->Name(0).c_str(),
-            net->Name(1).empty() ? "(no name)" : net->Name(1).c_str());
+    std::string names;
+    for (int player = 0; player < Machine::kMaxPlayers; player++) {
+        if (net->MachineOf(player) >= 0) {
+            const std::string name = net->Name(player);
+            names += (names.empty() ? "" : ", ") + std::string("player ") + std::to_string(player + 1) + " " + (name.empty() ? "(no name)" : name);
+        }
+    }
+    fprintf(stderr, "online: %s\n", names.c_str());
     if (net->Arcade()) {
         fprintf(stderr, "online: the match begins after %llu frames of the host's play\n", static_cast<unsigned long long>(frame));
     }
@@ -3054,9 +3103,13 @@ void Port::RunFrame() {
         Step(pressed); // (--net-arcade: the host playing while it waits)
         cameIn = cameIn || (pressed[0] & kStart);
     } else if (net) {
-        net->Frame(*this, pressed[0]); // (this side's player plays with player 1's controls)
-        cameIn = cameIn || (pressed[0] & kStart);
-        otherIn = otherIn || (machine->players[1 - net->Local()] & kStart);
+        net->Frame(*this, pressed); // (this machine's player plays with player 1's controls; a second with player 2's)
+        for (int person = 0; person < net->People(net->Local()); person++) {
+            cameIn = cameIn || (pressed[person] & kStart);
+        }
+        // (the other side of the screen's panel, as the game had it: tag team's routing, fight/tag.h, done)
+        const int side = ScreenSide(net->Player(net->Local(), 0));
+        otherIn = otherIn || (side >= 0 && (machine->players[1 - side] & kStart));
         Streaks();
     } else if (opt.rollbackTest) {
         RollbackFrame(pressed);
@@ -3364,15 +3417,18 @@ void Usage() {
             "  --auto SEED[:FROM[:N]] made-up input (from frame FROM; for N players, 2 unless said)\n"
             "  --rollback-test SEED   each frame run as online play's rollback would: the other players' controls late\n"
             "                         and guessed, and the frames guessed wrong run again (--hash-log must not change)\n"
-            "  --watch CODE          watch a running match without controlling either player\n"
+            "  --watch CODE          watch a running match without controlling any player\n"
             "  --net-spectators      hosting: allow spectators (off by default)\n"
-            "  --host [PORT]          online play: wait for the other player (on UDP port PORT, 7845 unless said);\n"
+            "  --host [PORT]          online play: wait for the other players (on UDP port PORT, 7845 unless said);\n"
             "                         the host is player 1, and its board settings and play features are the match's\n"
-            "  --join ADDRESS[:PORT]  online play: go to the host at ADDRESS (player 2), or CODE: the match the host's\n"
-            "                         code names (the online service says where the host is)\n"
+            "                         (with tag team's 2 vs 2, a match of four: up to three machines join)\n"
+            "  --join ADDRESS[:PORT]  online play: go to the host at ADDRESS (player 2, or the next in a match of four),\n"
+            "                         or CODE: the match the host's code names (the online service says where it is)\n"
+            "  --net-people N         the people playing at this machine in a match of four, 1 or 2 (its player 1 and\n"
+            "                         player 2 controls): the Online page's People at this machine unless said\n"
             "  --net-service URL      the online service that gives hosts codes (online/), or off\n"
             "  --net-list             (hosting) the match in the lobby, the Online card's list of open matches\n"
-            "  --net-name NAME        ... under this name; and either side's: shown to the other player\n"
+            "  --net-name NAME        ... under this name; and any machine's: shown to the other players\n"
             "  --net-say [FRAME:]TEXT (tests) TEXT said in the chat at FRAME of the match (120 unless said)\n"
             "  --net-typing TEXT      (pictures) TEXT shown as a chat line being typed, all through the match\n"
             "  --net-arcade           (hosting) the game played alone until the other player comes, who then challenges\n"
@@ -3401,7 +3457,7 @@ void Usage() {
             "  --no-rewrites          run the game's own routines where the sources have rewrites\n"
             "  --trace LOW-HIGH:FILE  those bytes of work RAM (or video memory) after every frame, appended to FILE\n"
             "  --layer-log F:ADDR:FILE from frame F on, what each scroll screen drew on each line, and the word at ADDR\n"
-            "  --watch LOW[-HIGH]     report the 68000's writes to these addresses (hex), with who made them\n"
+            "  --watch-writes LOW[-HIGH] report the 68000's writes to these addresses (hex), with who made them\n"
             "  --keys TICK:KEY,...    keys pressed at those ticks of the screen: p (stop/go), o (a frame on),\n"
             "                         - and = (speed), n and h (a Multi game run's next game, fast forward on/off),\n"
             "                         k1.. (the game's command keys), cNAME (a command),\n"
@@ -3558,6 +3614,8 @@ bool ParseArgs(int argc, char **argv, port::Options &o) {
             o.net.service = next();
         } else if (a == "--net-delay") {
             o.net.delay = atoi(next());
+        } else if (a == "--net-people") {
+            o.net.people = std::clamp(atoi(next()), 1, port::Netplay::kMostSeats);
         } else if (a == "--net-fake") {
             const std::string v = next();
             const size_t colon = v.find(':'), second = colon == std::string::npos ? colon : v.find(':', colon + 1);
@@ -3605,7 +3663,7 @@ bool ParseArgs(int argc, char **argv, port::Options &o) {
             // (given more than once, all of them, in order: what the launcher says, then what follows it)
             const std::string more = next();
             o.features = o.features.empty() ? more : o.features + "," + more;
-        } else if (a == "--watch") {
+        } else if (a == "--watch-writes") {
             // LOW[-HIGH] (hex): who writes there; needs the interpreter, so the run is done block by block
             const std::string v = next();
             const size_t dash = v.find('-');

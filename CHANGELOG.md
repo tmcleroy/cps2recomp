@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+- **Online: four players, on up to four machines** (issue #70): with Tag team at 2 vs 2 on the host (X-Men vs. Street
+  Fighter, Marvel Super Heroes vs. Street Fighter, Marvel vs. Capcom), a match is four people on two, three or four
+  machines, all joining with the host's one code (or its address): **People at this machine** (the Online page, under
+  In a match) says whether one or two of the four play at each, two with that machine's player 1 and player 2
+  controls. The match begins when all four are there: the host's are players 1 (and 3), the others' the rest in the
+  order they came. The host is between the joining machines: each sends it its controls, its hashes and its chat, and
+  it sends each the others' with its own. One leaving or dropping ends the match for all, saying who; in a window the
+  host waits again with the same code and the others go back to it by themselves. Tag team is the host's in a match
+  now (it was off), co-op vs. computer too (one player at each machine), and so is any mode a game marks for matches
+  (`kFeatureMatch`). Protocol 10 combines four-machine play with spectators, first-to sets and two-person mode
+  changes. The introduction service (`online/`) lets a code be joined by as many as its match has room for, each
+  given a number that the host says back if they go before the match begins (their place
+  is free again); a host from before is told the one who joined, as it always was. `make GAME=<id> check-online
+  MACHINES=4` plays a match at four machines over localhost (`MACHINES=3`: the host's two and two of one; `FOUR=1`:
+  two machines of two).
+- **Marvel vs. Capcom: Cross Fever**, the Dreamcast's mode for four people, on the Alternative modes page with Tag team
+  on: each character is moved by its own person all the time, both of a team's in a Duo Team Attack, which lasts twice
+  as long, and the person on point tags out, as on the Dreamcast (`games/mvsc/src/crossfever.cpp`; `fight/tag.h`'s
+  `Held` gives each person's controls before the routing). As the Dreamcast's mode does, both teams' hyper combo gauges
+  also fill slowly by themselves, the partner off point has its moves looked for when it is in the fight (a Variable
+  Counter's newcomer), and holding Start keeps the one on point taunting. `games/mvsc/movies/cross_fever.txt` has both
+  teams' attacks at once with four people.
+- **Marvel vs. Capcom, Tag team**: a side that starts with its second character (the three punches held as the
+  choosing ends) has each person still playing the character they chose; before, the two people swapped characters.
+  Kept with save states (version 12).
+
+- **Online reliability**: preserve unacknowledged departures and mode changes for retry, keep admission tickets
+  unique across same-code rehosting, and require every playing machine to agree before a first-to set finishes.
+  Spectators receive all four players' confirmed controls and can join after the retained input window.
+  Reordered result packets no longer revoke an agreed score. Invitation replies preserve concurrent admissions
+  and ticket counters, and cannot overwrite a newer match generation.
+- **Command-line diagnostics**: `--watch` watches a match; memory-write tracing uses `--watch-writes` so the two
+  commands no longer collide.
+
 ## 1.5.0
 
 **Ball battle, five more games, and modes online.** Ball battle, a new ball game mode, comes to the Vampire Savior

@@ -10,7 +10,7 @@ Read from a build's work/<id>/ (program.lst, program.bin, program.bin.data), run
   aiscripts.py [GAME]                     every character's scripts (GAME: vampire_savior)
   aiscripts.py GAME --character NAME|N    one character's
   aiscripts.py GAME --check               decode everything and say what did not fit; prints nothing else
-  aiscripts.py GAME --against FILE        check a run's --watch of a computer's script pointer (Vampire Savior
+  aiscripts.py GAME --against FILE        check a run's --watch-writes of a computer's script pointer (Vampire Savior
                                           +220, Alpha 2 +230: a long) against the instructions found: every
                                           place the game's interpreter kept there must be one of theirs, and
                                           every step from one to the next one the scripts allow

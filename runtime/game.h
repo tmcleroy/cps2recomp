@@ -51,6 +51,9 @@ enum : unsigned {
     // the stage shown, and a row under it goes through the favourites alone; settings.ini's [favourites] stages, by
     // name, the same for every list of the stages)
     kFeatureFavourites = 256,
+    // Online play takes the host's choice for both machines, whatever page it is on (port/netplay.cpp: Shared): a mode
+    // that is all in the controls and the game's own memory, so that two machines play it alike (tag team's people)
+    kFeatureMatch = 512,
 };
 
 // Something the game's sources can do when the player asks (a row of the in-game menu, and a key if it has

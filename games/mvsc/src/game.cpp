@@ -31,6 +31,9 @@ void RegisterColours(); // colours.cpp
 void RegisterBattle(); // battle.cpp
 void ChoosingBeforeFrame(Machine &machine);
 void RegisterTag(); // tag.cpp
+void TagState(Archive &ar);
+void RegisterCrossFever(); // crossfever.cpp
+void CrossFeverState(Archive &ar);
 
 // 001920, the game's random number: a long divs, then the number kept (001932), as in X-Men vs. Street Fighter
 // (001608). The board takes an interrupt between any two instructions, and the frame's interrupt asks for a
@@ -56,6 +59,7 @@ void RegisterGame() {
     // (widescreen: the camera kept between its ends at 0CDBB6, a character kept inside the picture at 013AD6)
     marvel::RegisterWidescreen(HookAt(0x0CDBB6), HookAt(0x013AD6));
     RegisterTag();
+    RegisterCrossFever();
     RegisterCoins();
     RegisterCheats();
     RegisterTitle();
@@ -91,6 +95,8 @@ void RegisterGame() {
         BattleState(ar);
         marvel::ModelState(ar);
         marvel::WidescreenState(ar);
+        TagState(ar);
+        CrossFeverState(ar);
     };
     // (run-ahead: not in the modes, whose workings a save state does not wholly hold)
     TheGame().noRunAhead = [] { return modes::AttractMode() || modes::StageViewer() || BattleMode() || marvel::ModelViewer(); };

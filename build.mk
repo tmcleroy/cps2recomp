@@ -150,7 +150,8 @@ check-sound: port
 check-rollback: port
 	@$(CR)/tools/check_rollback.sh $(FRAMES)
 
-# Online play between two copies of the game on this machine, over a bad connection made up (tools/check_online.sh)
+# Online play between copies of the game on this machine (two; FOUR=1 or MACHINES=3 or 4 for a match of four), over a
+# bad connection made up (tools/check_online.sh)
 check-online: port
 	@$(CR)/tools/check_online.sh $(FRAMES)
 

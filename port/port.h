@@ -44,7 +44,7 @@ struct Options {
     std::string keys;          // --keys TICK:KEY,TICK:KEY...
     std::vector<std::string> dumpRam; // --dump-ram FRAME:file (as many as given)
     std::string poke;                 // --poke ADDR=BYTE,...
-    uint32_t watchLow = 1, watchHigh = 0; // --watch LOW[-HIGH]
+    uint32_t watchLow = 1, watchHigh = 0; // --watch-writes LOW[-HIGH]
     std::string trace;         // --trace LOW-HIGH:file
     std::string layerLog;      // --layer-log FROM:ADDR:file
     bool checkRewrites = false, noRewrites = false;

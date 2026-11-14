@@ -59,6 +59,14 @@ void Register(const Description &description);
 Mode Chosen();
 // The person (0-3) who plays a side's pick in the mode chosen, or -1 (the computer)
 int Person(int side, int pick);
+// The controls are routed now: a mode chosen, and no mode of the sources' own on
+bool Routing();
+// The person (0-3) whose character is on point on a side now, as the label under its bars says, or -1 (no match on,
+// the computer's side, or nothing routed)
+int OnPoint(int side);
+// What a person (0-3) holds this frame, as the port gave it, before the routing: for a game's sources in which each
+// character reads its own person's controls (games/mvsc: Cross Fever)
+uint16_t Held(int person);
 
 // Before the port's machine runs a frame (first in the game's beforeFrame: the others see the routed panels), and after
 void BeforeFrame(Machine &machine);

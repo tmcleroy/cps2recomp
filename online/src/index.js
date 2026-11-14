@@ -2,19 +2,29 @@
 // Copyright (C) 2026 Tommy McLeroy. Part of cps2recomp.
 //
 // The introduction service for online play (port/netplay.h, online/README.md). It only introduces: a host asks for a
-// code and says where it can be reached (its addresses as the internet and its own network see them); the other
-// player gives the code and where they can be reached, and is told the host's; the host, asking again, is told
-// theirs. The two then reach each other directly; nothing of the match goes through here. A code lasts 30 minutes,
-// or until it has been joined. Every match is a Durable Object of its own, named by its code.
+// code and says where it can be reached (its addresses as the internet and its own network see them); another player
+// gives the code and where they can be reached, and is told the host's; the host, asking again, is told theirs. They
+// then reach each other directly; nothing of the match goes through here. A waiting code lasts 30 minutes. An active,
+// spectator-enabled match renews its lifetime on host heartbeats. Every match is a Durable Object named by its code.
 //
-//   POST /v1/host                {game, build, addresses}          -> {code, secret}
-//   POST /v1/host                {code, secret, game, build, addresses} -> {code, secret}   (the same code again, for
-//                                                                  the player who left to come back to: Netplay's reconnect)
-//   GET  /v1/host/CODE?secret=S                                    -> {joined: false} | {joined: true, addresses}
-//   POST /v1/join/CODE           {game, build, addresses}          -> {addresses} | 404 | 409 {error}
+// A match is for two players, or four if its host says so (`players`: tag team's 2 vs 2), `here` of them at the
+// host's machine (1 unless said). Each who joins says how many play at theirs (`people`: 1 or 2; one in a match of
+// two) and is let in while the match has room for them, with a number of its own (`ticket`); the host, asking, is
+// told each who joined (`joiners`: the number, then the addresses) and says back (`gone`) those who went before the
+// match began, or never came, which makes room for others. (A host from before `players` has a match of two: one
+// joins, and it is told them as `addresses`, as it always was.)
+//
+//   POST /v1/host                {game, build, addresses, players, here} -> {code, secret}
+//   POST /v1/host                {code, secret, game, build, addresses, players, here} -> {code, secret}   (the same code
+//                                                                  again, for the players who left to come back to: Netplay's
+//                                                                  reconnect; those who had joined it are forgotten)
+//   GET  /v1/host/CODE?secret=S[&gone=T,T][&active=1]              -> {joined: false} | {joined: true, addresses,
+//                                                                     joiners: ["T ADDRESS ADDRESS", ...], viewers, watchers}
+//   POST /v1/join/CODE           {game, build, addresses, people}  -> {addresses, ticket} | 404 | 409 {error}
+//   POST /v1/watch/CODE          {game, build, version, protocol, addresses, token?} -> {addresses, token}
 //   GET  /v1/lobby/GAME?protocol=N                                 -> {matches: [{code, name, waiting}]}
-//   GET  /v1/code/CODE                                             -> {game, title, version, protocol} | 404 (which game a code is
-//                                                                     for, while it can be joined: the launcher's Join)
+//   GET  /v1/code/CODE                                             -> {game, title, version, protocol, players, room} | 404 (which
+//                                                                     game a code is for, while it has room: the launcher's Join)
 //   GET  /v1/lobby?protocol=N                                      -> {matches: [{game, title, version, code, name, waiting}]}
 //   POST /v1/room                {secret, name, games, protocol, version, invitable, blocked, lobby}
 //                                                                  -> {id, players: [{id, name, games}], invitations: [{code, from,
@@ -26,8 +36,8 @@
 //   GET  /v1/stats?key=K                                           -> a page of numbers, for the service's keeper (STATS_KEY)
 //
 // A host that asks for it (`listed`, with a `name` and its `protocol`) is in the lobby, a Durable Object (Lobby) that
-// keeps every game's: there while it is asking whether someone has joined (seen in the last 25 seconds), and until
-// someone has. A match tells the lobby it is still there at most every 10 seconds, however often its host asks.
+// keeps every game's: there while it has room and the host is asking (seen in the last 25 seconds), or while the
+// host reports it active with spectators allowed. A match refreshes its listing at most every 10 seconds.
 //
 // The waiting room (Room, a Durable Object) is the players whose launcher has its Online page open, each checking in
 // every 10 to 20 seconds, and gone 30 seconds after the last. A player is shown to the others with a name, and while they
@@ -97,6 +107,22 @@ async function playerId(secret) {
 
 function cleanIds(list) {
   return Array.isArray(list) ? list.filter((id) => typeof id === "string" && /^[0-9a-f]{12}$/.test(id)).slice(0, 200) : [];
+}
+
+// A match's players (2, or 4 in tag team's 2 vs 2), those at the host's machine, and the room left: none once those who
+// joined fill it. A match from before `players` (stored without them) is for two.
+function matchPlayers(match) {
+  return match.players === 4 ? 4 : 2;
+}
+function joinersOf(match) {
+  return Array.isArray(match.joiners) ? match.joiners : match.joiner ? [{ ticket: 0, people: 1, addresses: match.joiner }] : [];
+}
+function room(match) {
+  return matchPlayers(match) - (match.here || 1) - joinersOf(match).reduce((n, j) => n + j.people, 0);
+}
+// Why one who would join can't: a match of two that has its player, or a match of four that is full
+function fullSaid(match) {
+  return matchPlayers(match) === 2 ? "Someone has joined that match already." : "That match is full.";
 }
 
 export default {
@@ -183,7 +209,9 @@ export default {
       return match.fetch("https://match/info");
     }
     if (request.method === "GET" && parts[1] === "host") {
-      return match.fetch(`https://match/poll?secret=${encodeURIComponent(url.searchParams.get("secret") || "")}&active=${url.searchParams.get("active") === "1" ? "1" : "0"}`);
+      return match.fetch(`https://match/poll?secret=${encodeURIComponent(url.searchParams.get("secret") || "")}` +
+                         `&gone=${encodeURIComponent(url.searchParams.get("gone") || "")}` +
+                         `&active=${url.searchParams.get("active") === "1" ? "1" : "0"}`);
     }
     if (request.method === "POST" && parts[1] === "watch") {
       return match.fetch("https://match/watch", { method: "POST", body: await request.text() });
@@ -258,35 +286,50 @@ export class Match {
         return json({ error: "in use" }, 409);
       }
       const secret = typeof body.secret === "string" && /^[0-9a-f-]{36}$/.test(body.secret) ? body.secret : crypto.randomUUID();
-      match = { made: now, secret, game: cleanText(body.game), build: cleanText(body.build), host: cleanAddresses(body.addresses), joiner: null,
+      const players = Number(body.players) === 4 ? 4 : 2;
+      const here = players === 4 && Number(body.here) === 2 ? 2 : 1;
+      // The same code and secret may be reopened while an old gone poll is still in flight. Never reuse its
+      // ticket numbers while this match record exists, or that delayed removal could evict a new arrival.
+      const tickets = match ? match.tickets || 0 : 0;
+      match = { made: now, generation: crypto.randomUUID(), secret, game: cleanText(body.game), build: cleanText(body.build), host: cleanAddresses(body.addresses), joiners: [],
+                tickets, players, here,
                 listed: body.listed === true, name: cleanName(body.name), title: cleanText(body.title), version: cleanText(body.version),
                 protocol: Number(body.protocol) || 0, spectators: body.spectators === true, active: false, viewers: [],
                 code: url.searchParams.get("code") || "",
                 invite: cleanIds([body.invite])[0] || null, from: cleanIds([body.from])[0] || "", invited: "" };
-      await this.invite(match);
+      // Commit before the Room RPC yields: a join during it must see this roster and must not have its ticket
+      // counter overwritten when the invitation finishes. The generation also distinguishes same-ms rehosts.
       await this.state.storage.put("match", match);
       await this.state.storage.setAlarm(now + kLifetime);
-      this.told = now;
-      await this.lobby(match, "seen", match.code);
+      match = await this.invite(match);
+      if (match) {
+        this.told = now;
+        await this.lobby(match, room(match) > 0 || match.active ? "seen" : "gone", match.code);
+      }
       return json({ secret });
     }
     if (!match) {
       return json({ error: "no such code" }, 404);
     }
     if (url.pathname === "/info") {
-      if (match.joiner || match.active) {
-        return json({ error: "Someone has joined that match already." }, 409);
+      if (room(match) <= 0 || match.active) {
+        return json({ error: fullSaid(match) }, 409);
       }
-      return json({ game: match.game, title: match.title || match.game, version: match.version || "", protocol: match.protocol });
+      return json({ game: match.game, title: match.title || match.game, version: match.version || "", protocol: match.protocol,
+                    players: matchPlayers(match), room: room(match) });
     }
     if (url.pathname === "/poll") {
       if (url.searchParams.get("secret") !== match.secret) {
         return json({ error: "no such code" }, 404);
       }
-      // Only the authenticated host may say the match is running. Keep its listing alive for viewers.
-      // A player may have joined directly by address, without going through /join.
-      const active = url.searchParams.get("active") === "1" && match.spectators;
-      if (match.active && !active) await this.lobby(match, "gone", match.code);
+      // (those the host says went before the match began, or never came: forgotten, which makes room for others)
+      const gone = (url.searchParams.get("gone") || "").split(",").map(Number).filter((t) => Number.isInteger(t) && t > 0);
+      if (gone.length && Array.isArray(match.joiners)) {
+        match.joiners = match.joiners.filter((j) => !gone.includes(j.ticket));
+      }
+      // Only the authenticated host may say the match is running. Direct-address players have no service ticket,
+      // so room alone cannot decide whether another player may join. Viewers never take a player reservation.
+      const active = url.searchParams.get("active") === "1" && match.spectators, wasActive = match.active;
       match.active = active;
       if (active) {
         match.expires = now + kLifetime;
@@ -295,28 +338,35 @@ export class Match {
       match.seen = now;
       match.viewers = (match.viewers || []).filter((v) => now - v.seen < kHere);
       await this.state.storage.put("match", match);
-      if (!match.joiner && !active && now - (this.waitingSaid || 0) > 15000) {
+      if (wasActive && !active) await this.lobby(match, "gone", match.code);
+      const open = room(match) > 0 && !active;
+      if (open && now - (this.waitingSaid || 0) > 15000) {
         // (the stats told this host is waiting, now and then: it is counted as waiting while it has been told lately)
         this.waitingSaid = now;
         const stats = this.env.STATS.get(this.env.STATS.idFromName("all"));
         await stats.fetch("https://stats/waiting", { method: "POST", body: JSON.stringify({ code: match.code, game: match.game, listed: match.listed }) }).catch(() => {});
       }
-      if ((!match.joiner || active) && now - this.told > kTell) {
+      if ((open || active) && now - this.told > kTell) {
         this.told = now;
         await this.lobby(match, "seen", match.code);
       }
-      if (!match.joiner && !active) {
+      if (open) {
         if (match.invite && !match.invited) {
-          await this.invite(match);
-          if (match.invited) {
-            await this.state.storage.put("match", match);
-          }
+          match = await this.invite(match);
+          // The polling client retries non-200 responses; do not acknowledge a superseded generation's poll.
+          if (!match) return json({ error: "The match changed while polling. Try again." }, 409);
         }
       }
-      return json(match.joiner || active ? { joined: true, addresses: match.joiner || [],
-                                  viewers: active ? match.viewers.map(({ token, addresses }) => ({ token, addresses })) : [],
-                                  watchers: active ? match.viewers.flatMap(v => v.addresses.map(a => v.token + "@" + a)) : [] }
-                              : { joined: false, ...(match.invited ? { invite: match.invited } : {}) });
+      const joiners = joinersOf(match);
+      const invited = match.invited && room(match) > 0 && !match.active ? { invite: match.invited } : {};
+      return json(joiners.length || match.active ? {
+        joined: true,
+        addresses: joiners.length ? joiners[0].addresses : [],
+        joiners: joiners.map((j) => [j.ticket, ...j.addresses].join(" ")),
+        viewers: match.active ? match.viewers.map(({ token, addresses }) => ({ token, addresses })) : [],
+        watchers: match.active ? match.viewers.flatMap((v) => v.addresses.map((a) => v.token + "@" + a)) : [],
+        ...invited,
+      } : { joined: false, ...invited });
     }
     if (url.pathname === "/watch") {
       let body;
@@ -361,16 +411,33 @@ export class Match {
       if (cleanText(body.build) !== match.build) {
         return json({ error: "The two copies of the game are different builds: use the same release on both." }, 409);
       }
-      if (match.joiner || match.active) {
-        return json({ error: "Someone has joined that match already." }, 409);
+      // A different wire protocol cannot finish the UDP handshake; reject it before reserving a player's place.
+      // Older clients/stored matches did not always supply this field, so keep their missing-field behavior.
+      if (Number(body.protocol) && match.protocol && Number(body.protocol) !== match.protocol) {
+        return json({ error: "The two copies of the game use different online protocols: use the same release on both." }, 409);
       }
-      match.joiner = cleanAddresses(body.addresses);
+      // (the people at the joining machine: one in a match of two, whatever it says)
+      const people = matchPlayers(match) === 4 && Number(body.people) === 2 ? 2 : 1;
+      const left = room(match);
+      if (left <= 0 || match.active) {
+        return json({ error: fullSaid(match) }, 409);
+      }
+      if (people > left) {
+        return json({ error: "That match has room for one more player, and this machine has two (People at this machine, on the Online page)." }, 409);
+      }
+      match.joiners = joinersOf(match);
+      delete match.joiner;
+      match.tickets = (match.tickets || 0) + 1;
+      match.joiners.push({ ticket: match.tickets, people, addresses: cleanAddresses(body.addresses) });
       await this.state.storage.put("match", match);
-      await this.lobby(match, "gone", match.code);
-      if (!match.invited) {
-        await this.room(match, "uninvite");
+      if (room(match) <= 0) {
+        // (full: out of the lobby, and the invitation, if not answered, taken back)
+        await this.lobby(match, "gone", match.code);
+        if (!match.invited) {
+          await this.room(match, "uninvite");
+        }
       }
-      return json({ addresses: match.host });
+      return json({ addresses: match.host, ticket: match.tickets });
     }
     if (url.pathname === "/declined") {
       // (the invited player said no: the host is told at its next question; the code still joins)
@@ -386,9 +453,18 @@ export class Match {
   // (the invitation given, or given again: "away" in `invited` if the player isn't in the room to be given it)
   async invite(match) {
     const said = await this.room(match, "invite");
-    if (said && said.given === false) {
-      match.invited = "away";
+    // External RPCs allow other requests to run. Merge only this result into the fresh, still-live generation:
+    // a concurrent join, decline, rehost or expiry must not be undone by a stale copy of the whole match.
+    const current = await this.state.storage.get("match");
+    if (!current || current.generation !== match.generation || current.secret !== match.secret || current.made !== match.made ||
+        Date.now() > (current.expires || current.made + kLifetime)) {
+      return null;
     }
+    if (said && said.given === false && !current.invited) {
+      current.invited = "away";
+      await this.state.storage.put("match", current);
+    }
+    return current;
   }
 
   async alarm() {

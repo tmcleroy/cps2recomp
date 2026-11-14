@@ -12,7 +12,10 @@
 #      runs them.
 # A difference is something the game keeps outside its save state, or that a frame run twice does twice.
 #
-#   GAME=<id> check_rollback.sh [FRAMES]   (make GAME=<id> check-rollback: from the repository's top, after `make`; ROM=your set)
+# FEATURES: more features for every run, a mode to try (FEATURES=tag_team=2,cross_fever: Marvel vs. Capcom's four people,
+# in Cross Fever).
+#
+#   [FEATURES=...] GAME=<id> check_rollback.sh [FRAMES]   (make GAME=<id> check-rollback: from the repository's top, after `make`; ROM=your set)
 set -eu
 GAME=${GAME:?which game: GAME=<id>}
 ROM=${ROM:-rom/$GAME}
@@ -34,7 +37,7 @@ run() { # name, then the program's arguments
     name=$1; shift
     rm -f "$work/rollback-eeprom.bin"
     "build/$GAME/$GAME" --rom "$ROM" --headless --frames "$frames" --auto "11:0:$players" --settings "$work/rollback-settings.ini" \
-        --eeprom "$work/rollback-eeprom.bin" --hash-log "$work/$name.txt" "$@" 2> "$work/$name.err" || {
+        --eeprom "$work/rollback-eeprom.bin" --hash-log "$work/$name.txt" ${FEATURES:+--features "$FEATURES"} "$@" 2> "$work/$name.err" || {
         echo "FAILED: the $name run stopped"; cat "$work/$name.err"; exit 1; }
 }
 status=0

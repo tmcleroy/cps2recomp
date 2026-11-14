@@ -34,6 +34,13 @@ enum : uint16_t { kGameChoosing = 4, kGameMatch = 8 };
 // The round's clock: seconds left, a BCD byte (99 at a round's start; a second off at 012BA0, sbcd), and the frames
 // left of the second after it (counted down at 012B84). Found by --watch through a fight.
 constexpr uint32_t kRoundClock = 0xFF4008, kClockFrames = 0xFF4009;
+// A word counted up once a step of the game (00AB60): what the game does every other step goes by bit 0 of its low byte
+// (00CAA4, 035EEA)
+constexpr uint32_t kStepCount = 0xFF4488;
+// The Duo Team Attack: each side's time left in it, a word (player 1's here, player 2's after it), taken one off a step
+// at 015F68 while both its characters stand; and a byte, bit 0 player 1's side's and bit 1 player 2's, set while it goes
+// on (the routine at 015F34 clears the side's bit and sets it again while there is time left)
+constexpr uint32_t kDuoTime = 0xFF4034, kDuoOn = 0xFF4038;
 
 // Credits paid for and not yet used, a byte (RAM dumps after coins)
 constexpr uint32_t kCredits = 0xFF4499;
@@ -89,6 +96,9 @@ constexpr uint32_t kHealth = 0x270;
 constexpr uint16_t kHealthFull = 0x90;
 constexpr uint32_t kRedHealth = 0x27A; // what comes back while the character rests (cleared with the health at 01B760)
 constexpr uint32_t kPartner = 0x284;   // long: the record of the same side's other character (0131E2)
+// A byte: which of the side's picks the record is (0 the one chosen first, 1 the second: kPicks; the records are not
+// swapped at a tag, traced through the tag-team movies)
+constexpr uint32_t kWhichPick = 0x280;
 // The hyper combo gauge, the side's: a byte, its levels (three at most), and a word, the bar towards the next (0x90
 // full) (the FBNeo training script names the levels; the bar is the word before, as in the games before)
 constexpr uint32_t kGaugeLevel = 0x274, kGaugeBar = 0x272;

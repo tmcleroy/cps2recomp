@@ -3,6 +3,7 @@
 """Three local processes: a late viewer matches confirmed hashes and leaves without ending play."""
 import os
 from pathlib import Path
+import re
 import subprocess
 import time
 import json
@@ -14,6 +15,12 @@ work.mkdir(parents=True, exist_ok=True)
 exe = Path("build") / game / (game + (".exe" if os.name == "nt" else ""))
 port = 10000 + os.getpid() % 20000
 service = os.environ.get("SERVICE", "off")
+# The service filters by the client protocol; keep this test paired with the build's wire version.
+protocol_header = Path(__file__).resolve().parents[1] / "port" / "netplay.h"
+protocol_match = re.search(r"\bkProtocol\s*=\s*(\d+)\s*;", protocol_header.read_text())
+if protocol_match is None:
+    raise RuntimeError("cannot read the client protocol from port/netplay.h")
+protocol = int(protocol_match.group(1))
 join_frame = int(os.environ.get("JOIN_FRAME", "4300"))
 player_frames = join_frame + 2400
 # FIRST_TO=1|2: the players play a whole FT5 (FT10) set; the viewer, coming in partway, must count the same games
@@ -51,7 +58,7 @@ try:
     address = "127.0.0.1:" + str(port)
     def lobby(watching):
         for _ in range(30):
-            with urlopen(service + "/v1/lobby?protocol=8", timeout=5) as r:
+            with urlopen(service + f"/v1/lobby?protocol={protocol}", timeout=5) as r:
                 matches = json.load(r)["matches"]
             found = [m for m in matches if m["name"] == "Host" and m.get("watching", False) == watching]
             if found:
