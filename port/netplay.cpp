@@ -139,6 +139,9 @@ namespace {
     enum class Share { Host, Own, Off, Keep };
     Share Shared(const Feature &feature) {
         const std::string category = feature.category, name = feature.name;
+        if (name == "input_socd") {
+            return Share::Own; // (local controls are cleaned before sending; never clean received inputs again)
+        }
         if (name == "run_ahead" || name == "custom_colours") {
             return Share::Off; // (custom colours: each player's own library, which the other side has not)
         }

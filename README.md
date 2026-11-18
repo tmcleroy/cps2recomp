@@ -13,6 +13,9 @@ mode, online play with rollback, widescreen and new modes.
 
 **[Get started →](#getting-started)**
 
+Keyboard and leverless players can enable **Game → SOCD cleaning → Neutral** to cancel opposite directions held
+together (Left + Right and Up + Down). It is off by default; online players keep their own choice.
+
 **No game files are included.** You need your own copy of each game: its arcade ROM set (a CPS-2 game's with its key
 file). Only the versions named below work for each game, and this project cannot help you get one.
 

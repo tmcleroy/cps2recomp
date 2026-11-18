@@ -571,6 +571,12 @@ void RegisterPortFeatures() {
                                       "but not exact.",
                                       0});
     }
+    // (input_socd: the window's local controls, before recording and online play)
+    TheGame().features.push_back({"input_socd", "Game", "SOCD cleaning",
+                                  "Neutral: Left and Right held together cancel each other, as do Up and Down. "
+                                  "Applies to each local player's combined keyboard, gamepad and touch controls. "
+                                  "Online, each player keeps their own choice. Off: directions pass through unchanged.",
+                                  0, {"Off", "Neutral"}});
     // (rapid_fire: Port::RapidFire)
     TheGame().features.push_back({"rapid_fire", "Game", "Rapid fire",
                                   "A button held down is pressed again and again (fifteen times a second), for the first button or "

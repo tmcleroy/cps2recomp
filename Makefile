@@ -43,11 +43,17 @@ check-widescreen: port
 else
 
 .PHONY: check audit example smoke check-common clean games collection collection-app android
-check: audit check-common check-first-to smoke
+check: audit check-common check-first-to check-socd smoke
 
 .PHONY: check-first-to
 check-first-to:
 	@sh tools/check_first_to.sh
+
+.PHONY: check-socd
+check-socd:
+	@mkdir -p build/check-socd
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror -Wno-unused-parameter tools/check_socd.cpp -o build/check-socd/check
+	@build/check-socd/check
 
 audit:
 	@tools/audit.sh

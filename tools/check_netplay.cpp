@@ -600,6 +600,9 @@ struct NetplayTest {
     }
 
     static void Run() {
+        const cps2recomp::Feature socd{"input_socd", "Game", "SOCD cleaning", "", 0, {"Off", "Neutral"}};
+        Require(Shared(socd) == Share::Own && !Netplay::MatchDecides(socd),
+                "SOCD choice must remain local to each player during a match");
         for (const auto &[name, run] : std::initializer_list<std::pair<const char *, void (*)()>>{
                  {"reopening host packets (loopback UDP)", ReopeningPackets},
                  {"intentional leave and reconnect fallback", LeaveKinds},

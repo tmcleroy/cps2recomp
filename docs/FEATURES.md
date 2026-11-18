@@ -37,6 +37,14 @@ is how the port always drew it, so they are the same in every preset.
 
 ## Players and buttons
 
+**SOCD cleaning** on the Game page (`input_socd`) has **Off** (the default, including Pure) and **Neutral**.
+Neutral cancels Left + Right and Up + Down separately; diagonals and all buttons remain as pressed. Releasing one
+opposing direction leaves the other active immediately, without waiting a frame. The window applies it to each
+local player's combined keyboard, gamepad and touch controls, after controls held while leaving a menu are masked.
+It does not change menu navigation. Online, each machine keeps its own choice and sends the resulting inputs;
+received inputs, rollback and recorded movies are not cleaned again. Headless movies and generated inputs bypass
+the window and retain their original direction bits. Enable it with `--features input_socd=1` or in the launcher/menu.
+
 A game says in its `game.cfg` how many play at once (`players = 3`; two unless it says, four at most) and, if it is not
 a fighting game, what it calls its buttons (`buttons = Attack | Jump | Shoot`). The machine reads every player the board
 has; the window reads a gamepad and keys for each of the game's players; the launcher's Controllers page has a button

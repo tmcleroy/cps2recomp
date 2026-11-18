@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **SOCD cleaning** on the Game page: optional **Neutral** cancels Left + Right and Up + Down in each local player's
+  combined controls. Off by default, including Pure. Online players keep their own choice; recordings keep the
+  resulting inputs, so playback does not depend on this setting.
+
 - **Super resolution at 240 lines**: where the screen has no super resolution of 224 lines (CRT Emudriver's sets on some
   cards go no lower than 240p), the Arcade monitor's **Super resolution** uses one of 240 lines and 1920 or more
   columns, 2560 x 240 say, with the picture's 224 lines one for one in its middle and 8 black lines above and below.

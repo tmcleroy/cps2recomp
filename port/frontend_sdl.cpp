@@ -9,6 +9,7 @@
 #include "png_write.h"
 #include "present.h"
 #include "sound_filter.h"
+#include "socd.h"
 #include "touch.h"
 
 #include "../runtime/game.h"
@@ -859,8 +860,9 @@ int RunWindowed(Port &port) {
                 heldAtClose = previousPad;
             }
             heldAtClose &= previousPad;
+            const bool neutral = FeatureOn("input_socd");
             for (int player = 0; player < Machine::kMaxPlayers; player++) {
-                port.pad[player] = pads[player] & ~heldAtClose;
+                port.pad[player] = CleanSocd(pads[player] & ~heldAtClose, neutral);
             }
         }
 
