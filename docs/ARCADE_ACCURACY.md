@@ -231,6 +231,29 @@ change of SR or CCR and the read before a CLR or Scc not waited for, and the CPS
 They were found by tracing every bus access of the core (the harness's `PCTRACE=from:to`) and every block of the
 port (an experiment build's) over the same frames, from a saved state of the simulation just before them.
 
+### Other emulators, measured the same way
+
+For context, the same Super Turbo fights (the same inputs, the core's state copied in at character select) were run
+on FinalBurn Neo, upstream's libretro core and Fightcade 2's own build of it (`fightcadeorg/fightcade-fbneo`, its
+Capcom driver and 68000 built into upstream's libretro front end: `tools/reference/fbneo/README.md`). FinalBurn
+Neo takes a different approach to the boards' timing: rather than counting the waits and the DMA, it sets each game's
+68000 clock (Super Turbo's 10.8675 MHz, Hyper Fighting's 8.5) to match recordings of real boards. Frames a second of
+the round clock:
+
+| Turbo | jtcps2 | CPS-2 Recomp | FinalBurn Neo (upstream) | Fightcade 2 |
+| --- | --- | --- | --- | --- |
+| 1 | 32.118 | 32.118 | 32.824 | 32.882 |
+| 2 | 31.579 | 31.474 | 32.600 (16 seconds) | 32.158 |
+| 3 | 30.923 | 30.923 | 31.692 | 31.538 |
+| 4 | 30.067 | 30.600 | 30.600 | 30.800 |
+
+All start the round on the core's frame. Hyper Fighting, the same way against jtcps1 at the board's 12 MHz (a
+build of it with the CPU's clock enable at 48/4 and the DMA's bus requests kept: `CPS2RECOMP_BOARD12`, a local change
+to `jtcps1_main.v`; jtcps1's own 12 MHz is its turbo, which also drops the DMA's requests), 16 seconds of the round
+clock: jtcps1 32.867 frames a second, CPS-2 Recomp 32.933 (the last tick a frame from the core's), FinalBurn Neo
+32.600 (4 frames), Fightcade 2 32.733 (2 frames). Where the copy of the core's state lands matters: each side's
+round must start on the core's frame (1,562), found by trying the frames around the first press.
+
 ## Where it stands
 
 For Street Fighter Alpha 2's game logic, the arcade timing matches a cycle-level model of the board frame for

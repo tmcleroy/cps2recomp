@@ -148,7 +148,8 @@ Linux, the Steam Deck and Windows can play each other.
   the system's language). The games' own words are left as they are.
 - **The board's speed**: the processor runs as on the real board, so every game plays at the board's speed and
   slows down where and as much as the board does, checked frame by frame against a cycle-exact model of it
-  ([docs/TIMING.md](docs/TIMING.md)). **Slowdown → None** gives it every clock instead.
+  ([docs/TIMING.md](docs/TIMING.md)), measured frame by frame against the boards' FPGA cores
+  ([the proof](docs/ACCURACY.md)). **Slowdown → None** gives it every clock instead.
 - **Run-ahead**, the board's operator settings, free play, rapid fire, and straight to the title at start-up.
 - **A custom soundtrack**: your own music files in place of the board's music ([how](docs/SOUNDTRACK.md)).
 - **Multi game**: play several games one after another, such as an endless battle through every stage of each

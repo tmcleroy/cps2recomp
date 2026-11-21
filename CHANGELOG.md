@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The proof of the speed, in one page** (docs/ACCURACY.md, linked from the README): the Street Fighter II games against
+  jotego's FPGA cores, the same fight on both sides, with the numbers and the side-by-side videos; Hyper Fighting now
+  also against jtcps1 at the board's 12 MHz. `tools/reference/fbneo/` runs FinalBurn Neo the same way, for context.
+
 ## 1.6.0-beta.4
 
 **Every game now runs at its arcade board's speed by default, and the Street Fighter II family is proven to.**
