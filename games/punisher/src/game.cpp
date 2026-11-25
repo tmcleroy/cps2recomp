@@ -8,6 +8,9 @@
 
 namespace cps2recomp {
 
+void PunisherWideFrame(Machine &);
+void RegisterPunisherWide();
+void RegisterPunisherWideBone();
 void RegisterBoard(); // board.cpp
 void BoardFrame(Machine &machine);
 void RegisterMusic(); // music.cpp
@@ -100,6 +103,11 @@ namespace {
         }
     }
 
+    void BeforeFrame(Machine &machine) {
+        ModesBeforeFrame(machine);
+        PunisherWideFrame(machine);
+    }
+
     void Frame(Machine &machine) {
         BoardFrame(machine);
         ModesFrame(machine);
@@ -121,6 +129,8 @@ namespace {
 
 void RegisterGame() {
     Game &game = TheGame();
+    RegisterPunisherWide();
+    RegisterPunisherWideBone();
     RegisterMusic();
     RegisterBoard();
     RegisterModes();
@@ -136,7 +146,7 @@ void RegisterGame() {
     game.features.push_back({"infinite_lives", "Cheats", "Infinite lives", "A player who goes down always has another life."});
     game.features.push_back({"infinite_time", "Cheats", "Infinite time", "The stage's clock stands still."});
     AddHook(HookAt(kGameBegins), "GameBegins", GameBegins);
-    game.beforeFrame = ModesBeforeFrame;
+    game.beforeFrame = BeforeFrame;
     game.frame = Frame;
     game.state = State;
     OwnFeatures({"start_stage"});

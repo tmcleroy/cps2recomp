@@ -82,7 +82,8 @@ void Raster::Objects(const ObjectList &list, const PictureOptions &options) {
             for (int ty = 0; ty < down; ty++) {
                 for (int tx = 0; tx < across; tx++) {
                     ObjectTile t;
-                    t.x = static_cast<int16_t>((x + tx * 16) & 0x1FF);
+                    const int tileX = static_cast<int16_t>(x) + tx * 16;
+                    t.x = static_cast<int16_t>(options.signedCps1X ? tileX : (tileX & 0x1FF));
                     t.y = static_cast<int16_t>((y + ty * 16) & 0x1FF);
                     const int cx = flipX ? across - 1 - tx : tx, cy = flipY ? down - 1 - ty : ty;
                     t.tile = (code & ~0xFu) + ((code + cx) & 0xF) + 0x10 * cy;

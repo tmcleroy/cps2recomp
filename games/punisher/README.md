@@ -29,6 +29,10 @@ program. What the program expects of the board is code written for this project,
 video, its inputs, its settings memory and QSound, as for Cadillacs and Dinosaurs. The sound program's key is worked
 out from your own ROM when it loads, as for that game; no key is in this repository.
 
+- **Optional 16:9 gameplay**. In the in-game menu choose **Display → Widescreen** to show 64 more board
+  pixels on each side and extend the players’ horizontal movement. The sight in the barrel bonus can aim at either edge.
+  Stage transitions use the same wide view. Text and portraits retain their original proportions.
+  Widescreen starts off in every preset.
 - **Two players at once**, each with a keyboard layout or a gamepad of their own: player 1 is the Punisher, player 2
   Nick Fury.
 - Plays with a keyboard, a gamepad or an arcade stick; every key and button can be changed, for each player, in the

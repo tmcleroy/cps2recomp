@@ -133,6 +133,7 @@ public:
         // the backdrop shows, in the added columns or where a scroll screen is drawn moved: with this set, a
         // run of such pixels no wider than `side` is the line's own picture mirrored at the nearest drawn pixel)
         bool fillHoles = false;
+        bool signedCps1X = false; // keep software sprite positions beyond the edges of the 512-column raster
     } wide;
     int Width() const {
         return kWidth + 2 * wide.side;
@@ -148,6 +149,7 @@ public:
         o.object = wide.object;
         o.tile = wide.tile;
         o.fillHoles = wide.fillHoles;
+        o.signedCps1X = wide.signedCps1X;
         o.hideObject = hideObject;
         o.objectsTaken = objectsTaken;
         o.markObjects = markObjects;

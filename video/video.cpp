@@ -338,7 +338,8 @@ void Video::DrawObjectsCps1(int rasterLine, uint16_t *pens, const uint8_t *high,
             }
             const int line = rasterLine - sy;
             for (int tx = 0; tx < across; tx++) {
-                const int sx = ((x + tx * 16) & 0x1FF) + shift;
+                const int tileX = static_cast<int16_t>(x) + tx * 16;
+                const int sx = (wide.signedCps1X ? tileX : (tileX & 0x1FF)) + shift;
                 if (sx <= -16 || sx >= width) {
                     continue;
                 }

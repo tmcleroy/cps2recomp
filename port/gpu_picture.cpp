@@ -441,6 +441,12 @@ void GpuPicture::Draw(SDL_GPUCommandBuffer *commands, const NativeVideo::FrameDa
         const size_t n = drawnTiles++;
         tileWords[n * 4] = static_cast<uint32_t>(static_cast<uint16_t>(t.x)) | (static_cast<uint32_t>(static_cast<uint16_t>(t.y)) << 16);
         tileWords[n * 4 + 1] = static_cast<uint16_t>(t.shift); // (where the game's sources move it: PictureOptions::object)
+        // The CPS-1 shader receives unsigned X and subtracts a signed shift. Keep a partially visible
+        // tile with negative software X on the left instead of wrapping it to the right.
+        if (raster.Cps1() && t.x < 0) {
+            tileWords[n * 4] &= 0xffff0000u;
+            tileWords[n * 4 + 1] = static_cast<uint16_t>(t.shift - t.x);
+        }
         tileWords[n * 4 + 2] = t.tile;
         tileWords[n * 4 + 3] = t.colour | (t.flipX ? 1u << 16 : 0) | (t.flipY ? 1u << 17 : 0) | (t.extra ? 1u << 18 : 0) |
                                (t.relative ? 1u << 19 : 0) | (static_cast<uint32_t>(t.level) << 20) |

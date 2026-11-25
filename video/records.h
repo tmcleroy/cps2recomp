@@ -66,6 +66,7 @@ namespace native_video {
         int (*object)(uint32_t tile, uint16_t attributes, int entry) = nullptr;
         bool (*tile)(int which, int column, int row, int at, uint16_t &code, uint16_t &attributes) = nullptr;
         bool fillHoles = false;
+        bool signedCps1X = false; // keep software sprite positions beyond the edges of the 512-column raster
         bool (*hideObject)(uint32_t tile, uint16_t attributes) = nullptr;
         void (*objectsTaken)(uint16_t *list, int &last) = nullptr;
         bool markObjects = false;
