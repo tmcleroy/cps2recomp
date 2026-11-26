@@ -132,6 +132,7 @@ inline std::vector<cps2recomp::Song> Songs() {
         {0x7E, "chunli_later", "Chun-Li's stage, faster (a fighter's health low)"},
         {0x7F, "zangief_later", "Zangief's stage, faster (a fighter's health low)"},
         {0x80, "dhalsim_later", "Dhalsim's stage, faster (a fighter's health low)"},
+        {0x84, "bison_later", "M. Bison's stage, faster (a fighter's health low)"},
         {0x81, "balrog_later", "Balrog's stage, faster (a fighter's health low)"},
         {0x82, "vega_later", "Vega's stage, faster (a fighter's health low)"},
         {0x83, "sagat_later", "Sagat's stage, faster (a fighter's health low)"},

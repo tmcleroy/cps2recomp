@@ -20,9 +20,9 @@ no name for yet by number.
 - [Street Fighter Alpha](#street-fighter-alpha) (37)
 - [Street Fighter Alpha 2](#street-fighter-alpha-2) (59)
 - [Street Fighter Alpha 3](#street-fighter-alpha-3) (44)
-- [Street Fighter II Champion Edition](#street-fighter-ii-champion-edition) (28)
-- [Street Fighter II Hyper Fighting](#street-fighter-ii-hyper-fighting) (28)
-- [Street Fighter II The World Warrior](#street-fighter-ii-the-world-warrior) (28)
+- [Street Fighter II Champion Edition](#street-fighter-ii-champion-edition) (29)
+- [Street Fighter II Hyper Fighting](#street-fighter-ii-hyper-fighting) (29)
+- [Street Fighter II The World Warrior](#street-fighter-ii-the-world-warrior) (29)
 - [Street Fighter Zero 2 Alpha](#street-fighter-zero-2-alpha) (59)
 - [Super Gem Fighter Mini Mix](#super-gem-fighter-mini-mix) (21)
 - [Super Puzzle Fighter II Turbo](#super-puzzle-fighter-ii-turbo) (24)
@@ -497,6 +497,7 @@ no name for yet by number.
 | `dhalsim_later` | `80` | Dhalsim's stage, faster (a fighter's health low) |
 | `balrog_later` | `81` | Balrog's stage, faster (a fighter's health low) |
 | `vega_later` | `82` | Vega's stage, faster (a fighter's health low) |
+| `bison_later` | `84` | M. Bison's stage, faster (a fighter's health low) |
 | `sagat_later` | `83` | Sagat's stage, faster (a fighter's health low) |
 | `title` | `16` | The introduction and the title (played once) |
 | `player_select` | `0E` | Player select |
