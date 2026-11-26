@@ -78,7 +78,8 @@ namespace {
     bool OnlineModeHere(int mode) {
         return mode == 0 || (mode == 1 && FindFeature("court_points")) || (mode == 2 && FindFeature("team_size"));
     }
-    // A player's own fighters' rows on the modes' pages (player 1's the host's, player 2's the other side's)
+    // A player's own fighters' rows on the modes' pages (the board's player 1's, or player 2's: the host's side, or the
+    // other side's, unless the host has swapped the sides)
     bool OwnRow(int player, const std::string &row) {
         return player == 0 ? row == "court_one" || row.rfind("team_1_", 0) == 0 : row == "court_two" || row.rfind("team_2_", 0) == 0;
     }
@@ -3890,7 +3891,9 @@ void Port::OnlineReselectBoot() {
     }
 }
 
-void Port::OnlineEvent(int player, const std::string &text, uint64_t eventFrame) {
+// (player: the event's sender's machine, 0 the host's; side: the board's player that machine plays at the event's frame,
+// whose fighters' rows it picks: Swap sides moves them)
+void Port::OnlineEvent(int player, int side, const std::string &text, uint64_t eventFrame) {
     const uint64_t at = eventFrame; // (the frame the event is for: the pause's and Ready's logs keep it)
     for (size_t place = 0; place < text.size();) {
         const OnlinePickHistory::Position position{eventFrame, player, place};
@@ -3934,7 +3937,7 @@ void Port::OnlineEvent(int player, const std::string &text, uint64_t eventFrame)
                 SetFeatureForNow(row.c_str(), log.Before(position));
             }
             battle::StartOnline(*machine, mode, seed);
-        } else if (OwnRow(player, name)) {
+        } else if (OwnRow(side, name)) {
             const Feature *feature = FindFeature(name);
             const int value = atoi(item.c_str() + eq + 1);
             if (feature && value >= 0 && value < static_cast<int>(std::max<size_t>(feature->choices.size(), 2))) {
@@ -3977,19 +3980,24 @@ void Port::OpenOnlineMenu() {
     }
     onlineSeats.clear();
     if (net->CanSeat()) {
-        // (the host's, in a match of four: the people moved between the sides and partners, issue #448). Each is where
-        // the people now at players 1-4 go: the sides swapped, or the person at player 1 with each other partner
+        // (the host's, in a match of four: the people moved between the sides and partners, issue #448; in a match of
+        // two, the sides only). Each is where the people now at players 1-4 go: the sides swapped, or the person at
+        // player 1 with each other partner
         const Netplay::Layout now = net->SeatLayout();
         static const int kMoves[3][4] = {{1, 0, 3, 2}, {0, 2, 1, 3}, {0, 1, 3, 2}};
         static const char *const kWhat[3] = {"Swap sides", "Change partners", "Change partners"};
-        for (int n = 0; n < 3; ++n) {
+        const bool two = net->Players() == 2;
+        for (int n = 0; n < (two ? 1 : 3); ++n) {
             Netplay::Layout moved{};
             for (int m = 0; m < net->Machines(); ++m)
                 for (int person = 0; person < net->People(m); ++person) moved[m][person] = kMoves[n][now[m][person]];
             onlineSeats.push_back(moved);
             online.commands.push_back({Menu::kOnlinePage, std::string(kWhat[n]) + ": " + TeamsSaid(moved),
-                                       "Moves everyone now, without leaving the match: the left team, then the right. Each "
-                                       "player keeps their own controller. The set's score starts again from 0-0."});
+                                       two ? "Swaps who plays player 1 and player 2 now, without leaving the match: player 1 "
+                                             "first. Each player keeps their own controller, and their fighters' picks "
+                                             "are the side's. The set's score starts again from 0-0."
+                                           : "Moves everyone now, without leaving the match: the left team, then the right. Each "
+                                             "player keeps their own controller. The set's score starts again from 0-0."});
         }
     }
     if (OnlineReselectHere()) {
@@ -4012,13 +4020,14 @@ void Port::OpenOnlineMenu() {
         online.features.push_back({Menu::kOnlinePage, title, description, {found->choices.begin(), found->choices.end()}});
     };
     if (net->Players() == 2) {
-        pick(me == 0 ? "court_one" : "court_two", "Ball battle: your fighter",
+        const int side = net->Player(me, 0); // (the board's player this machine plays: the host's 1 unless swapped)
+        pick(side == 0 ? "court_one" : "court_two", "Ball battle: your fighter",
              "Who you play in the ball battle: someone at random, or this one. The other player sees your choice.");
         if (FindFeature("team_size")) {
             const int size = FeatureValue("team_size") == 1 ? 3 : 2;
             static const char *const kOrder[3] = {"first", "second", "third"};
             for (int n = 0; n < size; n++) {
-                pick("team_" + std::to_string(me + 1) + "_" + std::to_string(n + 1), std::string("Tag team: your ") + kOrder[n],
+                pick("team_" + std::to_string(side + 1) + "_" + std::to_string(n + 1), std::string("Tag team: your ") + kOrder[n],
                      std::string("Your team's ") + kOrder[n] + " fighter in the tag team battle: someone at random, or this one.");
             }
         }
@@ -4100,7 +4109,8 @@ void Port::OpenOnlineMenu() {
     menu.OpenOnline(std::move(online));
 }
 
-// The teams of a layout, as the menu and the chat say them: the left's two (players 1 and 3), then the right's (2 and 4)
+// The teams of a layout, as the menu and the chat say them: the left's two (players 1 and 3), then the right's (2 and 4);
+// in a match of two, player 1 then player 2
 std::string Port::TeamsSaid(const Netplay::Layout &layout) const {
     std::string who[Machine::kMaxPlayers];
     for (int m = 0; net && m < net->Machines(); ++m) {
@@ -4113,6 +4123,7 @@ std::string Port::TeamsSaid(const Netplay::Layout &layout) const {
             if (net->People(m) > 1) who[player] += " (" + std::to_string(person + 1) + ")";
         }
     }
+    if (net && net->Players() == 2) return who[0] + " vs " + who[1];
     return who[0] + " + " + who[2] + " vs " + who[1] + " + " + who[3];
 }
 
@@ -4194,7 +4205,7 @@ void Port::HearEvents() {
                 said = "Teams: " + TeamsSaid(layout);
             } else if (name == "mode" && player == 0 && OnlineModeHere(value)) {
                 said = who + (value == 0 ? " went back to Versus" : std::string(" started ") + kOnlineModes[value]);
-            } else if (const Feature *feature = FindFeature(name); feature && OwnRow(player, name) && value >= 0 &&
+            } else if (const Feature *feature = FindFeature(name); feature && OwnRow(net->Player(player, 0), name) && value >= 0 &&
                                                                     value < static_cast<int>(feature->choices.size())) {
                 said = who + (player == net->Local() ? " picked " : " picked ") + feature->choices[value] +
                        (name.rfind("court", 0) == 0 ? " (Ball battle)" : " (Tag team)");

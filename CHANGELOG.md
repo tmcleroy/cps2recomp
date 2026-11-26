@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Online, two players: Swap sides** (every game). In a 1 vs 1 match the host was always player 1. The host's
+  in-game menu (Online page) now has **Swap sides**, as matches of four have (#448): both players change sides on the
+  same frame without leaving, each keeps their own controller, and the set's score and win streaks start again. Only
+  the host can do it: the other player asks in the chat. The ball battle's and tag team's fighter picks go with the
+  side. Both players need this version (protocol 20).
 - **Stage page: another game's stage without its ROM set** is now the game's own choice. Before, every round was
   fought on the game's first stage with nothing drawn over it (Apocalypse's lair in X-Men vs. Street Fighter, and
   the same in every fighting game). Online it is as before: both sides fight on the first stage, each drawing the

@@ -34,8 +34,8 @@
 # MVC_CUSTOM=1 exercises the alternative Cross Fever rules on the host and in the offline replay.
 # FIRST_TO=0|3|5|10 checks the host's Casual/FT3/FT5/FT10 choice against different choices on all joining machines.
 # WATCH=1 adds a viewer after play starts and compares its confirmed frame hashes with the host's.
-# SEATS=FRAME:LAYOUT (a match of four): the host changes the seats at FRAME (issue #448: --net-command FRAME:seats=LAYOUT,
-# e.g. 1200:1.0.3.2 swaps the sides at four machines); every machine must make it, the same frame, and the logs and the
+# SEATS=FRAME:LAYOUT (a match of four, or of two): the host changes the seats at FRAME (issue #448: --net-command
+# FRAME:seats=LAYOUT, e.g. 1200:1.0.3.2 swaps the sides at four machines, 1200:1.0 at two); every machine must make it, the same frame, and the logs and the
 # replay of the host's record still be the same.
 #
 #   [ARCADE=1] [FOUR=1 | MACHINES=3|4 | PEOPLE=1,2,1] [FIRST_TO=0|3|5|10] [WATCH=1] [SEATS=FRAME:LAYOUT] [JOIN_ROM=<set>]

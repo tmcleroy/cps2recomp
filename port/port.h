@@ -390,7 +390,7 @@ struct Port {
     // frame it was given for: "mode=N:SEED" (the host's: battle::StartOnline) and "row=value" (a player's own fighters
     // on the modes' pages: player 1's rows the host's, player 2's the other's), commas between
     // (`at`: the frame it is run before. A mode starts with each row as the events before its command left it.)
-    void OnlineEvent(int player, const std::string &text, uint64_t at);
+    void OnlineEvent(int player, int side, const std::string &text, uint64_t at); // (player: the sender's machine)
     std::map<std::string, OnlinePickHistory> onlinePickLog;
     // The host's pause for choosing: while the host's match menu is open the game stands still for both ("setup=1",
     // the host's event; "setup=0" when it closes), and the other player's opens by itself. The other player says

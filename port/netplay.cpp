@@ -2130,7 +2130,8 @@ void Netplay::Run(Port &port, uint64_t at, bool drawing) {
     }
     for (int machine = 0; needed == 2 && machine < machines; ++machine) {
         const auto event = events[machine].find(at);
-        if (event != events[machine].end()) port.OnlineEvent(machine, event->second, at);
+        // (with the board's player the machine plays this frame: its own fighters' rows are that side's, Swap sides)
+        if (event != events[machine].end()) port.OnlineEvent(machine, seats[machine][0], event->second, at);
     }
     const bool versus = set.Counting() && battle::TwoPeopleNow();
     // (the host's pause for choosing, Port::onlineSetupLog: the game stands still for both)
@@ -2321,9 +2322,9 @@ void Netplay::PruneEvents() {
 void Netplay::Command(const std::string &text) {
     size_t length = text.size();
     for (const auto &pending : commanded) length += pending.size() + 1;
-    // (a match of two: the modes, the picks and Ready; a match of more: the host's seat changes only)
+    // (a match of two: the modes, the picks, Ready and the host's Swap sides; a match of more: the host's seat changes only)
     const bool seats = text.rfind("seats=", 0) == 0;
-    if (!text.empty() && length <= 512 && !settings.watching && (needed == 2 ? !seats : seats && CanSeat())) {
+    if (!text.empty() && length <= 512 && !settings.watching && (seats ? CanSeat() : needed == 2)) {
         commanded.push_back(text);
     }
 }
@@ -2381,7 +2382,7 @@ bool Netplay::SeatEvent(const std::string &text, Layout &layout) const {
 // (an event that has come or been made: if it is the host's seat change, from its frame on)
 void Netplay::NoteSeats(int machine, uint64_t at, const std::string &text) {
     Layout layout{};
-    if (machine == 0 && needed > 2 && SeatEvent(text, layout)) seatChanges[at] = layout;
+    if (machine == 0 && SeatEvent(text, layout)) seatChanges[at] = layout;
 }
 
 const Netplay::Layout &Netplay::SeatsAt(uint64_t at) const {
