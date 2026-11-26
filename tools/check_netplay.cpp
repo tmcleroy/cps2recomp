@@ -982,6 +982,32 @@ struct NetplayTest {
         other.Take(other.links[1], theirs.data(), theirs.size());
         Require(other.upTo[2] == 0 && other.seatChanges.empty(), "a joining machine's seat change was taken");
 
+        // A match of two: the host swaps the sides (Swap sides), its modes' events still go; the other player cannot
+        Netplay duo(Settings(true));
+        duo.links.resize(1);
+        duo.Assign();
+        Require(duo.needed == 2 && duo.CanSeat(), "a host of two cannot swap the sides");
+        Netplay::Layout sides = duo.SeatLayout();
+        std::swap(sides[0][0], sides[1][0]);
+        duo.Seat(sides);
+        Require(duo.commanded.size() == 1 && duo.commanded[0] == "seats=1.0", "the host's swap of two was not one seat event");
+        duo.Command("mode=1:3");
+        Require(duo.commanded.size() == 2, "a match of two lost its mode events");
+        for (const char *bad : {"seats=0.0", "seats=1", "seats=2.0", "seats=1.0.2"}) {
+            Require(!duo.SeatEvent(bad, parsed), std::string("a malformed seat change of two was taken: ") + bad);
+        }
+        duo.NoteSeats(0, 9, "court_one=2,seats=1.0");
+        Require(duo.SeatsAt(8)[0][0] == 0 && duo.SeatsAt(9)[0][0] == 1 && duo.SeatsAt(9)[1][0] == 0,
+                "a swap of two was not played from its frame");
+        duo.NoteSeats(1, 10, "seats=0.1");
+        Require(duo.seatChanges.size() == 1, "the other player's seat change was taken");
+        Netplay guest(Settings(false));
+        guest.needed = guest.machines = 2;
+        guest.local = 1;
+        Require(!guest.CanSeat(), "the other player of two can swap the sides");
+        guest.Command("seats=1.0");
+        Require(guest.commanded.empty(), "the other player of two sent a seat change");
+
         // The set's score starts again, keeping its format
         FirstTo set;
         set.Begin(1);
@@ -1128,7 +1154,7 @@ struct NetplayTest {
                  {"reliable mode events and four-human mode guard", ModeEvents},
                  {"fighter picks before same-frame mode commands under rollback", ModePickOrder},
                  {"four-stream confirmed spectators and read-only controls", SpectatorControls},
-                 {"host seat changes in a match of four, frame-exact and rolled back to", SeatChanges}}) {
+                 {"host seat changes in a match of four or two, frame-exact and rolled back to", SeatChanges}}) {
             run();
             std::cout << "PASS: " << name << '\n';
         }
