@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Street Fighter II, Champion Edition and Hyper Fighting: M. Bison's faster stage tune** has its own file name,
+  `bison_later` (tune 84, from the games' own table of low-health tunes by stage), in the soundtrack folder's `songs.txt`
+  and [docs/SONGS.md](docs/SONGS.md). Before, it was the one faster stage tune left out of the list (a file named
+  `84` still replaced it).
 - **Online, two players: Swap sides** (every game). In a 1 vs 1 match the host was always player 1. The host's
   in-game menu (Online page) now has **Swap sides**, as matches of four have (#448): both players change sides on the
   same frame without leaving, each keeps their own controller, and the set's score and win streaks start again. Only
