@@ -258,13 +258,14 @@ public:
     void Command(const std::string &text);
     std::vector<std::pair<int, std::string>> TakeEvents();
     // The seats (issue #448): in a match of four the host moves the people between the board's players while the match
-    // goes on (who partners whom, which side), with no one leaving; in a match of two, the sides only. A change is an event in the host's controls, for a
+    // goes on (who partners whom, which side), with no one leaving; in a match of three (2 vs 1, 1 vs 2) who plays
+    // alone, and in a match of two, the sides only. A change is an event in the host's controls, for a
     // frame, so every machine makes it on that frame (one that comes after the frame has been run is rolled back to);
     // each machine's people stay its own, only the players they play change. The set's score starts again from it.
     // A layout: each machine's people's players, as Player(machine, person) says them
     using Layout = std::array<std::array<int, kMostSeats>, kMostMachines>;
     bool CanSeat() const {
-        return settings.hosting && !settings.watching && (needed == 2 || needed == 4);
+        return settings.hosting && !settings.watching && needed >= 2;
     }
     Layout SeatLayout() const;
     void Seat(const Layout &layout);
