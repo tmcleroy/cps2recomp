@@ -25,6 +25,8 @@
 
 #include "first_to.h"
 
+#include "turn.h"
+
 #include <array>
 #include <cstdint>
 #include <cstdlib>
@@ -69,6 +71,36 @@ public:
 private:
     intptr_t handle = -1;
     bool six = false; // (IPv6, and IPv4 through it)
+};
+
+// The match's socket: a UdpSocket, and the relay when there is one (port/turn.h). Packets to a peer go to it directly,
+// unless it was only ever heard through the relay (its packets came to the relayed address), or `only` (--net-relay
+// only): then they go wrapped to the relay server. The server's own answers are kept here; a peer's packet that came
+// through it is given out as from that peer.
+class RelaySocket {
+public:
+    bool Open(int port, std::string &error) { return raw.Open(port, error); }
+    int LocalPort() const { return raw.LocalPort(); }
+    void Send(const NetAddress &to, const uint8_t *data, size_t size);
+    int Receive(uint8_t *data, size_t size, NetAddress &from);
+    // (the server, as UdpSocket::Resolve gave it; its username and password; every packet through it, or not)
+    void StartRelay(const NetAddress &server, const std::string &user, const std::string &password, bool only);
+    bool RelayStarted() const { return client.Started(); }
+    bool RelayReady() const { return client.Ready(); }
+    bool RelayFailed() const { return client.Failed(); }
+    const std::string &RelayWhy() const { return client.Why(); }
+    std::string RelayAddress() const; // ("IP:PORT", "" until it has one)
+    void Permit(const NetAddress &peer); // (a peer's address: its IP let through the relay)
+    bool Through(const NetAddress &peer) const; // (whether a packet to it goes through the relay)
+
+private:
+    UdpSocket raw;
+    turn::Client client;
+    NetAddress server;
+    bool only = false, saidFailed = false;
+    int wrapsSaid = 0, dataSaid = 0, directSaid = 0; // (CPS2RECOMP_NET_DEBUG: the first packets through the relay, said)
+    std::vector<NetAddress> direct, relayed; // (peers heard directly, and only through the relay)
+    void Tick();
 };
 
 class Netplay {
@@ -116,6 +148,10 @@ public:
         bool watching = false, spectators = false;
         std::string address; // (joining: the host's)
         int port = kDefaultPort;
+        // (--net-relay: 0 the relay the service offers, beside the direct addresses; 1 only the relay, every packet
+        // through it (to try it); -1 none. CPS2RECOMP_NET_RELAY="HOST:PORT USER PASSWORD": that server, not the
+        // service's)
+        int relay = 0;
         int delay = kDefaultDelay;
         int runAhead = 0; // (this machine's run-ahead, as the others' network readout shows it: its own)
         std::string service = Service(); // (--net-service URL; "off": none, the host's address only)
@@ -320,7 +356,7 @@ private:
     void WatchSend();
     void WatchCapture(Port &port);
     void WatchService();
-    UdpSocket socket;
+    RelaySocket socket;
     // (the handshake: the hello or the welcome, sent again until answered)
     std::vector<uint8_t> greeting;
     uint32_t build = 0;
@@ -352,6 +388,16 @@ private:
     std::string joinCode; // (joining by a code: it, as typed)
     uint32_t ticket = 0;  // (joining by a code: the service's number for this machine, said in the hello)
     std::future<std::vector<NetAddress>> stunLookup;
+    // (the relay: its server and credentials, asked of the service (GET /v1/relay) as STUN is; then the allocation,
+    // waited for a moment before the addresses are said. Settings::relay)
+    struct RelayGrant {
+        bool ok = false;
+        NetAddress server;
+        std::string where, user, password, why;
+    };
+    std::future<RelayGrant> relayLookup;
+    bool relayAsked = false, relayTold = false;
+    uint64_t relayAskedAt = 0, relayStartedAt = 0;
     std::vector<NetAddress> stunServers;
     std::array<uint8_t, 12> stunId{};
     uint64_t stunBegan = 0, stunSent = 0;

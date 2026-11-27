@@ -34,6 +34,7 @@
 //   POST /v1/room/leave          {secret}                          -> {}
 //   POST /v1/room/decline        {secret, code}                    -> {}
 //   GET  /v1/stats?key=K                                           -> a page of numbers, for the service's keeper (STATS_KEY)
+//   GET  /v1/relay                                                 -> {server, username, credential, ttl} | 404 (the relay: below)
 //
 // A host that asks for it (`listed`, with a `name` and its `protocol`) is in the lobby, a Durable Object (Lobby) that
 // keeps every game's: there while it has room and the host is asking (seen in the last 25 seconds), or while the
@@ -51,6 +52,13 @@
 //
 // Stats (a Durable Object) counts, by day and game, the matches hosted and joined, and which hosts are waiting now:
 // counts only, nothing about who. The page also says how many players have their Online page open (the Room).
+//
+// The relay (port/turn.h): for a player whose router stops direct connections (a symmetric or carrier-grade NAT), a
+// TURN server's address of their own, which the others reach them by. The service hands out short-lived credentials
+// for Cloudflare's TURN service, made with its TURN key (the secrets TURN_KEY_ID and TURN_KEY_API_TOKEN; without them,
+// 404: no relay). The game asks as it starts STUN, and puts the relayed address with its others; only a match that
+// can't be made directly sends its packets through it. RELAY_LIMIT (a rate limit binding, by the asker's IP) keeps
+// anyone from taking credentials by the thousand.
 //
 // `addresses` are "IP:PORT" strings (IPv4, or [IPv6]:PORT), at most 8: each side's own, as STUN and its network say them.
 
@@ -135,6 +143,9 @@ export default {
       const stats = env.STATS.get(env.STATS.idFromName("all"));
       ctx.waitUntil(stats.fetch(`https://stats/${what}`, { method: "POST", body: JSON.stringify(body) }).catch(() => {}));
     };
+    if (request.method === "GET" && parts[0] === "v1" && parts[1] === "relay" && parts.length === 2) {
+      return relay(request, env);
+    }
     if (request.method === "GET" && parts[1] === "stats" && parts.length === 2) {
       return statsPage(env, url.searchParams.get("key") || "");
     }
@@ -714,6 +725,41 @@ export class Stats {
 }
 
 // The page of numbers, for whoever has the key (a Worker secret: wrangler secret put STATS_KEY)
+export const kRelayTtl = 4 * 60 * 60; // (seconds: a long evening's play; the allocation is refreshed with them)
+
+// The relay's credentials: Cloudflare's TURN key makes a username and password that last kRelayTtl
+async function relay(request, env) {
+  if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) {
+    return json({ error: "no relay" }, 404);
+  }
+  if (env.RELAY_LIMIT) {
+    const { success } = await env.RELAY_LIMIT.limit({ key: request.headers.get("cf-connecting-ip") || "unknown" });
+    if (!success) {
+      return json({ error: "too many requests" }, 429);
+    }
+  }
+  const made = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`, "content-type": "application/json" },
+    body: JSON.stringify({ ttl: kRelayTtl }),
+  }).catch(() => null);
+  if (!made || !made.ok) {
+    return json({ error: "the relay's credentials could not be made" }, 502);
+  }
+  const body = await made.json().catch(() => ({}));
+  // ({iceServers: [{urls}, {urls, username, credential}]}, or one object: the entry with credentials, and its UDP URL)
+  const servers = Array.isArray(body.iceServers) ? body.iceServers : [body.iceServers || {}];
+  const turn = servers.find((server) => server && server.username && server.credential);
+  if (!turn) {
+    return json({ error: "the relay's credentials could not be made" }, 502);
+  }
+  const urls = Array.isArray(turn.urls) ? turn.urls : [turn.urls];
+  const udp = urls.find((url) => typeof url === "string" && /^turn:[^?]+:\d+\?transport=udp$/.test(url)) ||
+    urls.find((url) => typeof url === "string" && /^turn:[^?]+:\d+$/.test(url));
+  const server = udp ? udp.slice(5).split("?")[0] : "turn.cloudflare.com:3478";
+  return json({ server, username: turn.username, credential: turn.credential, ttl: kRelayTtl });
+}
+
 async function statsPage(env, key) {
   if (!env.STATS_KEY || key !== env.STATS_KEY) {
     return json({ error: "not here" }, 404);

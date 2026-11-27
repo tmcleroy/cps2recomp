@@ -447,6 +447,132 @@ int UdpSocket::Receive(uint8_t *data, size_t size, NetAddress &from) {
     return got;
 }
 
+// The relay (RelaySocket, port/turn.h)
+
+namespace {
+    // (an address as IPv4, its IP in host order and its port: false for IPv6)
+    bool AsFour(const NetAddress &address, uint32_t &ip, int &port) {
+        sockaddr_storage stored{};
+        memcpy(&stored, address.storage.data(), std::min<size_t>(sizeof(stored), address.storage.size()));
+        if (stored.ss_family == AF_INET) {
+            const auto *four = reinterpret_cast<const sockaddr_in *>(&stored);
+            ip = ntohl(four->sin_addr.s_addr);
+            port = ntohs(four->sin_port);
+            return true;
+        }
+        if (stored.ss_family == AF_INET6) {
+            const auto *six = reinterpret_cast<const sockaddr_in6 *>(&stored);
+            const uint8_t *b = six->sin6_addr.s6_addr;
+            static const uint8_t kMapped[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF};
+            if (memcmp(b, kMapped, 12) != 0) return false;
+            ip = static_cast<uint32_t>(b[12]) << 24 | b[13] << 16 | b[14] << 8 | b[15];
+            port = ntohs(six->sin6_port);
+            return true;
+        }
+        return false;
+    }
+    std::string FourText(uint32_t ip, int port) {
+        return std::to_string(ip >> 24) + "." + std::to_string((ip >> 16) & 0xFF) + "." + std::to_string((ip >> 8) & 0xFF) + "." +
+               std::to_string(ip & 0xFF) + ":" + std::to_string(port);
+    }
+    // (an IPv4 address, as the socket's received addresses have it: UdpSocket::Resolve)
+    NetAddress FromFour(uint32_t ip, int port) {
+        NetAddress address;
+        std::string ignored;
+        const std::string text = FourText(ip, port);
+        UdpSocket::Resolve(text.substr(0, text.rfind(':')), port, address, ignored, true);
+        return address;
+    }
+    bool Among(const std::vector<NetAddress> &list, const NetAddress &address) {
+        return std::find(list.begin(), list.end(), address) != list.end();
+    }
+} // namespace
+
+void RelaySocket::StartRelay(const NetAddress &to, const std::string &user, const std::string &password, bool onlyRelay) {
+    server = to;
+    only = onlyRelay;
+    client.Start(user, password, NowMs(), static_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count()));
+    Tick();
+}
+
+std::string RelaySocket::RelayAddress() const {
+    return client.Ready() ? FourText(client.RelayIp(), client.RelayPort()) : std::string();
+}
+
+void RelaySocket::Permit(const NetAddress &peer) {
+    uint32_t ip = 0;
+    int port = 0;
+    if (client.Started() && AsFour(peer, ip, port)) client.Permit(ip);
+}
+
+bool RelaySocket::Through(const NetAddress &peer) const {
+    uint32_t ip = 0;
+    int port = 0;
+    if (!client.Ready() || peer == server || !AsFour(peer, ip, port) || !client.Reaches(ip)) return false;
+    return only || (Among(relayed, peer) && !Among(direct, peer));
+}
+
+void RelaySocket::Tick() {
+    if (!client.Started()) return;
+    for (const auto &message : client.Tick(NowMs())) raw.Send(server, message.data(), message.size());
+    if (client.Failed() && !saidFailed) {
+        saidFailed = true;
+        fprintf(stderr, "online: the relay stopped: %s\n", client.Why().c_str());
+    }
+}
+
+void RelaySocket::Send(const NetAddress &to, const uint8_t *data, size_t size) {
+    uint32_t ip = 0;
+    int port = 0;
+    if (Through(to) && AsFour(to, ip, port)) {
+        client.Permit(ip); // (its IP let through, for its answers: in `only`, the first packet to it says so)
+        const std::vector<uint8_t> wrapped = client.Wrap(ip, port, data, size);
+        raw.Send(server, wrapped.data(), wrapped.size());
+        if (getenv("CPS2RECOMP_NET_DEBUG") && ++wrapsSaid <= 40) fprintf(stderr, "relay: to %s through the relay (%zu bytes)\n", FourText(ip, port).c_str(), size);
+        return;
+    }
+    if (only && client.Ready()) {
+        return; // (--net-relay only: nothing directly once the relay is there, as on a network that lets nothing else through)
+    }
+    if (getenv("CPS2RECOMP_NET_DEBUG") && client.Started() && ++directSaid <= 40) {
+        uint32_t i = 0;
+        int p = 0;
+        AsFour(to, i, p);
+        fprintf(stderr, "relay: to %s directly (ready %d, failed %d)\n", FourText(i, p).c_str(), client.Ready(), client.Failed());
+    }
+    raw.Send(to, data, size);
+}
+
+int RelaySocket::Receive(uint8_t *data, size_t size, NetAddress &from) {
+    Tick();
+    for (;;) {
+        const int got = raw.Receive(data, size, from);
+        if (got < 0) return got;
+        if (!client.Started() || !(from == server)) {
+            turn::Parsed stun;
+            if (only && client.Ready() && !turn::Parse(data, static_cast<size_t>(got), stun)) {
+                continue; // (--net-relay only: a peer's packet that came directly is not taken)
+            }
+            if (!Among(direct, from) && direct.size() < 64) direct.push_back(from);
+            return got;
+        }
+        std::vector<uint8_t> payload;
+        uint32_t ip = 0;
+        int port = 0;
+        const turn::Client::Took took = client.Take(data, static_cast<size_t>(got), payload, ip, port, NowMs());
+        if (took == turn::Client::Took::NotOurs) return got; // (a STUN server's answer at the same address)
+        if (took == turn::Client::Took::Ours || payload.size() > size) {
+            Tick(); // (a request again, signed, at once)
+            continue;
+        }
+        memcpy(data, payload.data(), payload.size());
+        from = FromFour(ip, port);
+        if (getenv("CPS2RECOMP_NET_DEBUG") && ++dataSaid <= 40) fprintf(stderr, "relay: from %s through the relay (%zu bytes)\n", FourText(ip, port).c_str(), payload.size());
+        if (!Among(relayed, from) && relayed.size() < 64) relayed.push_back(from);
+        return static_cast<int>(payload.size());
+    }
+}
+
 // The session
 
 void Netplay::SendTo(const NetAddress &to, const std::vector<uint8_t> &packet) {
@@ -842,8 +968,15 @@ namespace {
 std::string Netplay::Addresses() const {
     // (where the internet saw this socket, and its address on each of this machine's networks)
     std::vector<std::string> list;
+    const std::string relayed = socket.RelayAddress();
+    if (settings.relay == 1 && !relayed.empty()) {
+        return "[\"" + relayed + "\"]"; // (--net-relay only: the relay's alone)
+    }
     if (!seenAs.empty()) {
         list.push_back(seenAs);
+    }
+    if (!relayed.empty()) {
+        list.push_back(relayed); // (the relay's: the other side's packets to it come here through the relay)
     }
     for (const launcher::LocalAddress &here : launcher::local_addresses()) {
         list.push_back(here.address + ":" + std::to_string(socket.LocalPort()));
@@ -922,6 +1055,44 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
     case Intro::Off:
     case Intro::Done: return true;
     case Intro::Stun:
+        if (!relayAsked && settings.relay >= 0 && !settings.watching) {
+            // (the relay's server and credentials, on another thread: from the service, or CPS2RECOMP_NET_RELAY's)
+            relayAsked = true;
+            relayAskedAt = now;
+            relayLookup = std::async(std::launch::async, [url = service + "/v1/relay?game=" GAME_ID] {
+                RelayGrant grant;
+                const char *fixed = getenv("CPS2RECOMP_NET_RELAY");
+                if (fixed && *fixed) {
+                    // ("HOST:PORT USER PASSWORD")
+                    std::string words[3];
+                    size_t at = 0;
+                    const std::string text = fixed;
+                    for (std::string &word : words) {
+                        const size_t start = text.find_first_not_of(' ', at);
+                        if (start == std::string::npos) break;
+                        at = std::min(text.find(' ', start), text.size());
+                        word = text.substr(start, at - start);
+                    }
+                    grant.where = words[0], grant.user = words[1], grant.password = words[2];
+                } else {
+                    const auto [status, body] = Http("GET", url, "");
+                    if (status != 200) {
+                        grant.why = status ? "the online service has no relay (" + std::to_string(status) + ")"
+                                           : "the online service did not answer about the relay";
+                        return grant;
+                    }
+                    grant.where = JsonText(body, "server");
+                    grant.user = JsonText(body, "username");
+                    grant.password = JsonText(body, "credential");
+                }
+                std::string host, error;
+                int port = 3478;
+                UdpSocket::Split(grant.where, host, port);
+                grant.ok = !host.empty() && !grant.user.empty() && UdpSocket::Resolve(host, port, grant.server, error, true);
+                if (!grant.ok) grant.why = "the relay's server was not found (" + grant.where + ")";
+                return grant;
+            });
+        }
         if (stunServers.empty() && stunLookup.valid() && stunLookup.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
             stunServers = stunLookup.get();
         }
@@ -940,6 +1111,37 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
                 stunSent = now;
             }
             return true;
+        }
+        // (the relay: its server, then an address there, for a moment (3 seconds from the start for the server, 2.5 more
+        // for the address), or the match goes on without)
+        if (relayLookup.valid() && !relayTold) {
+            if (relayLookup.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                relayTold = true;
+                const RelayGrant grant = relayLookup.get();
+                if (grant.ok) {
+                    socket.StartRelay(grant.server, grant.user, grant.password, settings.relay == 1);
+                    relayStartedAt = now;
+                } else {
+                    fprintf(stderr, "online: no relay: %s\n", grant.why.c_str());
+                }
+            } else if (now - relayAskedAt < 3000) {
+                return true;
+            } else {
+                relayTold = true; // (the answer, when it comes, is not waited for)
+                fprintf(stderr, "online: no relay: the online service did not answer about it in time\n");
+            }
+        }
+        if (socket.RelayStarted() && !socket.RelayReady() && !socket.RelayFailed() && now - relayStartedAt < 2500) {
+            return true;
+        }
+        if (socket.RelayStarted() && relayStartedAt) {
+            relayStartedAt = 0; // (said once)
+            if (socket.RelayReady()) {
+                fprintf(stderr, "online: relay address %s%s\n", socket.RelayAddress().c_str(),
+                        settings.relay == 1 ? " (every packet through it)" : "");
+            } else {
+                fprintf(stderr, "online: no relay: %s\n", socket.RelayFailed() ? socket.RelayWhy().c_str() : "no address in time");
+            }
         }
         // (with where the internet sees us, or without: then only the addresses of this machine's networks)
         if (settings.hosting) {
@@ -1000,6 +1202,7 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
                 NetAddress to;
                 if (address(text, to)) {
                     candidates.push_back(to);
+                    socket.Permit(to); // (its IP let through the relay, when there is one)
                 }
             }
             if (candidates.empty()) {
@@ -1056,6 +1259,8 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
                         if (!text.empty() && std::find(told.begin(), told.end(), text) == told.end() && address(text, to)) {
                             told.push_back(text);
                             candidates.push_back(to);
+                            socket.Permit(to);
+                    socket.Permit(to); // (its IP let through the relay, when there is one)
                         }
                         at = next;
                     }
@@ -1154,6 +1359,9 @@ int Netplay::Waiting(Port &port, std::string &error) {
                     why = "The two copies of the game are different builds: use the same release on both.";
                 } else if (!in.ok) {
                     continue;
+                } else if (!link && theirTicket &&
+                           std::any_of(links.begin(), links.end(), [&](const Link &l) { return l.ticket == theirTicket; })) {
+                    continue; // (one who came already, by another of their addresses: their LAN's, the internet's, the relay's)
                 } else if (!link && Wanted() == 0) {
                     why = needed > 2 ? "That match is full." : "Someone has joined that match already.";
                 } else if (!link && bringing > Wanted()) {

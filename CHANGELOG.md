@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Online: a relay for networks that stop direct connections** (once the online service has its TURN key). A player
+  behind a strict router (a symmetric or carrier-grade NAT) couldn't reach anyone, or be reached. Each copy now also
+  takes an address on Cloudflare's TURN relay, said with its others; a match that can be made directly is made
+  directly, as before, and only a player who can't be reached otherwise is answered through the relay (a little
+  more delay, the same rollback). Older copies play with this one as before, and reach a strict player through their
+  relay too. `--net-relay only` sends everything through it, to try it. Also: a player reaching the host by two of
+  their addresses at once (their network's and the internet's) is no longer turned away as a second player.
 - **Online: a strict network said so.** When a player can't reach the host, the message now says whether
   their own network is the likely cause: a router that gives each place it sends to a port of its own (a
   symmetric or carrier-grade NAT, common on phone networks, some home internet and school or work wifi) stops most
