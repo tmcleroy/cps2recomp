@@ -161,7 +161,7 @@ the launcher's **Open diorama** (Games page, Tools) opens it in the browser, as 
 larger by as much, so the front view (Game view) is the game's picture at any spread; turn it, pull the layers apart,
 hide or solo them, add shadows between them, haze or scanlines, take a photo at up to 4x, or record a video (MP4, or
 WebM where the browser makes no MP4: a clip once through, a scene or stage turning). The board's pixels are shown as on
-its 4:3 screen (or square, when chosen). Every scene opened is kept in the browser's list until its data for the page is
+its 4:3 screen (or square, when chosen); a scene that says its pixels' shape (`pixelAspect` in `scene.json`, a pixel's width over its height: spelunkomp's boards save it) is shown in that shape. Every scene opened is kept in the browser's list until its data for the page is
 cleared. In a saved scene, click an object to pick it out of its layer (a frame is drawn round it): hide it, show it
 alone, or bring it forward or back a step at a time (Delete, [ and ]); its layer is drawn again without it, the objects
 it covered there in its place. A clip steps frame by frame or plays at 1x to 1/16x. A scene saved with hit boxes shows

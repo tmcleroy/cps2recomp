@@ -303,9 +303,14 @@ let outline = null;    // the picked one's frame
 let panAt = 0; // (the camera moved across the stage, Camera across the stage)
 let W = 384, H = 224, D = 1;  // the picture's size, and the camera's distance in Game view
 // The board's pixels are not square: its 384 x 224 picture fills a 4:3 screen (and the wide picture's 512 a 16:9 one), so
-// each is 0.78 as wide as it is high. Shown so unless square pixels are chosen.
+// each is 0.78 as wide as it is high. Shown so unless square pixels are chosen. A scene that says the shape of its
+// pixels (pixelAspect: a pixel's width over its height on the board's screen, as another board's port saves it,
+// spelunkomp's: a CV1000's square ones, a PGM's 448 x 224 on a 4:3 screen) is shown in that shape.
 const ARCADE_PIXEL = (4 / 3) / (384 / 224);
-function pixelWidth() { return $('pixels').value === 'square' ? 1 : ARCADE_PIXEL; }
+function pixelWidth() {
+  if ($('pixels').value === 'square') return 1;
+  return doc && typeof doc.pixelAspect === 'number' && doc.pixelAspect > 0 ? doc.pixelAspect : ARCADE_PIXEL;
+}
 
 // The camera's distance in Game view: as far as shows all of the picture in the window. Every layer is placed for an
 // eye there (layout), so the window's shape changing places them again.
