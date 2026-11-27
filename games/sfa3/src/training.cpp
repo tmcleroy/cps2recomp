@@ -261,6 +261,14 @@ namespace {
         // (knocked down, or hit in the air and falling: both go through 02020202, where the quick rise is taken)
         const uint8_t kind = Ram8(Player(1) + kReelKind);
         view.down = Ram8(Player(1) + kControl) == kControlReeling && (kind == kReelKnockedDown || kind == kReelInAir);
+        // (the reels 02B330 lets a player recover from in the air: kind 6, and a knock-down while it flies, step 2)
+        view.juggled = Ram8(Player(1) + kControl) == kControlReeling &&
+                       (kind == kReelJuggled || (kind == kReelKnockedDown && Ram8(Player(1) + kActionStep) <= 2)) &&
+                       static_cast<int16_t>(Ram16(Player(1) + kY)) > static_cast<int16_t>(kGround);
+    }
+    // Recovering in the air: two punches every other frame (new presses), the stick held the way chosen
+    uint16_t AirRecovery(int frame, uint16_t way) {
+        return static_cast<uint16_t>(way | ((frame & 1) ? 0 : (kPunch1 | kPunch2)));
     }
     // Stunned, the dummy mashes: a new direction and a new button every frame (the stun, reel kind 0C, counts its time
     // down at +3A by what 02B56A counts of the stick and buttons as well as by one a step: 0299FE)
@@ -365,6 +373,14 @@ void RegisterTraining() {
     dummy.getUp.push_back({"Quick rise", [](int frame, uint16_t, uint16_t) -> uint16_t {
                                return (frame / 2) % 2 ? 0 : static_cast<uint16_t>(kKick1 | kKick2);
                            }});
+    // Recovering in the air (02B330, in reels 6 and 8 while flying): two punches pressed at once (or one after the
+    // other: +27A keeps it), high enough above the floor (0x30, or 0x10 with the stick held one way or the other);
+    // the stick then (02B4BC, +37D) has it come down straight, or drift one way or the other (02B412 on)
+    dummy.airRecovery.push_back({"Neutral", [](int frame, uint16_t, uint16_t) -> uint16_t { return AirRecovery(frame, 0); }});
+    dummy.airRecovery.push_back({"Forward", [](int frame, uint16_t towards, uint16_t) -> uint16_t { return AirRecovery(frame, towards); }});
+    dummy.airRecovery.push_back({"Back", [](int frame, uint16_t, uint16_t away) -> uint16_t { return AirRecovery(frame, away); }});
+    dummy.airRecoveryWords = "Hit into the air, player 2 recovers there (two punches at once) as soon as the game lets it: "
+                             "straight down, drifting towards player 1 or away; off; or any of those at random, per hit.";
     session::Register(d);
     // (after the session's own, so it follows "Health refills"; a training aid, as the session's are)
     game.features.push_back({"gauge_refill", modes::kTraining, "Gauge refills",

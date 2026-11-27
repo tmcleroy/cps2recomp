@@ -17,6 +17,12 @@
   direct connections, and the message says to try another network, such as a phone's hotspot; a network that looks
   fine points at the host's instead. The host's waiting line says "strict network" too. The game asks two STUN
   servers where they see it and compares their answers (at most half a second more before the code shows).
+- **Street Fighter Alpha 3: the dummy recovers in the air.** A new Dummy choice, **Air recovery**: Off, Neutral,
+  Forward, Back, or At random (one of the four, off included, for each juggle). Hit into the air, player 2 presses two
+  punches as soon as the game allows a recovery, with the stick held the way chosen. Neutral keeps the hit's drift,
+  Forward is a short low hop that lands close, and Back drifts quickly away. The game's own rules decide when a
+  recovery is allowed: only after the attacker has recovered from the move that hit, and for a juggle only while
+  still going up, so a dragon punch or a heavy anti-air never allows one.
 - **Street Fighter II, Champion Edition and Hyper Fighting: M. Bison's faster stage tune** has its own file name,
   `bison_later` (tune 84, from the games' own table of low-health tunes by stage), in the soundtrack folder's `songs.txt`
   and [docs/SONGS.md](docs/SONGS.md). Before, it was the one faster stage tune left out of the list (a file named
