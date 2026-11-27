@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **The Street Fighter II games: the Alphas' training aids** (Super Turbo, Super Street Fighter II, Champion Edition,
+  Hyper Fighting, the World Warrior, Hyper Street Fighter II and the CSL editions). **Throw range** (with hit boxes on):
+  the box of the throw each player last tried, and the other's place to be thrown by, a yellow bar; the throw reaches
+  when the bar is in the box. **Fixed damage**: no random part in a hit's damage (nor a throw's, where the game has
+  one). The dummy now **guards high or low by the game's own rule** for each attack: it crouched against everything
+  before, so a jump-in always hit it; "Standing only" and "Crouching only" let through what the game lets through.
+  It **mashes out of stun** (a stun lasts about a third as long), and can be **played by the game's own computer
+  player**. In Super Turbo (and Hyper's Super Turbo characters) it also **softens throws**, for half the damage.
+  These games have no quick rise or other way to get up, so the dummy's "Gets up" choice isn't there.
+- **Super Street Fighter II, Champion Edition, Hyper Fighting, the World Warrior and the CSL editions: hit boxes fixed.**
+  Attack and pushing boxes were read from Super Turbo's places in the box tables, which these games lay out their
+  own way, so they showed in the wrong place or not at all (Champion Edition drew no attack boxes).
 - **Street Fighter Alpha 3: Infinite guard gauge** (Training mode page). Both players' guard gauge stays full, so no
   guard is crushed, and stays the size the round began with (a guard crush or an Alpha counter makes it smaller). It's
   the only game in the collection with a guard gauge.

@@ -86,6 +86,16 @@ inline constexpr uint32_t kThrownToo = 0x2AE, kSeenAsOther = 0x1F5, kNotKeptIn =
 // none kept in the record (the set-up's +273, 2, is the sign then)
 inline constexpr uint32_t kPlanTable = 0x1E0;
 
+// The box tables' kinds (src/ssf2t.h's kTable...: head +0, body +2, legs +4 in every game): an attack's and the pushing
+// box's places in the tables, and the bytes of an attack box (Super Turbo's hit test, 0BF534 and 0BF588)
+inline constexpr uint32_t kTableAttack = 0x6, kTablePush = 0x8, kAttackBoxSize = 0x10;
+
+// The guard decision as a hit lands (src/guard.cpp): Super Turbo's: a jump table of 38 words by the attack's +0B, at
+// 0BEED8 (src/ssf2t.h). Super Turbo's kind of it goes by the attack's +0B through the table's routines (the bytes of
+// the table: kGuardTypeBytes, 0 for none); the classic games' by the attack's +07 through a row of bytes for each
+// guarding pose (kGuardRows: where the rows' table is, 0 for none)
+inline constexpr uint32_t kGuardTypeBytes = 0x4C, kGuardRows = 0;
+
 // The game's loop with no coin in (src/ssf2t.h): the introduction and the title's step, the title's step under it, the
 // demonstration fight's, the loop's end, the frame the board's start is over by, and the step the board's start ends in
 inline constexpr uint16_t kIntro = 0x02, kTitleStep = 0x16, kDemo = 0x0E, kLoopEnd = 0x18, kBooted = 0x10;

@@ -14,11 +14,12 @@ and cleaned-up, recoloured stages. Because its program and RAM layout stay align
 builds the same [Super Street Fighter II Turbo](../ssf2t/README.md) sources with `sf2hf`'s `family.h` mapping and its
 own translated 68000 code.
 
-On top of CSL Edition's own features, the port adds a full **training mode** (hit boxes, frame data and a frame meter,
-input display, combo and stun readouts, a dummy that records, replays and guards), the **alternative modes** (attract
-mode, the stage and model viewers, survival, endless battle, ring out, a tag team battle), **widescreen**, **online
-play** with rollback, **custom colours** with a colour editor, save states, run-ahead, arcade timing, and a custom
-soundtrack.
+On top of CSL Edition's own features, the port adds a full **training mode** (hit boxes and throw range, frame data
+and a frame meter, input display, combo and stun readouts, fixed damage, a dummy that records, replays and guards high
+or low as each attack needs, mashes out of stun or is played by the game's own computer player), the **alternative
+modes** (attract mode, the stage and model viewers, survival, endless battle, ring out, a tag team battle),
+**widescreen**, **online play** with rollback, **custom colours** with a colour editor, save states, run-ahead, arcade
+timing, and a custom soundtrack.
 
 > **Beta.** The game plays from start to ending and its code is checked instruction by instruction, but nobody has
 > played it by hand yet. Expect rough edges, and please [report what you find](#feedback-and-contributing).
