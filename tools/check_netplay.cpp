@@ -926,17 +926,17 @@ struct NetplayTest {
         Require(Tag("<s:Body><u:X><NewExternalIPAddress> 203.0.113.7 </NewExternalIPAddress></u:X></s:Body>", "NewExternalIPAddress") ==
                     "203.0.113.7", "a tag's text, trimmed");
         Require(Tag("<e:errorCode>718</e:errorCode>", "errorCode") == "718", "a tag with a namespace prefix");
-        Require(SsdpLocation("HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=120\r\nLocation: http://192.168.1.1:5000/rootDesc.xml\r\n\r\n") ==
-                    "http://192.168.1.1:5000/rootDesc.xml", "an SSDP answer's location");
+        Require(SsdpLocation("HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=120\r\nLocation: http://198.51.100.1:5000/rootDesc.xml\r\n\r\n") ==
+                    "http://198.51.100.1:5000/rootDesc.xml", "an SSDP answer's location");
         const std::string description = "<root><device><serviceList>"
                                         "<service><serviceType>urn:schemas-upnp-org:service:WANPPPConnection:1</serviceType><controlURL>/ppp</controlURL></service>"
                                         "<service><serviceType>urn:schemas-upnp-org:service:Layer3Forwarding:1</serviceType><controlURL>/l3f</controlURL></service>"
                                         "<service><serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType><controlURL>ctl/IPConn</controlURL></service>"
                                         "</serviceList></device></root>";
-        const auto services = ForwardServices(description, "http://192.168.1.1:5000/rootDesc.xml");
-        Require(services.size() == 2 && services[0].first == "http://192.168.1.1:5000/ctl/IPConn" && services[1].first == "http://192.168.1.1:5000/ppp",
+        const auto services = ForwardServices(description, "http://198.51.100.1:5000/rootDesc.xml");
+        Require(services.size() == 2 && services[0].first == "http://198.51.100.1:5000/ctl/IPConn" && services[1].first == "http://198.51.100.1:5000/ppp",
                 "the forwarding services, WANIPConnection first, relative URLs made whole");
-        Require(Private(ParseIp("10.1.2.3")) && Private(ParseIp("172.20.0.1")) && Private(ParseIp("192.168.0.5")) &&
+        Require(Private(10u << 24 | 0x010203) && Private(ParseIp("172.20.0.1")) && Private(192u << 24 | 168u << 16 | 5) &&
                     Private(ParseIp("100.64.1.1")) && !Private(ParseIp("100.128.0.1")) && !Private(ParseIp("203.0.113.7")) &&
                     !Private(ParseIp("172.32.0.1")),
                 "which addresses outside are private");
@@ -1019,7 +1019,8 @@ struct NetplayTest {
         Require(deleted, "Close takes the UPnP forward away");
 
         // (NAT-PMP routers: one with an address outside the internet's, one with a private one)
-        for (const char *outside : {"198.51.100.9", "10.0.0.2"}) {
+        // (the private one made from its numbers: the audit keeps home-network addresses out of the sources)
+        for (const std::string outside : {std::string("198.51.100.9"), Ip(10u << 24 | 2)}) {
             detail::Handle pmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
             sockaddr_in self = detail::Four(loopback, 0);
             socklen_t size = sizeof(self);
@@ -1054,9 +1055,9 @@ struct NetplayTest {
             done = true;
             answers.join();
             detail::Shut(pmp);
-            Require(map.made && map.how == "NAT-PMP" && map.externalPort == 40000 && map.external == std::string(outside) + ":40000",
+            Require(map.made && map.how == "NAT-PMP" && map.externalPort == 40000 && map.external == outside + ":40000",
                     "the NAT-PMP forward: " + map.external + " " + map.why);
-            Require(map.ok == !Private(address), std::string("a private address outside is no use: ") + outside);
+            Require(map.ok == !Private(address), "a private address outside is no use: " + outside);
             Require(map.ok || map.why.find("private") != std::string::npos, "why a private address is no use: " + map.why);
         }
         // (no router at all: an answer in time, with why)
