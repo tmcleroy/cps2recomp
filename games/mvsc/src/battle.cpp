@@ -5,7 +5,7 @@
 // the ring out) are the toolkit's (fight/battle.h); this says where the game keeps what they need. A side is a team of
 // two here: the modes follow the character on point (the record the game says, mvsc.h), and a match is one round, won
 // when both of a side's characters are down. The ring out's own movements at a character's step are the engine's
-// shared code (fight/marvel.h, at the hook training.cpp places).
+// shared code (fight/marvel.h, at the hook training.cpp places); the computer's side is coached in it (below).
 #include "alternative.h"
 #include "battle.h"
 #include "marvel.h"
@@ -15,8 +15,21 @@
 
 namespace cps2recomp {
 
+bool AttackInRange(M68K &c, uint32_t player); // guard.cpp
+
 namespace {
     using namespace mvsc;
+
+    // The ring out's coach (fight/battle.h): the game's computer fights a ring out as a fight, so a side it plays is
+    // coached to walk the other to an end, throw or sweep it over, and get out of its own corner, as Super Turbo's is.
+    // A character can act: its own master, standing, walking, crouching or guarding (24, standing or crouching by its
+    // posture; 26 is the guard in the air: guard.cpp), as the engine's (fight/marvel.cpp) has it.
+    bool CanAct(uint32_t player) {
+        const uint8_t action = Ram8(player + kAction);
+        return Ram16(player + kControl) == 0 &&
+               (action == kActionStand || action == kActionWalk || action == kActionCrouch || action == kActionGuard);
+    }
+    constexpr uint32_t kDifficulty = 0xFFF956; // the board's difficulty, 0 easy to 7 expert, as the game has it (board.cpp)
 
     constexpr uint32_t kHuman = 0x03;      // a byte of a record: 1 a person plays the character, 0 the computer (the
                                            // players' records in one- and two-player games compared)
@@ -87,6 +100,10 @@ void RegisterBattle() {
     d.fixedHalfWidth = kWall; // (the game keeps a player's middle this far inside the picture's edges: 013AD6)
     d.inAir = [](uint32_t player) { return static_cast<int16_t>(Ram16(player + kY)) != Ground(); };
     d.atJumpTop = [](uint32_t player) { return static_cast<int16_t>(Ram16(player + kY)) != Ground() && static_cast<int32_t>(Ram32(player + kSpeedY)) >= 0; };
+    d.canAct = [](int side) { return CanAct(Player(side)); };
+    d.difficultyNow = [] { return static_cast<int>(Ram8(kDifficulty) & 7); };
+    d.attackComing = [](Machine &machine, int side) { return AttackInRange(machine.cpu, Player(side)); };
+    d.throwReach = 72; // (two characters standing together are 60 to 68 apart; Ryu's throw took Spider-Man 62 away)
     battle::Register(d);
 }
 

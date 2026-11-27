@@ -749,7 +749,6 @@ namespace {
     // or a guard sends it over)
     constexpr int kNearEnd = 150;    // pixels from one's own end at which a fighter is to get out
     constexpr int kAtTheEnd = 100;   // pixels from the other's end at which that one can be knocked over it
-    constexpr int kClose = 50;       // pixels between the two at which a throw reaches
     constexpr int kOver = 110;       //   and over which a jump is too short to go over the other
     constexpr int kPlanMost = 120;   // frames, at most, of a plan
     Machine *g_machine = nullptr;    // (the port's, for the game's guard test)
@@ -787,7 +786,7 @@ namespace {
         const int opening = down || recovering ? Between(400, 900) : standing ? Between(100, 300) : 0;
         if (near && Part(1)) {
             // (out: a throw over one's head, a jump over, or a walk out of the end's way)
-            if (distance < kClose && !down && Chance(opening)) {
+            if (distance < d.throwReach && !down && Chance(opening)) {
                 SetPlan(side, kThrow, kPlanMost, 1);
             } else if (distance < kOver && Chance(opening)) {
                 SetPlan(side, kJumpOver, kPlanMost);
@@ -795,7 +794,7 @@ namespace {
                 SetPlan(side, kWalk, 24);
             }
         } else if (near) {
-        } else if (Part(2) && theirs < kAtTheEnd && distance < kClose && !down && Chance(opening)) {
+        } else if (Part(2) && theirs < kAtTheEnd && distance < d.throwReach && !down && Chance(opening)) {
             SetPlan(side, kThrow, kPlanMost, -1);
         } else if (Part(2) && theirs < kAtTheEnd && distance < 100 && recovering && Chance(opening)) {
             SetPlan(side, kSweep, kPlanMost);

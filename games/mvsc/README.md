@@ -101,8 +101,10 @@ point; the one resting is refilled with it.
 | Frame data and frame meter | Startup, active and recovery of each move and the advantage after a hit or a guarded hit, counted in the game's own steps; a row of cells for each player, one a step; optionally every move written to `frame_data.csv` beside the settings |
 | Input display | What each player presses and for how long, in numpad notation from the player's side |
 | Combo readout | Hits and damage of a combo, how much of it comes back while the character rests, the round's best |
+| Stun readout | How much stun the character on point has taken, against how much stuns it |
+| Fixed damage | No random part in a hit's damage (the average in its place), so a combo always does the same |
 | Health and gauge refills | Health comes back when a player has not been hit for a moment (the partner's too); both hyper combo gauges kept full |
-| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only); records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
+| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only; high or low by the game's own rule for each attack); techs throws; or is played by the game's own computer player; records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
 | Start over | The round as it began, in the middle or a corner, sides swapped or not (Backspace, or a gamepad's left shoulder) |
 | Stage | Any of the ten stages, or the game's own choice |
 | Stop, step, slow | Stop the game, go on a frame at a time, or play at a half, a quarter or an eighth of the speed |
@@ -121,7 +123,7 @@ have. Each has a page with a Start row and its own choices, and runs until anoth
 | Colour editor | Change a character's colours while you watch: [custom colours](#custom-colours) |
 | Survival | One computer team after another on the health you have left. How many can you beat? |
 | Endless battle | Two teams the game plays, for as long as you like, with no bars and no clock, on one stage, on stages that fade one into another, or on a floor that scrolls through them all. Touch the controls to take a side over |
-| Ring out | No health. Knock your opponent over the end of the stage (it is flung into the air and falls through the floor), then jump down after it and land on the next stage |
+| Ring out | No health. Knock your opponent over the end of the stage (it is flung into the air and falls through the floor), then jump down after it and land on the next stage. The CPU plays it as a ring out, not for damage: it walks you towards an end, throws or sweeps you when your back is to it, and keeps off its own end, getting out of a corner with a throw, a jump over you or a walk out, more or less often by its difficulty |
 
 ## Tag team and player assignments
 

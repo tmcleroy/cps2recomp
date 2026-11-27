@@ -16,6 +16,7 @@
 #include "../fight/battle.h"
 #include "../fight/tag.h"
 #include "../fight/guest_stages.h"
+#include "../fight/session.h"
 #include "png_write.h"
 #include "../model/image_files.h"
 #include "present.h"
@@ -65,8 +66,10 @@ namespace {
     // Persistent online labels keep brighter ink than their backplates on busy stages.
     constexpr HudOpacity kOnlineHudOpacity[] = {{112, 232}, {64, 190}, {220, 255}};
     constexpr HudOpacity kSpectatingOpacity = {48, 110}; // (the spectator's label: there, but out of the way)
-    // The modes played online (battle::StartOnline), by number, and their pages' names
-    constexpr const char *kOnlineModes[] = {"Versus", "Ball battle", "Tag team battle"};
+    // The modes played online (battle::StartOnline; 3 the training session, session::StartSession), by number, and
+    // their pages' names
+    constexpr const char *kOnlineModes[] = {"Versus", "Ball battle", "Tag team battle", "Training"};
+    constexpr int kOnlineTraining = 3;
     const Feature *FindFeature(const std::string &name) {
         for (const Feature &feature : TheGame().features) {
             if (name == feature.name) {
@@ -76,7 +79,8 @@ namespace {
         return nullptr;
     }
     bool OnlineModeHere(int mode) {
-        return mode == 0 || (mode == 1 && FindFeature("court_points")) || (mode == 2 && FindFeature("team_size"));
+        return mode == 0 || (mode == 1 && FindFeature("court_points")) || (mode == 2 && FindFeature("team_size")) ||
+               (mode == kOnlineTraining && session::Described());
     }
     // A player's own fighters' rows on the modes' pages (the board's player 1's, or player 2's: the host's side, or the
     // other side's, unless the host has swapped the sides)
@@ -1481,8 +1485,14 @@ void Port::RunCommand(size_t index) {
 }
 
 void Port::Key(char key, unsigned n) {
+    if (net && key == 'k' && n == kKeyRestart && session::InSession() && !net->Watching()) {
+        // (online, in a training session: Start over for both, at the place this player's stick chooses)
+        const int side = net->Player(net->Local(), 0);
+        net->Command("restart=" + std::to_string(session::RestartPlace(machine->players[side] & fight::kSticks)));
+        return;
+    }
     if (net && key != 'z' && key != 'm' && key != 'l' && key != 'y') {
-        return; // (online: only the leave question, and the zoom's, which does nothing: Zoom::Forbid)
+        return; // (online: only the leave question, the zoom's, which does nothing: Zoom::Forbid, and training's Start over)
     }
     switch (key) {
     case 'p':
@@ -3928,6 +3938,12 @@ void Port::OnlineEvent(int player, int side, const std::string &text, uint64_t e
                 onlineReselect = {};
                 onlineReselect.boot = 0;
             }
+        } else if (name == "restart") {
+            // (either player's Start over in a training session: both machines at the place its sender chose)
+            const int place = atoi(item.c_str() + eq + 1);
+            if (session::StartOverAt(*machine, place)) {
+                fprintf(stderr, "online: training started over at frame %llu (place %d)\n", static_cast<unsigned long long>(at), place);
+            }
         } else if (name == "setup" && player == 0) {
             onlineSetupLog[at] = atoi(item.c_str() + eq + 1) != 0;
         } else if (name == "ready" && player == 1) { // (the other player's: their Ready, Port::onlineReadyLog)
@@ -3939,6 +3955,15 @@ void Port::OnlineEvent(int player, int side, const std::string &text, uint64_t e
             const int mode = atoi(item.c_str() + eq + 1);
             if (!OnlineModeHere(mode)) continue;
             onlineModeLog[at] = mode;
+            if (mode == kOnlineTraining) {
+                // (nothing to pick first: each player chooses their character in the game's own choice)
+                fprintf(stderr, "online: training session started at frame %llu\n", static_cast<unsigned long long>(at));
+                session::StartSession(*machine);
+                continue;
+            }
+            if (mode == 0) {
+                SetFeature("training_mode", false); // (Back to Versus ends a training session too)
+            }
             if (mode != 0 && ModesOnline() && !OnlineSetupScan(at).ready) {
                 // (the other player not ready before this frame, on both sides alike: not started)
                 fprintf(stderr, "online: mode %d not started at frame %llu: the other player is not ready\n", mode,
@@ -3979,7 +4004,7 @@ void Port::OpenOnlineMenu() {
     onlineRows.clear();
     if (net->Players() == 2 && net->Hosting()) {
         // (the host's: each mode this game has, a command that starts it for both, and Versus that ends it)
-        for (const int mode : {1, 2, 0}) {
+        for (const int mode : {1, 2, kOnlineTraining, 0}) {
             if (!OnlineModeHere(mode) || (mode == 0 && onlineModes.empty())) {
                 continue;
             }
@@ -3987,9 +4012,15 @@ void Port::OpenOnlineMenu() {
             online.commands.push_back({Menu::kOnlinePage, mode == 0 ? "Back to Versus" : std::string("Start ") + kOnlineModes[mode],
                                        mode == 0 ? "Ends the mode for both players: the board starts again, and each presses Start to "
                                                    "come back in."
-                                                 : std::string("Starts ") + kOnlineModes[mode] + " for both players once the other player "
-                                                   "has said Ready (until then it waits, the game paused), with your settings of its page "
-                                                   "from before the match, and each player's own picks below."});
+                                       : mode == kOnlineTraining
+                                           ? "Starts a training session for both players: each chooses their own character, then no "
+                                             "clock and no knock-outs, with your Training mode settings from before the match "
+                                             "(health and gauge refills, fixed damage). Each player shows their own hit boxes, frame "
+                                             "data and readouts (below). Backspace or a gamepad's left shoulder starts the round "
+                                             "over for both."
+                                           : std::string("Starts ") + kOnlineModes[mode] + " for both players once the other player "
+                                             "has said Ready (until then it waits, the game paused), with your settings of its page "
+                                             "from before the match, and each player's own picks below."});
         }
     }
     onlineSeats.clear();
@@ -4091,6 +4122,12 @@ void Port::OpenOnlineMenu() {
                             "online_delay", "online_hide_names", "online_hide_streak", "online_names_place"}) {
         if (const Feature *feature = FindFeature(key)) pick(key, feature->title, feature->description);
     }
+    if (OnlineModeHere(kOnlineTraining)) {
+        // (training's display, each player's own: drawn over this machine's picture only, netplay.cpp's Shared)
+        for (const char *key : {"hit_boxes", "frame_data", "frame_meter", "input_display", "damage_readout", "stun_readout"}) {
+            if (const Feature *feature = FindFeature(key)) pick(key, std::string("Training: ") + feature->title, feature->description);
+        }
+    }
     const size_t rulesBegin = onlineRows.size();
     for (const char *key : {tag::kFeature, tag::kTeamOrder, "cross_fever", "cross_fever_auto_gauge"}) {
         if (const Feature *feature = FindFeature(key)) {
@@ -4186,7 +4223,8 @@ void Port::OnlineCommand(size_t index) {
         menu.Close();
         return;
     }
-    if (net && index < onlineModes.size() && onlineModes[index] != 0 && ModesOnline() && !OnlineOtherReady()) {
+    if (net && index < onlineModes.size() && onlineModes[index] != 0 && onlineModes[index] != kOnlineTraining && ModesOnline() &&
+        !OnlineOtherReady()) {
         // (the other player still choosing: started when they say Ready, the menu left open and the game paused)
         onlinePendingMode = onlineModes[index];
         chat.push_back({"Starts when the other player is ready", tick + 8 * 60, true});
@@ -4250,6 +4288,8 @@ void Port::HearEvents() {
                 // too, Netplay::Frame)
                 streak[0] = streak[1] = roundsWon[0] = roundsWon[1] = 0;
                 said = "Teams: " + TeamsSaid(layout);
+            } else if (name == "restart") {
+                said = who + " started the round over";
             } else if (name == "mode" && player == 0 && OnlineModeHere(value)) {
                 said = who + (value == 0 ? " went back to Versus" : std::string(" started ") + kOnlineModes[value]);
             } else if (const Feature *feature = FindFeature(name); feature && OwnRow(net->Player(player, 0), name) && value >= 0 &&
@@ -4911,6 +4951,8 @@ void Usage() {
             "  --net-list             (hosting) the match in the lobby, the Online card's list of open matches\n"
             "  --net-relay on|only|off  the online service's relay (TURN) for a network that stops direct connections:\n"
             "                         on beside the direct addresses (the default), only (every packet through it), off\n"
+            "  --net-forward on|off   the home router asked to forward a port to the game (UPnP or NAT-PMP), as most\n"
+            "                         online games do: on (the default) or off\n"
             "  --net-name NAME        ... under this name; and any machine's: shown to the other players\n"
             "  --net-say [FRAME:]TEXT (tests) TEXT said in the chat at FRAME of the match (120 unless said)\n"
             "  --net-typing TEXT      (pictures) TEXT shown as a chat line being typed, all through the match\n"
@@ -5071,6 +5113,8 @@ bool ParseArgs(int argc, char **argv, port::Options &o) {
         } else if (a == "--net-relay") {
             const std::string how = next();
             o.net.relay = how == "only" ? 1 : how == "off" ? -1 : 0;
+        } else if (a == "--net-forward") {
+            o.net.forward = next() != "off";
         } else if (a == "--net-list") {
             o.net.listed = true;
         } else if (a == "--net-arcade") {
