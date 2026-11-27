@@ -288,6 +288,7 @@ public:
     static constexpr size_t kRecordingMost = 20 * 60;
     static constexpr int kReplayPause = 60;
     static constexpr int kGuardAfterHit = 90;
+    static constexpr int kFirstHitQuiet = 60; // "first hit only": a second of nothing before it guards again
 
 private:
     struct State {
@@ -299,6 +300,7 @@ private:
         Doing was = Doing::Free;
         int32_t stunFrames = 0;
         bool inRange = false, guardThis = false;
+        int32_t sinceGuarded = 1 << 20, sinceHurt = 1 << 20; // frames since it last reeled from a guarded hit, a hit
         uint32_t random = 0x2545F491;
         // (what "at random" chose: the action while this guarding lasts, the escape from this throw, the way up)
         int32_t guardPick = 0, getUpPick = 0, airPick = 0, juggledFrames = 0;
