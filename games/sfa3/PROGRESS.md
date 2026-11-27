@@ -132,6 +132,10 @@ The toolkit's session (`fight/session.h`) and its aids, with this game's facts i
   let every jab land and guarded 23 of 23 lows (and in the trap: 17 first lows land, 17 second guarded); First hit
   only the reverse; Standing only let all 24 lows through; Crouching only guarded every low (a jab misses a
   crouching Ken).
+- Infinite guard gauge: +24D (what guarding has taken, 023A5E; drained a step at a time by 027E10; past the size +24C a
+  crush, 023A66) kept at 0, and +24C kept at the largest seen for the character and ism (a crush, 029024, and an Alpha
+  counter, 02EE72, make it smaller). Checked: 37 heavy attacks guarded in a row; off, three crushes took the bar from 60
+  to 16 and 10 attacks landed after them; on, none, and the bar stayed at 60.
 - Air recovery (02B330, called in reels 6 and 8 while flying): two punches, kept at +27A once pressed, taken when the
   attacker's move is over (02BB5A clears the victim's +26A/+26B) and the player is high enough (0x30 neutral, 0x10
   with the stick held); a juggle (reel 6) only while still going up. The stick (+37D, 02B4BC) sets the flight: neutral

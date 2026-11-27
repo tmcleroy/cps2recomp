@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Street Fighter Alpha 3: Infinite guard gauge** (Training mode page). Both players' guard gauge stays full, so no
+  guard is crushed, and stays the size the round began with (a guard crush or an Alpha counter makes it smaller). It's
+  the only game in the collection with a guard gauge.
 - **The dummy's guard: First hit only, Standing only, Crouching only** (every fighting game). Dummy → Guards gains three
   choices. **First hit only** guards an attack, then lets what follows it through until a second has gone by with nothing
   and a new attack begins, to show whether a string or a frame trap leaves a gap. (Hits that land while it still

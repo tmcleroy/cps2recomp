@@ -172,6 +172,11 @@ constexpr uint32_t kCustomCombo = 0xB9, kCustomComboTime = 0xBA;
 // The stun (023C30, in a hit's landing): what has built up, how much stuns the player (40 at first, 5 more after
 // each stun), the frames until it drains again (0xB4 after a hit: 0232B2), and set while stunned
 constexpr uint32_t kStun = 0x2CC, kStunMost = 0x2CD, kStunTimer = 0x2CB, kStunned = 0x2CE; // bytes
+// The guard gauge (bytes): its size, and what guarding has taken of it (023A5E adds each guarded hit's, 027E10 takes it
+// back down a step at a time; past the size, a guard crush, 023A66). A crush (029024) and an Alpha counter (02EE72)
+// make the size smaller, to 0x10 at least; the round's start sets it by the character (02BE1A).
+constexpr uint32_t kGuardSize = 0x24C, kGuardTaken = 0x24D;
+constexpr uint32_t kIsm = 0x132; // byte: the ism (0 X, 1 V, 2 A)
 // The animations of the player's character: four lists of word offsets to the frames (the setting up of a character
 // makes them; 02A708 takes from the first, 02A758 the second, 02A75E the third, the reelings', 02A710 the fourth, the
 // attacks': unless +EB is set, it first takes the attack's +23E and +293 from the character's table, by its ism, in the
