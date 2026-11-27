@@ -3,10 +3,12 @@
 ## Unreleased
 
 - **The dummy's guard: First hit only, Standing only, Crouching only** (every fighting game). Dummy → Guards gains three
-  choices. **First hit only** guards an attack, then lets what follows it through until things have been quiet for a
-  moment and a new attack begins, to show whether a string or a frame trap leaves a gap. (Hits that land while it still
+  choices. **First hit only** guards an attack, then lets what follows it through until a second has gone by with nothing
+  and a new attack begins, to show whether a string or a frame trap leaves a gap. (Hits that land while it still
   reels from the guarded one are guarded by the game itself, as on the board.) **Standing only** and **Crouching only**
   always guard, but in that pose, so that lows, or overheads and jump-ins, get through.
+- **The dummy's "After a hit" counts only hits that landed** (every fighting game). A guarded hit used to count too,
+  so once it had guarded something it went on guarding, and the first hit of the next string never landed.
 - **Street Fighter Alpha 3: the dummy's guard fixed.** "After a hit" never guarded: the game's hits weren't counted
   for the training session, so the combo readout showed nothing either. Both now work. "Always" crouched against
   everything but overheads, standing jabs included. It now stands as a player would, and crouches only against lows.

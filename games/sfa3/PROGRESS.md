@@ -127,9 +127,11 @@ The toolkit's session (`fight/session.h`) and its aids, with this game's facts i
   55. "Played by the game" sets +125.
 - Guarding: stands unless the attack's entry (+15) says a standing guard cannot take it and a crouching one can (a
   low). Hits reach the session from 0240D2 (TakeDamage), for the combo readout and "after a hit". Checked with
-  scripted strings (walk in; standing jab, crouching short, standing strong): Always guarded 38 standing attacks
-  standing and 19 lows crouching (the rest throws); Standing only let all 23 lows through; After a hit, in a frame
-  trap of two crouching shorts, took the first and guarded the second 18 times; First hit only, the reverse.
+  scripted strings (walk in, standing jab, 45 frames on a crouching short, every 135 frames; and a frame trap of two
+  crouching shorts 24 frames apart, every 200): Always guarded 24 jabs standing and 24 lows crouching; After a hit
+  let every jab land and guarded 23 of 23 lows (and in the trap: 17 first lows land, 17 second guarded); First hit
+  only the reverse; Standing only let all 24 lows through; Crouching only guarded every low (a jab misses a
+  crouching Ken).
 - Air recovery (02B330, called in reels 6 and 8 while flying): two punches, kept at +27A once pressed, taken when the
   attacker's move is over (02BB5A clears the victim's +26A/+26B) and the player is high enough (0x30 neutral, 0x10
   with the stick held); a juggle (reel 6) only while still going up. The stick (+37D, 02B4BC) sets the flight: neutral

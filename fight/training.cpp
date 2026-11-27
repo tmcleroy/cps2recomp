@@ -362,11 +362,14 @@ void Dummy::BeforeFrame(uint16_t &one, uint16_t &two, const DummyView &view) {
     // 1 always, 2 after the first hit, 3 at random, 4 the first hit only, 5 always standing, 6 always crouching
     const int guard = FeatureValue("dummy_guard");
     const bool inRange = guard && !busy && view.attackInRange;
+    // (frames since it last reeled from a hit that landed, and from a guarded one: "after a hit" goes by hits that
+    // landed only, so a guarded string does not keep it guarding)
+    m_g.sinceHurt = doing == Doing::HitStun || doing == Doing::Held ? 0 : std::min(m_g.sinceHurt + 1, 1 << 20);
     m_g.sinceGuarded = doing == Doing::GuardStun ? 0 : std::min(m_g.sinceGuarded + 1, 1 << 20);
     if (inRange && !m_g.inRange) {
-        m_g.guardThis = guard == 1 || guard >= 5 || (guard == 2 && view.sinceHit < kGuardAfterHit) ||
+        m_g.guardThis = guard == 1 || guard >= 5 || (guard == 2 && m_g.sinceHurt < kGuardAfterHit) ||
                         (guard == 3 && (Random() & 0x100)) ||
-                        (guard == 4 && m_g.sinceGuarded > kGuardAfterHit && view.sinceHit > kGuardAfterHit);
+                        (guard == 4 && m_g.sinceGuarded > kFirstHitQuiet && m_g.sinceHurt > kFirstHitQuiet);
     }
     m_g.inRange = inRange;
     if (guard == 4 && doing == Doing::GuardStun) {
