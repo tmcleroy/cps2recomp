@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Online Ball battle no longer goes out of sync as a game begins.** With some fighters and stages (Hyper Street
+  Fighter II's most of all, Champion Edition's and Alpha 3's now and then) the two players' games came apart on the
+  frame the court began, and the match was stopped as a desync.
 - **Ball battle in Marvel vs. Capcom** (Alternative modes > Ball battle): the ball game, one character a side (no tags,
   special partners or Duo Team Attacks while it is played; the partner rests off the picture). The ball's hits are the
   game's own (its reels, knock-downs and guards); the court is as wide as each stage is drawn, up to 768 columns.

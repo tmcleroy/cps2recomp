@@ -9,7 +9,9 @@
 #   1. with the game's own features;
 #   2. with every feature that changes play switched on (the cheats, free play, widescreen, the arcade timing...);
 #   3. as 2, but the frames run again not drawn (--hash-no-picture: all but the picture compared), as online play
-#      runs them.
+#      runs them;
+#   4. where the game has the Ball battle (fight/court.h): one for two people, begun from the menu's Start, the court's
+#      start among the frames put back (drawn, and not drawn with other choices at random: CPS2RECOMP_BATTLE_SEED).
 # A difference is something the game keeps outside its save state, or that a frame run twice does twice.
 #
 # FEATURES: more features for every run, a mode to try (FEATURES=tag_team=2,cross_fever: Marvel vs. Capcom's four people,
@@ -58,5 +60,20 @@ compare "with $play" rollback-play-straight rollback-play-rolled
 run rollback-undrawn-straight --features "$play" --hash-no-picture
 run rollback-undrawn-rolled --features "$play" --hash-no-picture --rollback-test 9
 compare "the frames run again not drawn" rollback-undrawn-straight rollback-undrawn-rolled
+if "build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$1=="court_points" {found=1} END {exit !found}'; then
+    # (each from an empty settings file: the keys write free play and the court's opponent into it)
+    ball="5:ffree_play=1,5:fcourt_opponent=1,10:ccourt_start"
+    (CPS2RECOMP_BATTLE_SEED=4 CPS2RECOMP_COURT_LOG=1; export CPS2RECOMP_BATTLE_SEED CPS2RECOMP_COURT_LOG; : > "$work/rollback-settings.ini"; run rollback-ball-straight --keys "$ball")
+    # (the court begun well before the end: its log's lines, every 6 frames of play)
+    if [ "$(grep -c '^court t' "$work/rollback-ball-straight.err" || true)" -lt 100 ]; then
+        echo "FAILED: the Ball battle did not begin (fewer than 600 frames of the court in $frames)"
+        status=1
+    fi
+    (CPS2RECOMP_BATTLE_SEED=4; export CPS2RECOMP_BATTLE_SEED; : > "$work/rollback-settings.ini"; run rollback-ball-rolled --keys "$ball" --rollback-test 9)
+    compare "the Ball battle" rollback-ball-straight rollback-ball-rolled
+    (CPS2RECOMP_BATTLE_SEED=7; export CPS2RECOMP_BATTLE_SEED; : > "$work/rollback-settings.ini"; run rollback-ball-undrawn-straight --keys "$ball" --hash-no-picture)
+    (CPS2RECOMP_BATTLE_SEED=7; export CPS2RECOMP_BATTLE_SEED; : > "$work/rollback-settings.ini"; run rollback-ball-undrawn-rolled --keys "$ball" --hash-no-picture --rollback-test 9)
+    compare "the Ball battle, not drawn" rollback-ball-undrawn-straight rollback-ball-undrawn-rolled
+fi
 grep "rollback test: a" "$work/rollback-undrawn-rolled.err" | sed 's/^rollback test: /cost: /'
 exit $status
