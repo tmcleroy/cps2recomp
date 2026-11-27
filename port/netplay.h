@@ -95,6 +95,8 @@ public:
 
 private:
     UdpSocket raw;
+    UdpSocket toServer; // (the relay's own socket, a new port each time: the game's is the same port each match, 7845 for
+                        // a host, and a TURN server refuses a new allocation from the port of one still alive, 437)
     turn::Client client;
     NetAddress server;
     bool only = false, saidFailed = false;

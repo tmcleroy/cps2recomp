@@ -491,6 +491,11 @@ namespace {
 void RelaySocket::StartRelay(const NetAddress &to, const std::string &user, const std::string &password, bool onlyRelay) {
     server = to;
     only = onlyRelay;
+    std::string error;
+    if (!toServer.Open(0, error)) {
+        fprintf(stderr, "online: no relay: %s\n", error.c_str());
+        return;
+    }
     client.Start(user, password, NowMs(), static_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count()));
     Tick();
 }
@@ -514,7 +519,7 @@ bool RelaySocket::Through(const NetAddress &peer) const {
 
 void RelaySocket::Tick() {
     if (!client.Started()) return;
-    for (const auto &message : client.Tick(NowMs())) raw.Send(server, message.data(), message.size());
+    for (const auto &message : client.Tick(NowMs())) toServer.Send(server, message.data(), message.size());
     if (client.Failed() && !saidFailed) {
         saidFailed = true;
         fprintf(stderr, "online: the relay stopped: %s\n", client.Why().c_str());
@@ -527,7 +532,7 @@ void RelaySocket::Send(const NetAddress &to, const uint8_t *data, size_t size) {
     if (Through(to) && AsFour(to, ip, port)) {
         client.Permit(ip); // (its IP let through, for its answers: in `only`, the first packet to it says so)
         const std::vector<uint8_t> wrapped = client.Wrap(ip, port, data, size);
-        raw.Send(server, wrapped.data(), wrapped.size());
+        toServer.Send(server, wrapped.data(), wrapped.size());
         if (getenv("CPS2RECOMP_NET_DEBUG") && ++wrapsSaid <= 40) fprintf(stderr, "relay: to %s through the relay (%zu bytes)\n", FourText(ip, port).c_str(), size);
         return;
     }
@@ -545,23 +550,16 @@ void RelaySocket::Send(const NetAddress &to, const uint8_t *data, size_t size) {
 
 int RelaySocket::Receive(uint8_t *data, size_t size, NetAddress &from) {
     Tick();
-    for (;;) {
-        const int got = raw.Receive(data, size, from);
-        if (got < 0) return got;
-        if (!client.Started() || !(from == server)) {
-            turn::Parsed stun;
-            if (only && client.Ready() && !turn::Parse(data, static_cast<size_t>(got), stun)) {
-                continue; // (--net-relay only: a peer's packet that came directly is not taken)
-            }
-            if (!Among(direct, from) && direct.size() < 64) direct.push_back(from);
-            return got;
-        }
+    // (the relay's socket first: the TURN server's answers, and the peers' packets it passes on)
+    while (client.Started()) {
+        const int got = toServer.Receive(data, size, from);
+        if (got < 0) break;
+        if (!(from == server)) continue; // (only the TURN server sends to it)
         std::vector<uint8_t> payload;
         uint32_t ip = 0;
         int port = 0;
         const turn::Client::Took took = client.Take(data, static_cast<size_t>(got), payload, ip, port, NowMs());
-        if (took == turn::Client::Took::NotOurs) return got; // (a STUN server's answer at the same address)
-        if (took == turn::Client::Took::Ours || payload.size() > size) {
+        if (took != turn::Client::Took::Data || payload.size() > size) {
             Tick(); // (a request again, signed, at once)
             continue;
         }
@@ -570,6 +568,16 @@ int RelaySocket::Receive(uint8_t *data, size_t size, NetAddress &from) {
         if (getenv("CPS2RECOMP_NET_DEBUG") && ++dataSaid <= 40) fprintf(stderr, "relay: from %s through the relay (%zu bytes)\n", FourText(ip, port).c_str(), payload.size());
         if (!Among(relayed, from) && relayed.size() < 64) relayed.push_back(from);
         return static_cast<int>(payload.size());
+    }
+    for (;;) {
+        const int got = raw.Receive(data, size, from);
+        if (got < 0) return got;
+        turn::Parsed stun;
+        if (only && client.Ready() && !turn::Parse(data, static_cast<size_t>(got), stun)) {
+            continue; // (--net-relay only: a peer's packet that came directly is not taken)
+        }
+        if (!Among(direct, from) && direct.size() < 64) direct.push_back(from);
+        return got;
     }
 }
 
