@@ -10,6 +10,7 @@
 #include "../recomp-common/menu_sdl.h"
 #include "../fight/tag.h"
 
+#include <atomic>
 #include <iostream>
 #include <stdexcept>
 
@@ -916,6 +917,161 @@ struct NetplayTest {
         Require(gap.upTo[1] == 3 && gap.events[1][1] == "mode,2", "cumulative input did not repair the missing prefix");
     }
 
+    // The router's forward (port/portmap.h): its pieces, then a UPnP router and a NAT-PMP router on this machine. The
+    // UPnP one's description comes chunked with a relative control URL, its first AddPortMapping says the port is
+    // taken (718), the next is made, its address outside is asked, and Close takes the forward away. The NAT-PMP one
+    // forwards a port; another says an address outside that is private (another router in front), which is no use
+    static void RouterForward() {
+        using namespace portmap;
+        Require(Tag("<s:Body><u:X><NewExternalIPAddress> 203.0.113.7 </NewExternalIPAddress></u:X></s:Body>", "NewExternalIPAddress") ==
+                    "203.0.113.7", "a tag's text, trimmed");
+        Require(Tag("<e:errorCode>718</e:errorCode>", "errorCode") == "718", "a tag with a namespace prefix");
+        Require(SsdpLocation("HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=120\r\nLocation: http://198.51.100.1:5000/rootDesc.xml\r\n\r\n") ==
+                    "http://198.51.100.1:5000/rootDesc.xml", "an SSDP answer's location");
+        const std::string description = "<root><device><serviceList>"
+                                        "<service><serviceType>urn:schemas-upnp-org:service:WANPPPConnection:1</serviceType><controlURL>/ppp</controlURL></service>"
+                                        "<service><serviceType>urn:schemas-upnp-org:service:Layer3Forwarding:1</serviceType><controlURL>/l3f</controlURL></service>"
+                                        "<service><serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType><controlURL>ctl/IPConn</controlURL></service>"
+                                        "</serviceList></device></root>";
+        const auto services = ForwardServices(description, "http://198.51.100.1:5000/rootDesc.xml");
+        Require(services.size() == 2 && services[0].first == "http://198.51.100.1:5000/ctl/IPConn" && services[1].first == "http://198.51.100.1:5000/ppp",
+                "the forwarding services, WANIPConnection first, relative URLs made whole");
+        Require(Private(10u << 24 | 0x010203) && Private(ParseIp("172.20.0.1")) && Private(192u << 24 | 168u << 16 | 5) &&
+                    Private(ParseIp("100.64.1.1")) && !Private(ParseIp("100.128.0.1")) && !Private(ParseIp("203.0.113.7")) &&
+                    !Private(ParseIp("172.32.0.1")),
+                "which addresses outside are private");
+
+        const uint32_t loopback = ParseIp("127.0.0.1");
+        // (a UPnP router: one connection at a time, each request answered and closed)
+        detail::Handle listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        sockaddr_in at = detail::Four(loopback, 0);
+        socklen_t length = sizeof(at);
+        Require(bind(listener, reinterpret_cast<sockaddr *>(&at), sizeof(at)) == 0 && listen(listener, 8) == 0 &&
+                    getsockname(listener, reinterpret_cast<sockaddr *>(&at), &length) == 0,
+                "the UPnP router's socket");
+        const int httpPort = ntohs(at.sin_port);
+        std::vector<std::string> asked;
+        std::atomic<bool> stop{false};
+        std::thread router([&] {
+            while (!stop) {
+                if (!detail::Ready(listener, 50)) continue;
+                detail::Handle s = accept(listener, nullptr, nullptr);
+                if (s == detail::kNone) continue;
+                std::string request;
+                char buffer[4096];
+                while (detail::Ready(s, 500)) {
+                    const int n = static_cast<int>(recv(s, buffer, sizeof(buffer), 0));
+                    if (n <= 0) break;
+                    request.append(buffer, n);
+                    const size_t head = request.find("\r\n\r\n");
+                    const size_t length = request.find("Content-Length: ");
+                    if (head != std::string::npos && length != std::string::npos &&
+                        request.size() >= head + 4 + strtoul(request.c_str() + length + 16, nullptr, 10)) {
+                        break;
+                    }
+                }
+                asked.push_back(request);
+                std::string reply;
+                if (request.compare(0, 4, "GET ") == 0) {
+                    const std::string half1 = description.substr(0, 100), half2 = description.substr(100);
+                    char sizes[2][16];
+                    snprintf(sizes[0], sizeof(sizes[0]), "%zx", half1.size());
+                    snprintf(sizes[1], sizeof(sizes[1]), "%zx", half2.size());
+                    reply = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n" + std::string(sizes[0]) + "\r\n" + half1 + "\r\n" +
+                            sizes[1] + "\r\n" + half2 + "\r\n0\r\n\r\n";
+                } else if (request.find("#AddPortMapping") != std::string::npos) {
+                    reply = request.find("<NewExternalPort>7845<") != std::string::npos
+                                ? "HTTP/1.1 500 Internal Server Error\r\n\r\n<s:Envelope><s:Body><s:Fault><detail><UPnPError><errorCode>718</errorCode></UPnPError></detail></s:Fault></s:Body></s:Envelope>"
+                                : "HTTP/1.1 200 OK\r\n\r\n<s:Envelope><s:Body><u:AddPortMappingResponse/></s:Body></s:Envelope>";
+                } else if (request.find("#GetExternalIPAddress") != std::string::npos) {
+                    reply = "HTTP/1.1 200 OK\r\n\r\n<s:Envelope><s:Body><u:GetExternalIPAddressResponse><NewExternalIPAddress>203.0.113.7</NewExternalIPAddress></u:GetExternalIPAddressResponse></s:Body></s:Envelope>";
+                } else {
+                    reply = "HTTP/1.1 200 OK\r\n\r\n";
+                }
+                send(s, reply.data(), static_cast<int>(reply.size()), 0);
+                detail::Shut(s);
+            }
+        });
+        Where where;
+        where.location = "http://127.0.0.1:" + std::to_string(httpPort) + "/rootDesc.xml";
+        where.local = loopback;
+        where.search = false;
+        const Mapping upnp = Open(7845, 3000, where);
+        Close(upnp);
+        stop = true;
+        router.join();
+        detail::Shut(listener);
+        Require(upnp.ok && upnp.made && upnp.how == "UPnP", "the UPnP forward: " + upnp.why);
+        Require(upnp.externalPort != 7845 && upnp.external == "203.0.113.7:" + std::to_string(upnp.externalPort),
+                "a taken port: another one outside (" + upnp.external + ")");
+        Require(upnp.control == "http://127.0.0.1:" + std::to_string(httpPort) + "/ctl/IPConn", "the WANIPConnection service used");
+        int adds = 0;
+        bool deleted = false, internal = false;
+        for (const std::string &request : asked) {
+            adds += request.find("#AddPortMapping") != std::string::npos;
+            internal |= request.find("<NewInternalClient>127.0.0.1</NewInternalClient>") != std::string::npos &&
+                        request.find("<NewInternalPort>7845</NewInternalPort>") != std::string::npos &&
+                        request.find("<NewProtocol>UDP</NewProtocol>") != std::string::npos;
+            deleted |= request.find("#DeletePortMapping") != std::string::npos &&
+                       request.find("<NewExternalPort>" + std::to_string(upnp.externalPort) + "<") != std::string::npos;
+        }
+        Require(adds == 2 && internal, "AddPortMapping twice, for this machine's UDP port");
+        Require(deleted, "Close takes the UPnP forward away");
+
+        // (NAT-PMP routers: one with an address outside the internet's, one with a private one)
+        // (the private one made from its numbers: the audit keeps home-network addresses out of the sources)
+        for (const std::string outside : {std::string("198.51.100.9"), Ip(10u << 24 | 2)}) {
+            detail::Handle pmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+            sockaddr_in self = detail::Four(loopback, 0);
+            socklen_t size = sizeof(self);
+            Require(bind(pmp, reinterpret_cast<sockaddr *>(&self), sizeof(self)) == 0 && getsockname(pmp, reinterpret_cast<sockaddr *>(&self), &size) == 0,
+                    "the NAT-PMP router's socket");
+            std::atomic<bool> done{false};
+            const uint32_t address = ParseIp(outside);
+            std::thread answers([&] {
+                while (!done) {
+                    if (!detail::Ready(pmp, 50)) continue;
+                    uint8_t in[64];
+                    sockaddr_in from{};
+                    socklen_t fromLength = sizeof(from);
+                    const int got = static_cast<int>(recvfrom(pmp, reinterpret_cast<char *>(in), sizeof(in), 0, reinterpret_cast<sockaddr *>(&from), &fromLength));
+                    if (got < 2 || in[0] != 0) continue;
+                    std::vector<uint8_t> out;
+                    if (in[1] == 0) {
+                        out = {0, 128, 0, 0, 0, 0, 0, 1, static_cast<uint8_t>(address >> 24), static_cast<uint8_t>(address >> 16),
+                               static_cast<uint8_t>(address >> 8), static_cast<uint8_t>(address)};
+                    } else if (in[1] == 1 && got >= 12) {
+                        out = {0, 129, 0, 0, 0, 0, 0, 1, in[4], in[5], 0x9C, 0x40, in[8], in[9], in[10], in[11]}; // (port 40000)
+                    }
+                    sendto(pmp, reinterpret_cast<const char *>(out.data()), static_cast<int>(out.size()), 0, reinterpret_cast<sockaddr *>(&from), fromLength);
+                }
+            });
+            Where natPmp;
+            natPmp.natPmp = loopback;
+            natPmp.natPmpPort = ntohs(self.sin_port);
+            natPmp.local = loopback;
+            natPmp.search = false;
+            const Mapping map = Open(7845, 3000, natPmp);
+            done = true;
+            answers.join();
+            detail::Shut(pmp);
+            Require(map.made && map.how == "NAT-PMP" && map.externalPort == 40000 && map.external == outside + ":40000",
+                    "the NAT-PMP forward: " + map.external + " " + map.why);
+            Require(map.ok == !Private(address), "a private address outside is no use: " + outside);
+            Require(map.ok || map.why.find("private") != std::string::npos, "why a private address is no use: " + map.why);
+        }
+        // (no router at all: an answer in time, with why)
+        Where nobody;
+        nobody.local = loopback;
+        nobody.natPmp = loopback;
+        nobody.natPmpPort = 9; // (discard: nothing answers)
+        nobody.search = false;
+        const uint64_t began = detail::Now();
+        const Mapping none = Open(7845, 3000, nobody);
+        Require(!none.ok && !none.made && none.why.find("NAT-PMP: no answer") != std::string::npos, "no router: " + none.why);
+        Require(detail::Now() - began < 2500, "no router: given up on before the time is over");
+    }
+
     // The relay's TURN client (port/turn.h): its digests against their standards' examples, the addresses it keeps off
     // the relay, and an allocation against a scripted server: the first request unsigned, the 401's realm and nonce,
     // the request again signed with MD5(user:realm:password), the relayed address, a permission, a peer's packet
@@ -1306,7 +1462,8 @@ struct NetplayTest {
                  {"four-stream confirmed spectators and read-only controls", SpectatorControls},
                  {"host seat changes in a match of four, three or two, frame-exact and rolled back to", SeatChanges},
                  {"a strict network from two STUN servers' answers", StrictNetwork},
-                 {"the relay's TURN client: digests, private addresses, an allocation", TurnClient}}) {
+                 {"the relay's TURN client: digests, private addresses, an allocation", TurnClient},
+                 {"the router's forward: UPnP (a taken port, chunked description), NAT-PMP, a private address, no router", RouterForward}}) {
             run();
             std::cout << "PASS: " << name << '\n';
         }

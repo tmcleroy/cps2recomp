@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Online: the router opens a port by itself**, as Fightcade and most online games have it. Hosting or joining, the
+  game asks the home router (by UPnP or NAT-PMP, which most home routers have on) to forward a port to it, and tells
+  the other player that address too, so a router that stops hole punching still lets the match be made directly,
+  without the relay's delay. Nothing is set in the router's settings. The forward is taken away when the match is
+  over (and lasts two hours at most). `logs/game.log` says whether the router made it, or why not (no UPnP, the port
+  taken, another router in front); a router that makes the forward but won't say its own address gets the one the STUN servers saw. `--net-forward off` doesn't ask. Also in the log: the build's commit, and the
+  STUN check's end when it has no verdict (how many servers answered, or that no UDP answer came back: a firewall), the game's socket, the first send the system refuses (with why), and every feature on at the match's start (two logs side by side show a setting that differs, for a desync).
 - **Marvel vs. Capcom: more training, and a ring out the CPU plays.** The dummy techs throws (off, always, at
   random), guards high or low by the game's own rule for each attack, and can be played by the game's own computer
   player. New aids: a stun readout and fixed damage (no random part in a hit's damage). In the ring out the CPU now

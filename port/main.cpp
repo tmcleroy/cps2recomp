@@ -4951,6 +4951,8 @@ void Usage() {
             "  --net-list             (hosting) the match in the lobby, the Online card's list of open matches\n"
             "  --net-relay on|only|off  the online service's relay (TURN) for a network that stops direct connections:\n"
             "                         on beside the direct addresses (the default), only (every packet through it), off\n"
+            "  --net-forward on|off   the home router asked to forward a port to the game (UPnP or NAT-PMP), as most\n"
+            "                         online games do: on (the default) or off\n"
             "  --net-name NAME        ... under this name; and any machine's: shown to the other players\n"
             "  --net-say [FRAME:]TEXT (tests) TEXT said in the chat at FRAME of the match (120 unless said)\n"
             "  --net-typing TEXT      (pictures) TEXT shown as a chat line being typed, all through the match\n"
@@ -5111,6 +5113,8 @@ bool ParseArgs(int argc, char **argv, port::Options &o) {
         } else if (a == "--net-relay") {
             const std::string how = next();
             o.net.relay = how == "only" ? 1 : how == "off" ? -1 : 0;
+        } else if (a == "--net-forward") {
+            o.net.forward = next() != "off";
         } else if (a == "--net-list") {
             o.net.listed = true;
         } else if (a == "--net-arcade") {

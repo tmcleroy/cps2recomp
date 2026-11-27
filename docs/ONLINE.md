@@ -235,6 +235,12 @@ and how many.
   reached, and they then connect straight to each other through their routers; none of the match goes through it
   ([online/README.md](../online/README.md)). A code lasts 30 minutes and is good for one match: everyone in a match
   of four joins with the same code, until the match is full.
+- **The router's port forward, made by the game**: hosting or joining, each game asks its home router to forward a
+  port to it, by UPnP or NAT-PMP (most home routers have one on), as Fightcade and most online games do, and the
+  other player is told that address too. A router that stops hole punching still lets the match be made directly
+  that way; nothing is set in the router's settings. The forward is taken away when the match is over. The log says
+  whether the router made it (`online: the router forwards a port`) or why not (`online: no forward from the router:
+  ...`). `--net-forward off` doesn't ask.
 - **Joining by address** works too, without the service: on a home network, the host's own address (the Online card
   lists it); over the internet, the host's public address with UDP port 7845 forwarded to it on the router (`--host
   7900` and `--join ADDRESS:7900` for another port); or a VPN such as [Tailscale](https://tailscale.com). That is
@@ -323,7 +329,9 @@ Do not post the match's secret, full service request URLs or public IP addresses
 - **Match full**: the service has reserved all places. A person who joined but never reached the host holds a place
   for the host's 30-second wait; the host then retries releasing it until the service acknowledges the release.
 - **Trying the host's addresses / waiting for players**: admission succeeded, but the direct UDP connection is
-  incomplete. Try the host's LAN address on one network; on separate networks, test a forwarded port or VPN.
+  incomplete. The log's lines before it say what each side's network did: the STUN check (`the network looks
+  strict`, `keeps one address`, or `no UDP answer came back`: a firewall stopping the game), the router's forward,
+  and the relay. Try the host's LAN address on one network; on separate networks, test a forwarded port or VPN.
 - **Game transfer or desync**: the machines reached one another. Keep the error and version details; changing
   controller mappings will not repair mismatched simulation state.
 
