@@ -565,6 +565,8 @@ void Netplay::SayWaiting() {
                             : "Waiting for " + std::to_string(wanted) + " more players";
     if (code.empty()) {
         waiting += " (UDP port " + std::to_string(settings.port) + ")";
+    } else if (strict == 1) {
+        waiting += " (strict network: some players can't join)";
     }
 }
 
@@ -853,7 +855,7 @@ std::string Netplay::Addresses() const {
     return json + "]";
 }
 
-bool Netplay::TakeStun(const uint8_t *data, int size) {
+bool Netplay::TakeStun(const uint8_t *data, int size, const NetAddress &from) {
     // A binding success (0x0101) for our request: its XOR-MAPPED-ADDRESS (0x0020), IPv4
     if (size < 20 || data[0] != 0x01 || data[1] != 0x01 || memcmp(data + 8, stunId.data(), 12) != 0) {
         return false;
@@ -863,8 +865,24 @@ bool Netplay::TakeStun(const uint8_t *data, int size) {
         if (type == 0x0020 && length >= 8 && at + 12 <= size && data[at + 5] == 0x01) {
             const int port = (data[at + 6] << 8 | data[at + 7]) ^ (kStunCookie >> 16);
             const uint32_t ip = (static_cast<uint32_t>(data[at + 8]) << 24 | data[at + 9] << 16 | data[at + 10] << 8 | data[at + 11]) ^ kStunCookie;
-            seenAs = std::to_string(ip >> 24) + "." + std::to_string((ip >> 16) & 0xFF) + "." + std::to_string((ip >> 8) & 0xFF) + "." +
-                     std::to_string(ip & 0xFF) + ":" + std::to_string(port);
+            const std::string seen = std::to_string(ip >> 24) + "." + std::to_string((ip >> 16) & 0xFF) + "." +
+                                     std::to_string((ip >> 8) & 0xFF) + "." + std::to_string(ip & 0xFF) + ":" + std::to_string(port);
+            if (seenAs.empty()) {
+                seenAs = seen;
+                stunFirst = NowMs();
+            }
+            // (which server said it: with two answers, whether they saw the same address)
+            stunSeen.resize(stunServers.size());
+            for (size_t n = 0; n < stunServers.size(); ++n) {
+                if (stunServers[n] == from) stunSeen[n] = seen;
+            }
+            if (strict < 0 && stunSeen.size() >= 2 && !stunSeen[0].empty() && !stunSeen[1].empty()) {
+                strict = stunSeen[0] != stunSeen[1];
+                fprintf(stderr, "online: the network %s (STUN: %s, %s)\n",
+                        strict ? "looks strict: each server saw another port, so direct connections may fail" : "keeps one address",
+                        stunSeen[0].c_str(), stunSeen[1].c_str());
+                if (strict && settings.hosting) SayWaiting();
+            }
             return true;
         }
         at += 4 + ((length + 3) & ~3);
@@ -907,7 +925,8 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
         if (stunServers.empty() && stunLookup.valid() && stunLookup.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
             stunServers = stunLookup.get();
         }
-        if (seenAs.empty() && now - stunBegan < 3000) {
+        // (until the first answer, and a moment more for the other server's, to know whether the network is strict)
+        if ((seenAs.empty() || (strict < 0 && now - stunFirst < 500)) && now - stunBegan < 3000) {
             if (!stunServers.empty() && now - stunSent > 400) {
                 // (a binding request: a type, no length, the cookie and a transaction id of our own)
                 for (uint8_t &b : stunId) {
@@ -1107,7 +1126,7 @@ int Netplay::Waiting(Port &port, std::string &error) {
     if (settings.hosting) {
         int got;
         while ((got = socket.Receive(packet, sizeof(packet), from)) >= 0) {
-            if (TakeStun(packet, got) || got < 5 || memcmp(packet, kMagic, 4)) {
+            if (TakeStun(packet, got, from) || got < 5 || memcmp(packet, kMagic, 4)) {
                 continue;
             }
             Reader in(packet, static_cast<size_t>(got));
@@ -1286,14 +1305,17 @@ int Netplay::Waiting(Port &port, std::string &error) {
     if (intro != Intro::Off && intro != Intro::Done) {
         int got;
         while ((got = socket.Receive(packet, sizeof(packet), from)) >= 0) {
-            TakeStun(packet, got);
+            TakeStun(packet, got, from);
         }
         return 0;
     }
     if (!welcomed && now - began > 30000) {
         error = joinCode.empty()
             ? recomp::i18n::TrFormat("The host did not answer. Is it waiting, and can this machine reach it on UDP port {}?", {std::to_string(joinPort)})
-            : recomp::i18n::TrFormat("The host of match {} did not answer over UDP. Check that the host is still waiting. Try another host or a reachable UDP address.", {Spaced(joinCode)});
+            : recomp::i18n::TrFormat("The host of match {} did not answer over UDP. Check that the host is still waiting. Try another host or a reachable UDP address.", {Spaced(joinCode)}) +
+                  (strict == 1 ? std::string("\n\n") + recomp::i18n::Tr("This network looks strict: its router gives each place it sends to a port of its own (a symmetric or carrier-grade NAT), so most direct connections can't be made from it. Try another network, such as a phone's hotspot.")
+                   : strict == 0 ? std::string("\n\n") + recomp::i18n::Tr("This network looks fine for online play, so the host's network may be the one blocking it.")
+                                 : std::string());
         return -1;
     }
     if (welcomed && now - links[0].lastHeard > 10000) {
@@ -1317,7 +1339,7 @@ int Netplay::Waiting(Port &port, std::string &error) {
     }
     int got;
     while ((got = socket.Receive(packet, sizeof(packet), from)) >= 0) {
-        if (TakeStun(packet, got) || got < 5 || memcmp(packet, kMagic, 4)) {
+        if (TakeStun(packet, got, from) || got < 5 || memcmp(packet, kMagic, 4)) {
             continue;
         }
         if (settings.watching && std::none_of(candidates.begin(), candidates.end(), [&](const NetAddress &a) { return a == from; })) continue;

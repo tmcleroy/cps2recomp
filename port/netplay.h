@@ -145,6 +145,10 @@ public:
     bool Begin(Port &port, std::string &error);
     int Waiting(Port &port, std::string &error);
     std::string waiting; // what is being waited for ("Waiting for the other player...")
+    // Whether this machine's router gives each place it sends to a port of its own (a "symmetric" or carrier-grade
+    // NAT: two STUN servers saw two ports): then the address the other players are told is not the one their packets
+    // reach, and a direct connection with most of them can't be made. -1: not known (a server didn't answer)
+    int StrictNetwork() const { return strict; }
     std::string code;    // (hosting) the match's code, once the service has given one, as said ("K7Q-M2X")
     const std::string &Secret() const {
         return secret;
@@ -350,6 +354,11 @@ private:
     std::array<uint8_t, 12> stunId{};
     uint64_t stunBegan = 0, stunSent = 0;
     std::string seenAs; // ("IP:PORT")
+    // (each STUN server's answer, by stunServers' order: where it saw this socket's packets come from, "" until it
+    // answers; and when the first came. Two that differ: a strict router, StrictNetwork)
+    std::vector<std::string> stunSeen;
+    uint64_t stunFirst = 0;
+    int strict = -1; // (1: the servers saw two ports, 0: the same, -1: not known)
     std::future<HttpAnswer> asking, watchAsking;
     uint64_t askedAt = 0;
     uint64_t codeAt = 0; // (hosting: when the code was had, for how often it is asked about: Introduce)
@@ -367,7 +376,7 @@ private:
     int toldPlayers = 0, toldHere = 0; // (hosting: the match's players and the host's, as the service was told them)
     uint64_t punchedAt = 0;
     bool Introduce(uint64_t now, std::string &error);
-    bool TakeStun(const uint8_t *data, int size);
+    bool TakeStun(const uint8_t *data, int size, const NetAddress &from);
     std::string Addresses() const; // (this side's, as JSON)
 
     // The match: the players it is for (4 in tag team's 2 vs 2), and each machine's people and players
