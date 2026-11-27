@@ -23,6 +23,8 @@ inline constexpr Place kPlaceList[] = {
     {0x002EE2, 0x0040EC}, // Champion Edition's 0022D8, placed by portmap (an instruction) by hand
     {0x002F50, 0x00415A}, // Champion Edition's 002346, placed by portmap (an instruction) by hand
     {0x0043F4, 0x007026}, // Champion Edition's 003224, placed by portmap (an instruction) by hand
+    {0x004634, 0x00719E}, // the throw test where its ways in meet (move.b 0x281(a6),...; tst.b 0x191(a6)) (the court) by hand
+    {0x0047D0, 0x0072D4}, // the throw test's no (moveq #0,d0; rts) (the court) by hand
     {0x00490A, 0x007652}, // Champion Edition's 003810, placed by portmap (an instruction) by hand
     {0x0049B0, 0x007354}, // Champion Edition's 003512, placed by portmap (an instruction) by hand
     {0x004A58, 0x0073EE}, // Champion Edition's 0035AC, placed by portmap (an instruction) by hand
@@ -48,9 +50,12 @@ inline constexpr Place kPlaceList[] = {
     {0x078052, 0x0811AE}, // Champion Edition's 037A26, placed by portmap (an instruction) by hand
     {0x078270, 0x013A32}, // Champion Edition's 037CC2, placed by portmap (an instruction) by hand
     {0x0782D4, 0x013A84}, // Champion Edition's 037D14, placed by portmap (an instruction) by hand
+    {0x07AC78, 0x015992}, // the hit looked for at the end of the step (cmpi.b #2,2(a6); tst.b 0x49(a6)) (the court) by hand
     {0x07BB82, 0x081952}, // Champion Edition's 03A5A8, placed by portmap (an instruction) by hand
     {0x07BC12, 0x0819C0}, // Champion Edition's 03A612, placed by portmap (an instruction) by hand
     {0x07D6F4, 0x0832B8}, // Champion Edition's 03BD90, placed by portmap (an instruction) by hand
+    {0x07E274, 0x083D18}, // the computer's throw test (tst.b 0x191(a6) after its jsr) (the court) by hand
+    {0x07E36A, 0x083DF2}, // its no (moveq #0,d0; rts) (the court) by hand
     {0x07E36E, 0x083DF6}, // Champion Edition's 03C714, placed by portmap (an instruction) by hand
     {0x07F1C6, 0x084A16}, // Champion Edition's 03D0C4 here (the same bytes found, or the same variable) by hand
     {0x090F6A, 0x045720}, // Vega's jump to the wall (the same code, found by its instructions) by hand
@@ -68,6 +73,7 @@ inline constexpr Place kPlaceList[] = {
     {0x0BEF82, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
     {0x0BEF88, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
     {0x0BEF8A, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
+    {0x0BF662, 0x09D5DC}, // the players pushed apart (its clr.w; lea of player 1) (the court) by hand
     {0x0CC4E4, 0x0A516A}, // Champion Edition's 09C77C, placed by portmap (an instruction) by hand
     {0x0CC630, 0x0A526E}, // Champion Edition's 09C880, placed by portmap (an instruction) by hand
     {0x0CCC5C, 0x0A57B0}, // Champion Edition's 09CDC2, placed by portmap (an instruction) by hand
@@ -102,6 +108,7 @@ inline constexpr Place kPlaceList[] = {
     {0xFF8DD2, 0xFF8AC2}, // Champion Edition's FF8AC2, placed by portmap (named so) by hand
     {0xFF8DDC, 0xFF8ACC}, // Champion Edition's FF8ACC, placed by portmap (named so) by hand
     {0xFF8DDE, 0xFF8ACE}, // Champion Edition's FF8ACE, placed by portmap (named so) by hand
+    {0xFF8DEE, 0x000000}, // none: no first attack (the court) by hand
     {0xFF8ECE, 0xFF8BBE}, // Champion Edition's FF8BBE, placed by portmap (named so) by hand
     {0xFF8ED4, 0xFF8BC4}, // Champion Edition's FF8BC4, placed by portmap (named so) by hand
     {0xFF8ED8, 0xFF8BC8}, // Champion Edition's FF8BC8, placed by portmap (named so) by hand
@@ -268,5 +275,13 @@ inline constexpr uint32_t kPlayerSets[2] = {1u << 1, 1u << 2};
 
 #define SSF2T_FAMILY_OWN_SOURCES 1
 void RegisterOwnSources();
+
+// The Ball battle's court, each stage's side (games/ssf2t/src/widescreen.cpp; by kStage): the classic stages' planes
+// end sooner than Super Turbo's on E. Honda's and M. Bison's (black past 128), the rest as Super Turbo's
+#define SSF2T_FAMILY_COURT_SIDES {128, 128, 144, 192, 128, 128, 192, 192, 128, 160, 96, 192}
+
+// The Ball battle's hit sounds (games/ssf2t/src/court.cpp): light, medium, hard, specials and supers as hard ones
+// (queued as the training's dummy was hit by each button, against the strength the hit leaves at the victim's +4C)
+#define SSF2T_FAMILY_HIT_SOUNDS {0x002B, 0x002C, 0x002A, 0x002A, 0x002A}
 
 } // namespace ssf2t::family

@@ -21,6 +21,8 @@ inline constexpr Place kPlaceList[] = {
     {0x002EE2, 0x002D88}, // an instruction, 12 on alike
     {0x002F50, 0x002DF6}, // an instruction, 15 on alike
     {0x0043F4, 0x0040DC}, // an instruction, 7 on alike
+    {0x004634, 0x004290}, // the throw test where its ways in meet (move.b 0x381(a6),...; tst.b 0x191(a6)) (the court) by hand
+    {0x0047D0, 0x0043FC}, // the throw test's no (moveq #0,d0; rts) (the court) by hand
     {0x00490A, 0x004488}, // moved as the code before or after it, 6 on alike
     {0x0049B0, 0x004534}, // an instruction, 6 on alike
     {0x004A58, 0x0045D2}, // an instruction, 6 on alike
@@ -46,9 +48,12 @@ inline constexpr Place kPlaceList[] = {
     {0x078052, 0x06AB50}, // an instruction, 2 on alike
     {0x078270, 0x06AE52}, // an instruction, 3 on alike
     {0x0782D4, 0x06AEA4}, // an instruction, 4 on alike
+    {0x07AC78, 0x06D350}, // the hit looked for at the end of the step (cmpi.b #2,2(a6); tst.b 0x49(a6)) (the court) by hand
     {0x07BB82, 0x06DDBE}, // an instruction, 10 on alike
     {0x07BC12, 0x06DE2C}, // an instruction, 9 on alike
     {0x07D6F4, 0x06F8B0}, // an instruction, 2 on alike
+    {0x07E274, 0x07034A}, // the computer's throw test (tst.b 0x191(a6) after its jsr) (the court) by hand
+    {0x07E36A, 0x070430}, // its no (moveq #0,d0; rts) (the court) by hand
     {0x07E36E, 0x070434}, // an instruction, 4 on alike
     {0x07F1C6, 0x0711BC}, // a place the code names so (1/1)
     {0x090F6A, 0x07D27A}, // Vega's jump to the wall (the same code; the instructions before and after it alike) by hand
@@ -66,6 +71,7 @@ inline constexpr Place kPlaceList[] = {
     {0x0BEF82, 0x092A62}, // its routine guarded crouching only by hand
     {0x0BEF88, 0x092A68}, // its routine guarded either way by hand
     {0x0BEF8A, 0x092A6A}, // its routine guarded crouching only, the other by hand
+    {0x0BF662, 0x0937AA}, // the players pushed apart (clr.w -0x5998(a5); lea 0x3CE(a5),a6) (the court) by hand
     {0x0CC4E4, 0x09BC80}, // the same entry of a jump table, 4 on alike
     {0x0CC630, 0x09BD98}, // the camera's place up (the jump table's entry; no test of a flag of its own first) by hand
     {0x0CCC5C, 0x09C3B2}, // an instruction, 11 on alike
@@ -100,6 +106,7 @@ inline constexpr Place kPlaceList[] = {
     {0xFF8DD2, 0xFF8CD2}, // a variable the code names so (38/41)
     {0xFF8DDC, 0xFF8CDC}, // a variable the code names so (7/7)
     {0xFF8DDE, 0xFF8CDE}, // a variable the code names so (9/9)
+    {0xFF8DEE, 0xFF8CEE}, // the round's first hit made (07ACA0's: move.b 0xCEE(a5),d0; move.b #1,...) (the court) by hand
     {0xFF8ECE, 0xFF8DCE}, // a variable the code names so (24/24)
     {0xFF8ED4, 0xFF8DD4}, // a variable the code names so (38/39)
     {0xFF8ED8, 0xFF8DD8}, // a variable the code names so (27/28)

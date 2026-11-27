@@ -139,7 +139,7 @@ Linux, the Steam Deck and Windows can play each other.
 - **Video recording**: what you play and hear saved as an MP4 that plays anywhere, the pixels sharp at 3 times the
   board's size or more, the custom soundtrack too (Alt+F12, or the menu's **Video** page); and **instant replay**, the
   last 30 seconds saved after they happen (Alt+Shift+F12) ([more](docs/FEATURES.md#video-recording)).
-- **Ball battle**, a ball game in the Vampire Savior games and the Street Fighter Alphas: each fighter on a half of the stage, hitting a big ball past the other with
+- **Ball battle**, a ball game in the Vampire Savior games, the Street Fighter Alphas and the Street Fighter IIs: each fighter on a half of the stage, hitting a big ball past the other with
   their attacks, first to 3, 5 or 10 ([more](docs/COURT.md)).
 - **Shoot-'em-up training mode** in Giga Wing, Progear and Dimahoo: any stage or straight at its boss, back to the start with one
   button, or to a practice point you set anywhere, and rewind through the last half a minute ([more](docs/PRACTICE.md)); the ships' true hit boxes, the enemies' and their shots' in any mode; a score attack,

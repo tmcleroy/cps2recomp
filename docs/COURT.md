@@ -3,8 +3,10 @@
 (Called "the court" in the sources: `fight/court.h`.)
 
 A ball game for the fighting games, on the in-game menu's **Alternative modes** page (the Vampire Savior games:
-Vampire Savior, Vampire Savior Definitive, Vampire Savior 2 and Vampire Hunter 2, which share its sources; and Street
-Fighter Alpha, Alpha 2 (with Zero 2 Alpha, which shares its sources) and Alpha 3). The stage is a court cut in two by a line down the middle of the picture. Each fighter keeps
+Vampire Savior, Vampire Savior Definitive, Vampire Savior 2 and Vampire Hunter 2, which share its sources; Street
+Fighter Alpha, Alpha 2 (with Zero 2 Alpha, which shares its sources) and Alpha 3; and the Street Fighter IIs: Super
+Turbo with the games that build its sources (Super Street Fighter II, The World Warrior, Champion Edition, Hyper
+Fighting and its CSL editions), and Hyper Street Fighter II). The stage is a court cut in two by a line down the middle of the picture. Each fighter keeps
 to its own half, and the two of them hit a big ball that flies over the whole court. Get the ball past the other
 fighter and off their end of the court for a point. First to 3, 5 or 10 wins.
 
@@ -211,6 +213,38 @@ return, or send the routine to its own "no" (`c.pc`).
   three after the hit (`023278`). Sides: each stage's painting measured with `SFA3_NO_FILL` (holes left black) at 192,
   and kept within half of each plane's range in `kPlaneEnds`, past which a plane that is a map going round shows
   its picture again (the black alone missed those).
+
+### Street Fighter II
+
+Super Turbo's sources (`games/ssf2t/src/court.cpp`) are built by Super Street Fighter II and the three classic games as
+well, each game's places in its `family.h` (found in each listing by the same instructions); Hyper Street Fighter II
+has a copy with its own places (`games/hsf2/src/court.cpp`). Hooks only, as in Alpha 3:
+
+- **The push**: the players' push-box routine (Super Turbo's `0BF662`, which `0BF656` calls) keeps each on its half and
+  returns. **The throw tests**: where the person's throw test's ways in meet (`004634`) and the computer's own
+  (`07E274`, none in The World Warrior and Champion Edition) sent to their "no" (`0047D0`, `07E36A`).
+- **What the ball does**: at `07AC78`, where the game looks for a hit at the end of each fighter's step (a person's and
+  the computer's), the fields a hit leaves: the reaction `+4B` (`0C` a hit on the feet, `12` a knock-down, `06`
+  guarded with `+49` set), the strength `+4C`, the way pushed `+54`, and the game's own sign of a hit, the health below
+  what it was before (`+2C`): the game's reeling runs from there (`07ACFC` on, `+55` from `+4B`). `everyFrame` keeps the
+  health full (one below while a fighters' hit is still to be found), the stun (`+5E`) at 0, and the first-attack byte
+  set (Super Turbo `FF8DEE`, Super `FF8CEE`, Hyper `FF8C1A`; none in the classic games), or FIRST ATTACK pays out
+  when the ball knocks someone down.
+- **Power**: the attack's entry has the button's strength in `+08`'s low two bits (0 light, 1 medium, 2 hard: what the
+  hit keeps at the victim's `+4C`) and bit 7 of `+04` set for a special move's (the chip damage's test); Hyper's entries
+  are twenty bytes, the same fields four on. A super (Super Turbo and Hyper) is told by the gauge (`+2B4`) dropping by
+  half or more at once.
+- **Sounds**: 004C, 004D, 004B for light, medium, hard (004B for specials and supers too) in Super Turbo, Super and Hyper;
+  002B, 002C, 002A in the classic games (family.h's `SSF2T_FAMILY_HIT_SOUNDS`), read off the sound queue while the
+  training's dummy was hit by each button.
+- **The court's width** (`widescreen.cpp`, `kCourtSides`, by the stage number): the board's camera covers 768 columns of
+  every stage, so 192 a side is the whole floor; the planes behind end sooner on some, judged by eye at 192: 128, 192,
+  144, 192, 128, 128, 192, 192, 192, 160, 96, 192, 64, 160, 64, 144 (Ryu's roofs end, Ken's boats and Chun-Li's street
+  come round again, Balrog's casino is 576 wide, Cammy's and Fei Long's planes behind come round again past 64). The
+  classic games' twelve stages end sooner on E. Honda's and M. Bison's (black past 128): their `family.h` has
+  `SSF2T_FAMILY_COURT_SIDES`. `SSF2T_COURT_SIDE=N` (`HSF2_COURT_SIDE`) forces a side, for measuring.
+- The World Warrior's battle modes offer its eight world warriors only (`SSF2T_FAMILY_CHOOSABLE`): M. Bison or Sagat
+  played by a person sent the game off into nothing as the fight began (every battle mode, before the court too).
 
 ### Test switches
 

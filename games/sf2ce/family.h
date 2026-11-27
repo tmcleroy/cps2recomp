@@ -23,6 +23,8 @@ inline constexpr Place kPlaceList[] = {
     {0x002EE2, 0x0022D8}, // an instruction, 12 on alike
     {0x002F50, 0x002346}, // an instruction, 15 on alike
     {0x0043F4, 0x003224}, // keeping a player inside the picture (clr.b 0x48(a6) first: no tests of +19D, +1F5) by hand
+    {0x004634, 0x00335C}, // the throw test where its ways in meet (move.b 0x281(a6),...; tst.b 0x191(a6)) (the court) by hand
+    {0x0047D0, 0x003492}, // the throw test's no (moveq #0,d0; rts) (the court) by hand
     {0x00490A, 0x003810}, // sub.w d4,0x2A(a3), a throw's damage at once (after its tst.b 9D4) by hand
     {0x0049B0, 0x003512}, // moved as the code before or after it, 6 on alike
     {0x004A58, 0x0035AC}, // move.w d4,0x78(a3), a throw's damage put by (after bsr 3626) by hand
@@ -48,9 +50,12 @@ inline constexpr Place kPlaceList[] = {
     {0x078052, 0x037A26}, // an instruction, 2 on alike
     {0x078270, 0x037CC2}, // an instruction, 3 on alike
     {0x0782D4, 0x037D14}, // an instruction, 4 on alike
+    {0x07AC78, 0x039CF0}, // the hit looked for at the end of the step (cmpi.b #2,2(a6); tst.b 0x49(a6)) (the court) by hand
     {0x07BB82, 0x03A5A8}, // an instruction, 6 on alike
     {0x07BC12, 0x03A612}, // an instruction, 9 on alike
     {0x07D6F4, 0x03BD90}, // an instruction, 1 on alike
+    {0x07E274, 0x000000}, // none: the computer throws through the same test (the court) by hand
+    {0x07E36A, 0x000000}, // none: as above (the court) by hand
     {0x07E36E, 0x03C714}, // an instruction, 4 on alike
     {0x07F1C6, 0x03D0C4}, // the stun's most: the word of cmpi.w #$1F,0x5E(a6) at 03D0C2 (a fixed 1F) by hand
     {0x090F6A, 0x045E1E}, // Vega's jump to the wall (the same code, found by its instructions) by hand
@@ -68,6 +73,7 @@ inline constexpr Place kPlaceList[] = {
     {0x0BEF82, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
     {0x0BEF88, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
     {0x0BEF8A, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
+    {0x0BF662, 0x09626A}, // the players pushed apart (its clr.w; lea of player 1) (the court) by hand
     {0x0CC4E4, 0x09C77C}, // the same entry of a jump table, 1 on alike
     {0x0CC630, 0x09C880}, // the camera's place up (tests ACE and ACC: no flag of its own first) by hand
     {0x0CCC5C, 0x09CDC2}, // where the code calls or jumps to it (1/1), not its first instruction's place
@@ -102,6 +108,7 @@ inline constexpr Place kPlaceList[] = {
     {0xFF8DD2, 0xFF8AC2}, // a variable the code names so (13/17)
     {0xFF8DDC, 0xFF8ACC}, // a variable the code names so (3/3)
     {0xFF8DDE, 0xFF8ACE}, // a variable the code names so (4/4)
+    {0xFF8DEE, 0x000000}, // none: no first attack (the court) by hand
     {0xFF8ECE, 0xFF8BBE}, // a variable the code names so (3/3)
     {0xFF8ED4, 0xFF8BC4}, // a variable the code names so (15/16)
     {0xFF8ED8, 0xFF8BC8}, // a variable the code names so (9/10)
@@ -265,5 +272,13 @@ inline bool IsStagePiece(uint16_t attributes) {
 }
 inline constexpr unsigned kShadowSet = 0x0A, kSparkSet = 0x0E;
 inline constexpr uint32_t kPlayerSets[2] = {1u << 1, 1u << 2};
+
+// The Ball battle's court, each stage's side (games/ssf2t/src/widescreen.cpp; by kStage): the classic stages' planes
+// end sooner than Super Turbo's on E. Honda's and M. Bison's (black past 128), the rest as Super Turbo's
+#define SSF2T_FAMILY_COURT_SIDES {128, 128, 144, 192, 128, 128, 192, 192, 128, 160, 96, 192}
+
+// The Ball battle's hit sounds (games/ssf2t/src/court.cpp): light, medium, hard, specials and supers as hard ones
+// (queued as the training's dummy was hit by each button, against the strength the hit leaves at the victim's +4C)
+#define SSF2T_FAMILY_HIT_SOUNDS {0x002B, 0x002C, 0x002A, 0x002A, 0x002A}
 
 } // namespace ssf2t::family

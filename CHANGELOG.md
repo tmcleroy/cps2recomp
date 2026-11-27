@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Ball battle in the Street Fighter IIs**: Super Turbo, Super Street Fighter II, The World Warrior, Champion Edition,
+  Hyper Fighting (and its CSL editions) and Hyper Street Fighter II get the ball game on the Alternative modes page:
+  each fighter on a half, attacks sending the big ball past the other for a point, first to 3, 5 or 10, the whole
+  court as wide as each stage is drawn.
+- **The World Warrior: the battle modes offer its eight world warriors only.** M. Bison or Sagat as a fighter there
+  (picked, or at random) left the game running off into nothing as the fight began.
 - **The Street Fighter II games: the Alphas' training aids** (Super Turbo, Super Street Fighter II, Champion Edition,
   Hyper Fighting, the World Warrior, Hyper Street Fighter II and the CSL editions). **Throw range** (with hit boxes on):
   the box of the throw each player last tried, and the other's place to be thrown by, a yellow bar; the throw reaches
