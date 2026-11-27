@@ -26,6 +26,8 @@ inline constexpr Place kPlaceList[] = {
     {0x00490A, 0x004488}, // moved as the code before or after it, 6 on alike
     {0x0049B0, 0x004534}, // an instruction, 6 on alike
     {0x004A58, 0x0045D2}, // an instruction, 6 on alike
+    {0x004BDA, 0x00475A}, // moveq #1,d4 after a throw's random part is added (the code alike) by hand
+    {0x004BDC, 0x00475C}, // mulu d4,d3 after it, where both ways meet by hand
     {0x00502A, 0x004A54}, // a place the code names so (1/1)
     {0x008FFC, 0x008380}, // moved as the code before or after it, 1 on alike; as many at 00836E: check
     {0x00D69C, 0x00C11A}, // the same entry of a jump table, 9 on alike
@@ -61,6 +63,14 @@ inline constexpr Place kPlaceList[] = {
     {0x0BE678, 0x09220C}, // an instruction, 6 on alike
     {0x0BEBA6, 0x092634}, // sub.w d6,0x2A(a2) in the thrown thing's hit (the same code around it) by hand
     {0x0BEBDA, 0x09264E}, // move.b 0x7(a3),0x19C(a2) after it, where its ways meet by hand
+    {0x0BEE72, 0x092986}, // moveq #1,d6 after a hit's random part is added (0BEE40's code alike) by hand
+    {0x0BEE74, 0x092988}, // mulu d6,d5 after it, where both ways meet by hand
+    {0x0BEED8, 0x0929E8}, // the guard decision's jump table by the attack's +0B (28 entries here) by hand
+    {0x0BEF66, 0x092A46}, // its routine for most attacks by hand
+    {0x0BEF7C, 0x092A5C}, // its routine guarded standing only by hand
+    {0x0BEF82, 0x092A62}, // its routine guarded crouching only by hand
+    {0x0BEF88, 0x092A68}, // its routine guarded either way by hand
+    {0x0BEF8A, 0x092A6A}, // its routine guarded crouching only, the other by hand
     {0x0BF662, 0x0937AA}, // the players pushed apart (clr.w -0x5998(a5); lea 0x3CE(a5),a6) (the court) by hand
     {0x0CC4E4, 0x09BC80}, // the same entry of a jump table, 4 on alike
     {0x0CC630, 0x09BD98}, // the camera's place up (the jump table's entry; no test of a flag of its own first) by hand
@@ -188,6 +198,17 @@ inline constexpr uint32_t kThrownToo = 0x2AE, kSeenAsOther = 0x1F5, kNotKeptIn =
 // The computer's plan for the character, a long the computer's set-up writes (its sign of having been set up); 0:
 // none kept in the record (the set-up's +273, 2, is the sign then)
 inline constexpr uint32_t kPlanTable = 0x1E0;
+
+// The box tables' kinds (src/ssf2t.h's kTable...: head +0, body +2, legs +4 in every game): an attack's and the pushing
+// box's places in the tables, and the bytes of an attack box (this game's hit test, 093676 and 0936D0: twelve bytes an
+// attack box)
+inline constexpr uint32_t kTableAttack = 0x6, kTablePush = 0x8, kAttackBoxSize = 0x0C;
+
+// The guard decision as a hit lands (src/guard.cpp): a jump table of 28 words by the attack's +0B, at 0929E8 (Super
+// Turbo's 0BEED8; Super Turbo has 38). Super Turbo's kind of it goes by the attack's +0B through the table's routines
+// (the bytes of the table: kGuardTypeBytes, 0 for none); the classic games' by the attack's +07 through a row of bytes
+// for each guarding pose (kGuardRows: where the rows' table is, 0 for none)
+inline constexpr uint32_t kGuardTypeBytes = 0x38, kGuardRows = 0;
 
 // The game's loop with no coin in (src/ssf2t.h): the introduction and the title's step, the title's step under it, the
 // demonstration fight's, the loop's end, the frame the board's start is over by, and the step the board's start ends in

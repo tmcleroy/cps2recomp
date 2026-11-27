@@ -7,6 +7,8 @@
 #include "session.h"
 #include "hsf2.h"
 
+#include <algorithm>
+
 namespace cps2recomp {
 
 void TagKnockDown(uint32_t player); // livetag.cpp
@@ -47,6 +49,36 @@ namespace {
         }
         return false;
     }
+    // The random part of a hit's damage (0C2FD4 on) and of a throw's (004C3A on): D0 a byte of a row of 32 (A1 the table, D2 the
+    // row's start plus the game's random pick) has been added to the damage (D6, a throw's D4), and the sum made 1 where it
+    // came to nothing or less (0C2FEE, 004C82). With fixed damage the row's average is added in its place, where the sum is
+    // next used (0C2FF0, 004C84: both ways meet there; the random number still drawn, so the game goes on as it would): a
+    // combo always does the same damage. (Hooked at the instructions after the sum, which begin blocks of the game's own
+    // translated code already, so that with the feature off the game runs exactly as before.)
+    struct Sum {
+        bool madeOne = false; // (the sum came to nothing or less: what it was without the byte)
+        int16_t without = 0;
+    } g_sum[2]; // (a hit's, a throw's: only from one instruction to the next)
+    bool MadeOne(M68K &c, int which, uint32_t damage) {
+        g_sum[which] = {true, static_cast<int16_t>(static_cast<int16_t>(damage) - static_cast<int16_t>(c.d[0]))};
+        return false;
+    }
+    bool Summed(M68K &c, int which, uint32_t &damage) {
+        const Sum sum = g_sum[which];
+        g_sum[which] = {};
+        if (!FeatureOn("fixed_damage")) {
+            return false;
+        }
+        const uint32_t row = (c.a[1] & 0xFFFFFF) + ((c.d[2] & 0xFFFF) & ~0x1Fu);
+        int total = 0;
+        for (uint32_t n = 0; n < 32; n++) {
+            total += static_cast<int8_t>(*Program(row + n)); // (the data view, with none of the board's waits)
+        }
+        const int average = total >= 0 ? (total + 16) / 32 : -((-total + 16) / 32);
+        const int without = sum.madeOne ? sum.without : static_cast<int16_t>(damage) - static_cast<int16_t>(c.d[0]);
+        SetLow16(damage, static_cast<uint32_t>(std::max(without + average, 1)));
+        return false;
+    }
 } // namespace
 
 void RegisterCheats() {
@@ -66,11 +98,18 @@ void RegisterCheats() {
         }
         return false;
     });
+    AddHook(HookAt(kHitMadeOne), "HitMadeOne", [](M68K &c) { return MadeOne(c, 0, c.d[6]); });
+    AddHook(HookAt(kHitSummed), "HitSummed", [](M68K &c) { return Summed(c, 0, c.d[6]); });
+    AddHook(HookAt(kThrowMadeOne), "ThrowMadeOne", [](M68K &c) { return MadeOne(c, 1, c.d[4]); });
+    AddHook(HookAt(kThrowSummed), "ThrowSummed", [](M68K &c) { return Summed(c, 1, c.d[4]); });
     Game &game = TheGame();
     game.features.push_back({"no_damage", "Cheats", "No damage", "Player 1's health does not go down."});
     game.features.push_back({"no_damage_2", "Cheats", "No damage, player 2", "Player 2's health does not go down (the opponent's, in a one-player game)."});
     game.features.push_back({"one_hit", "Cheats", "One-hit knockouts", "Player 2 (the opponent, in a one-player game) goes down with the first hit."});
     game.features.push_back({"infinite_time", "Cheats", "Infinite time", "The round's clock stands still."});
+    game.features.push_back({"fixed_damage", "Training mode", "Fixed damage",
+                             "No random part in a hit's damage (the average in its place), so a combo always does the same."});
+    TrainingAids({"fixed_damage"});
 }
 
 } // namespace cps2recomp

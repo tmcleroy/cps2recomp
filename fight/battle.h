@@ -198,6 +198,9 @@ struct Description {
     // ... and whether something of the other's is near enough for the side's fighter to guard (the game's own test, as
     // the training dummy's guard asks it; nullptr: never), when the coach lets the game's play guard it
     bool (*attackComing)(Machine &machine, int side) = nullptr;
+    // ... and how near the two fighters' middles are (pixels) for a throw to reach, as the coach throws: 50 for fighters
+    // the size of Street Fighter's (fighters that stand further apart, as the Marvel games' do, reach further)
+    int throwReach = 50;
     // ... or none of that: the game's computer plays the modes itself (its scripts ask what is below, ComputerMode...,
     // and ask for its tags), and the coach takes no side's controls and tags for none
     bool computerPlaysModes = false;

@@ -9,12 +9,13 @@ Street Fighter II X: Grand Master Challenge* in Japan) for macOS, Linux (Steam D
 static recompilation. It is made from the Japanese 940223 revision, the one Super Turbo is played on in tournaments
 and online.
 
-It has everything the other fighting games here have: a full **training mode** (hit boxes, frame data and a frame
-meter, input display, combo and stun readouts, a dummy that records, replays and guards), the **alternative modes**
-(attract mode, the stage and model viewers, survival, endless battle, ring out, a tag team battle), **widescreen**, **custom colours**
-with a colour editor, the **hidden characters** with no code (Akuma and the old versions), and the features every
-game shares: free play, straight to the title, the board's operator settings, cheats, save states, run-ahead, the
-board's speed, a custom soundtrack.
+It has everything the other fighting games here have: a full **training mode** (hit boxes and throw range, frame
+data and a frame meter, input display, combo and stun readouts, fixed damage, a dummy that records, replays and
+guards high or low as each attack needs, softens throws, mashes out of stun or is played by the game's own computer
+player), the **alternative modes** (attract mode, the stage and model viewers, survival, endless battle, ring out, a
+tag team battle), **widescreen**, **custom colours** with a colour editor, the **hidden characters** with no code
+(Akuma and the old versions), and the features every game shares: free play, straight to the title, the board's
+operator settings, cheats, save states, run-ahead, the board's speed, a custom soundtrack.
 
 > **Beta.** The game plays from start to ending and its code is checked instruction by instruction, but it has
 > been played on few machines and controllers yet. Expect rough edges, and please
@@ -95,12 +96,14 @@ the page holds the aids below.
 | Feature | What it does |
 | --- | --- |
 | Hit boxes | The boxes the game itself tests: where a player can be hit (blue), attacks (red; orange for things thrown), pushing boxes (green) |
+| Throw range | The box in front of each player that the other has to be in for a throw, as the game tests it, and the other's place to be thrown by (a yellow bar) |
 | Frame data and frame meter | Startup, active and recovery of each move and the advantage after a hit or a guarded hit, counted in the game's own steps; a row of cells for each player, one a step; optionally every move written to `frame_data.csv` beside the settings |
 | Input display | What each player presses and for how long, in numpad notation from the player's side |
 | Combo readout | Hits and damage of a combo, the round's best |
 | Stun readout | How much stun each player has built up, against how much stuns them (more each time they have been stunned) |
+| Fixed damage | No random part in a hit's or a throw's damage, so a combo always does the same |
 | Health and gauge refills | Health comes back when a player has not been hit for a moment; both super combo gauges kept full |
-| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only); records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
+| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only; high or low by the game's own rule for each attack); softens throws; mashes out of stun; or is played by the game's own computer player. It records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit, on the first frame it can act |
 | Start over | The round as it began, in the middle or a corner, sides swapped or not (Backspace, or a gamepad's left shoulder) |
 | Stage | Any of the sixteen stages, or the game's own choice |
 | Stop, step, slow | Stop the game, go on a frame at a time, or play at a half, a quarter or an eighth of the speed |

@@ -212,6 +212,35 @@ constexpr uint32_t kPlayerStep = 0x066BBE, kComputerPlayerStep = 0x06A246;
 // A hit has been decided and taken (A6 the attacker, A2 the victim): a player's attack's (0C26D4), a thrown thing's
 // (0C2CDA)
 constexpr uint32_t kHitTaken = 0x0C26D4, kThrownHitTaken = 0x0C2CDA;
+// A hit's damage has a random part (0C2FD4 on, Super Turbo's 0BEE40): a byte of a row of 32 of the table at 0E7CDC
+// picked by the game's random number, added to the damage (D6), D0 the byte, A1 the table, D2 the row's start plus the
+// pick; the sum is made 1 where it comes to nothing or less (0C2FEE), and both ways go on at 0C2FF0. A throw's alike
+// (D4: 004C7A, 004C82, 004C84). Read in the listing.
+constexpr uint32_t kHitMadeOne = 0x0C2FEE, kHitSummed = 0x0C2FF0, kThrowMadeOne = 0x004C82, kThrowSummed = 0x004C84;
+// The throw test (Super Turbo's 0046E4; here 00478C on) compares the thrower's box, words of its record put there for the
+// throw being tried, with the other's place to be thrown by, as Super Turbo's does (src/training.cpp; the offsets are
+// Super Turbo's): across (+64, turned about with the facing) and up (+66), half its width (+68) and height (+6A); the
+// other's half width (+6C), height (+6E), and +2AA across from it while +2A7 is set. Read in the listing.
+constexpr uint32_t kThrowX = 0x64, kThrowY = 0x66, kThrowHalfWidth = 0x68, kThrowHalfHeight = 0x6A;
+constexpr uint32_t kThrowableHalfWidth = 0x6C, kThrowableY = 0x6E, kThrowableMoved = 0x2A7, kThrowableX = 0x2AA;
+// Stunned: a byte, 1 while the player is (068EC2 sets it); a person mashing shortens it (+125 counts it: 068F48), as in
+// Super Turbo
+constexpr uint32_t kStunned = 0x124;
+// A throw going on: 1 in the thrower's record, FF in the one thrown (00480E; cleared at 004EE2), who stays in its state
+constexpr uint32_t kHeldBy = 0x63;
+// Softening a throw (004870): the one thrown and the thrower both of Super Turbo's version, the stick to either side and
+// a medium or heavy button new within 0x0E steps of the throw's start sets +2BD, and the throw does half its damage
+constexpr uint32_t kSoftened = 0x2BD;
+// The guard decision as a hit lands (0C3044 on): by the attacker's version (kVersion), Super Turbo's (a jump table by the
+// attack's +0F at 0C307E, 0x4C bytes, to five routines: most attacks 0C310C, standing only 0C3124, crouching only 0C312A
+// and 0C3132, either way 0C3130) or, for the World Warrior's, Champion Edition's and Hyper Fighting's, the classic games'
+// (from 0C3138: the attack's +0B through a row of four bytes for the guarding pose, the rows' places at 0C31B4). The
+// victim's guarding pose is its frame's +11 (1 standing, 2 crouching); the hurt box hit is put at A5-5C04. Read in the
+// listing.
+constexpr uint32_t kGuardTypes = 0x0C307E, kGuardTypeBytes = 0x4C, kGuardMost = 0x0C310C, kGuardStanding = 0x0C3124,
+                   kGuardCrouching = 0x0C312A, kGuardCrouching2 = 0x0C3132, kGuardRows = 0x0C31B4;
+constexpr uint32_t kFrameGuardPose = 0x11;
+constexpr uint32_t kAttackLevel = 0x0B, kAttackType = 0x0F; // bytes of an attack box: its height (the classic way) and kind
 // The match's first step: the characters are chosen (00B1FA, the match step going to 2)
 constexpr uint32_t kMatchBegins = 0x00B1FA;
 

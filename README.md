@@ -101,6 +101,9 @@ Linux, the Steam Deck and Windows can play each other.
   own machine or two at a machine (**People at this machine** on the Online page), all joining with the one code.
 - **Ball battle and tag team online**: in two-person matches, the host starts either from the in-game menu (Esc), which
   pauses the match for both players while each picks their own fighters; the host starts once the other says Ready.
+- **Training together online**: in every fighting game the host can start a **training session** for both players
+  (Esc, **Start Training**): no clock, no knock-outs, the host's refills, and each player's own hit boxes, frame data and
+  input display. Either player can start the round over for both.
 - **Your own input delay and run-ahead**: each player chooses their own, as on Fightcade (the launcher's Online page,
   or the game's menu); the match is the same for everyone. The **input lag readout** (Display page) shows what a
   press takes to show, online too.

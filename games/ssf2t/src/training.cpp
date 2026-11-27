@@ -4,7 +4,9 @@
 // Super Street Fighter II Turbo: the training session is the toolkit's (fight/session.h); this says where the game keeps
 // what it needs, and tells it from the game's own code what the players do: each player's step of a fight (frame data),
 // a hit landing or guarded, and the hit boxes as the game's hit tests read them. The game's own aid beside the
-// toolkit's: the super combo gauge kept full, and each player's stun against how much stuns them.
+// toolkit's: the super combo gauge kept full, and each player's stun against how much stuns them; and the throw range,
+// fixed damage (cheats.cpp), and a dummy that guards high or low by the game's own rule (guard.cpp), softens throws
+// (Super Turbo), mashes out of stun or is played by the game's own computer player.
 #include "fight.h"
 #include "alternative.h"
 #include "session.h"
@@ -16,6 +18,9 @@
 namespace cps2recomp {
 
 bool RingOutStep(M68K &c); // battle.cpp
+bool HandsOver(uint32_t player);
+bool AttackInRange(M68K &c, uint32_t player); // guard.cpp
+bool GuardStanding(M68K &c, uint32_t player);
 
 namespace {
     using namespace ssf2t;
@@ -141,6 +146,35 @@ namespace {
         return tables + static_cast<uint32_t>(static_cast<int16_t>(c.Read(tables + table, 1))) + which * size;
     }
 
+    // The throw range: the box of the throw a player last tried, which the game puts in its record as it tries one
+    // (kThrowX...), drawn in front of the player while it could throw (on the floor and free to act), with the other's
+    // place to be thrown by: a bar at its height, as wide as the test takes it. The throw is in range when the bar
+    // reaches into the box.
+    void ThrowRanges(std::vector<fight::StageBox> &boxes) {
+        for (int n = 0; n < 2; n++) {
+            const uint32_t player = Player(n), other = Player(1 - n);
+            const int across = static_cast<int16_t>(Ram16(player + kThrowX)), up = static_cast<int16_t>(Ram16(player + kThrowY));
+            const int halfWidth = static_cast<int16_t>(Ram16(player + kThrowHalfWidth)), halfHeight = static_cast<int16_t>(Ram16(player + kThrowHalfHeight));
+            if (halfWidth <= 0 || halfHeight <= 0 || Ram8(player + kInAir) || !CanAct(player)) {
+                continue;
+            }
+            const int x = static_cast<int16_t>(Ram16(player + kX)) + (Ram8(player + kFacesRight) ? -across : across);
+            boxes.push_back({fight::BoxKind::ThrowRange, x, static_cast<int16_t>(Ram16(player + kY)) + up, halfWidth, halfHeight, false,
+                             static_cast<int8_t>(n)});
+            // (the other's place to be thrown by, as 0046F4 takes it)
+            int place = static_cast<int16_t>(Ram16(other + kX));
+            if (family::kTurbo && Ram8(other + kThrowableMoved)) {
+                const int moved = static_cast<int16_t>(Ram16(other + kThrowableX));
+                place += Ram8(other + kFacesRight) ? moved : -moved;
+            }
+            const int placeWidth = static_cast<int16_t>(Ram16(other + kThrowableHalfWidth));
+            if (placeWidth > 0) {
+                boxes.push_back({fight::BoxKind::Throw, place, static_cast<int16_t>(Ram16(other + kY)) + static_cast<int16_t>(Ram16(other + kThrowableY)),
+                                 placeWidth, 1, false, static_cast<int8_t>(1 - n)});
+            }
+        }
+    }
+
     std::vector<fight::StageBox> Boxes(Machine &machine) {
         M68K &c = machine.cpu;
         std::vector<fight::StageBox> boxes;
@@ -175,6 +209,9 @@ namespace {
                 AddBox(c, boxes, fight::BoxKind::Attack, thrown, box, true);
             }
         }
+        if (FeatureOn("throw_range")) {
+            ThrowRanges(boxes);
+        }
         return boxes;
     }
 
@@ -194,10 +231,27 @@ namespace {
         }
     }
 
-    // The dummy: the game knows when it is knocked down
+    // The dummy: the game knows when it is knocked down; the game's own computer player plays it if asked for (handed
+    // over, and back, only when the game lets who plays a player change: battle.cpp's HandOver; computer.cpp sets the
+    // computer up for it). In a session both players are people otherwise; outside one this is never asked (the dummy's
+    // view is made in every fight).
     void DummyView(Machine &, fight::DummyView &view) {
         view.knowsDown = true;
         view.down = Ram8(Player(1) + kState) == kDown;
+        if (Ram8(Player(1) + kHeldBy) == 0xFF) {
+            view.doing = fight::Doing::Held; // (being thrown: its state stays what it was, and its own step does not run)
+        }
+        const uint8_t person = FeatureOn("dummy_computer") ? 0 : 1;
+        if (session::InSession() && view.fighting && Ram8(Player(1) + kPerson) != person && HandsOver(Player(1))) {
+            SetRam8(Player(1) + kPerson, person);
+        }
+    }
+    // Stunned, the dummy mashes: the stick from the middle to a side and a button new every other frame, the most the
+    // game's count of it takes (kStunned: 2 for the stick and 1 for a button, 3 a step taking the step's time off)
+    void AfterDummy(Machine &machine, const fight::DummyView &view) {
+        if (FeatureOn("dummy_stun_mash") && view.fighting && Ram8(Player(1) + kPerson) && Ram8(Player(1) + kStunned)) {
+            machine.players[1] = machine.frame & 1 ? 0 : static_cast<uint16_t>((machine.frame & 2 ? kLeft : kRight) | kPunch1 | kKick1);
+        }
     }
 } // namespace
 
@@ -229,7 +283,27 @@ void RegisterTraining() {
     d.facingLeft = [](int n) { return Ram8(Player(n) + kFacesRight) == 0; };
     d.moveStart = MoveStart;
     d.boxes = Boxes;
+    d.guardView = [](Machine &machine, bool &inRange, bool &standing) {
+        inRange = AttackInRange(machine.cpu, Player(1));
+        standing = inRange && GuardStanding(machine.cpu, Player(1));
+    };
     d.dummyView = DummyView;
+    d.afterDummy = AfterDummy;
+    if (family::kTurbo) {
+        // Softening a throw (kSoftened: Super Turbo's alone): the stick to either side and a heavy punch new, every other
+        // step of being thrown (checked: the throw's damage halved)
+        d.dummy.heldAction = [](int frame, uint16_t, uint16_t away) -> uint16_t {
+            return static_cast<uint16_t>(away | ((frame & 1) ? 0 : kPunch3));
+        };
+        d.dummy.heldActionTitle = "Softens throws";
+        d.dummy.heldActionWords = "Player 2 softens a throw as it is thrown (the stick to either side and a medium or heavy button within "
+                                  "a moment of the throw's start), and takes half its damage.";
+    }
+    d.boxFeatures = {{"throw_range", modes::kTraining, "Throw range",
+                      "With hit boxes on: the box in front of each player that the other has to be in for a throw, as the game "
+                      "tests it, while the player could throw (on the floor and free to act), and the other's place to be thrown "
+                      "by, a yellow bar: a throw reaches when the bar is in the box. Each character's shows once it has tried a "
+                      "throw: the game puts the box of the throw tried in place only then."}};
     d.wideStage = WideStage;
     d.wideSide = WideSide;
     d.wideMargin = WideMargin;
@@ -254,6 +328,13 @@ void RegisterTraining() {
                                               "Under each player's bar: the stun built up, against how much stuns the player (it goes away "
                                               "when they are left alone for a while)."});
     session::Register(d);
+    game.features.push_back({"dummy_stun_mash", "Dummy", "Mashes out of stun",
+                             "Stunned, the dummy works the stick and the buttons as fast as the game counts them, as a player does to get "
+                             "out sooner."});
+    game.features.push_back({"dummy_computer", "Dummy", "Played by the game",
+                             "Player 2 is the game's own computer player, as in a one-player game (at the board's difficulty setting).",
+                             kFeatureExclusive});
+    TrainingAids({"throw_range", "dummy_stun_mash", "dummy_computer"});
     AddHook(HookAt(kPlayerStep), "PlayerStep", PlayerStep);
     AddHook(HookAt(kComputerPlayerStep), "ComputerPlayerStep", PlayerStep);
     AddHook(HookAt(kHitTaken), "HitTaken", HitTaken);

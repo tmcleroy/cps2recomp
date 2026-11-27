@@ -91,6 +91,7 @@ namespace {
         uint16_t &one = machine.players[0], &two = machine.players[1];
         const bool press = g_bootFrames % 16 < 6;
         one = two = 0;
+        SetFastForward(true); // (each frame of it: online, a rollback can come back to one)
         if (Ram8(m.playersIn) == 3 || ++g_bootFrames > kBootMost) {
             g_boot = false;
             SetFastForward(false);
@@ -109,69 +110,80 @@ namespace {
     // asked for chooses the place (and it is remembered): left or right for a corner, down for the sides swapped, up
     // for the middle again.
     void StartOver(Machine &machine) {
-        if (g_roundStart.empty() || !FeatureOn("training_mode")) {
-            return;
-        }
-        int place = FeatureValue("restart_at"); // 0 middle, 1 left corner, 2 right corner; +3: sides swapped
-        const uint16_t stick = machine.players[0] & kSticks;
-        if (stick) {
-            int where = place % 3;
-            bool swapped = place >= 3;
-            if (stick & kUp) {
-                where = 0;
-                swapped = false;
-            }
-            if (stick & kLeft) {
-                where = 1;
-            } else if (stick & kRight) {
-                where = 2;
-            }
-            if (stick & kDown) {
-                swapped = !swapped;
-            }
-            place = where + (swapped ? 3 : 0);
-            SetFeatureValue("restart_at", place);
-        }
-        Archive ar(g_roundStart, false);
-        machine.Serialize(ar);
-        int leftEnd = d.wideMargin ? d.wideMargin() : 0, rightEnd = leftEnd; // (the camera's ends in the picture played in)
-        if (d.wideEnds) {
-            d.wideEnds(leftEnd, rightEnd);
-        }
-        int x[2] = {d.startX[0], d.startX[1]};
-        if (x[0] == 0 && x[1] == 0) {
-            x[0] = X(0); // (none given: where the round began)
-            x[1] = X(1);
-        }
-        int camera = static_cast<int16_t>(Ram16(CameraX())); // (the middle: where it is)
-        int stageLeft = d.stageLeft, stageRight = d.stageRight, cameraLeft = d.cameraLeft, cameraRight = d.cameraRight;
-        if (d.ends) {
-            d.ends(stageLeft, stageRight, cameraLeft, cameraRight);
-        }
-        if (place % 3 == 1) {
-            x[0] = stageLeft;
-            x[1] = stageLeft + d.cornerApart;
-            camera = cameraLeft + leftEnd;
-        } else if (place % 3 == 2) {
-            x[0] = stageRight - d.cornerApart;
-            x[1] = stageRight;
-            camera = cameraRight - rightEnd;
-        }
-        if (place >= 3) {
-            std::swap(x[0], x[1]);
-        }
-        for (int n = 0; n < 2; n++) {
-            SetX(n, x[n]);
-        }
-        for (const uint32_t copy : d.cameraCopies) {
-            SetRam16(copy, static_cast<uint16_t>(camera));
-        }
-        if (d.cameraXAt) {
-            SetRam16(CameraX(), static_cast<uint16_t>(camera));
-        }
-        // (and the training aids start afresh; a recording being replayed from its beginning)
-        Afresh(true);
+        StartOverAt(machine, RestartPlace(machine.players[0] & kSticks));
     }
+} // namespace
+
+int RestartPlace(uint16_t stick) {
+    int place = FeatureValue("restart_at"); // 0 middle, 1 left corner, 2 right corner; +3: sides swapped
+    if (stick & kSticks) {
+        int where = place % 3;
+        bool swapped = place >= 3;
+        if (stick & kUp) {
+            where = 0;
+            swapped = false;
+        }
+        if (stick & kLeft) {
+            where = 1;
+        } else if (stick & kRight) {
+            where = 2;
+        }
+        if (stick & kDown) {
+            swapped = !swapped;
+        }
+        place = where + (swapped ? 3 : 0);
+        SetFeatureValue("restart_at", place);
+    }
+    return place;
+}
+
+bool StartOverAt(Machine &machine, int place) {
+    if (g_roundStart.empty() || !FeatureOn("training_mode") || place < 0 || place > 5) {
+        return false;
+    }
+    Archive ar(g_roundStart, false);
+    machine.Serialize(ar);
+    int leftEnd = d.wideMargin ? d.wideMargin() : 0, rightEnd = leftEnd; // (the camera's ends in the picture played in)
+    if (d.wideEnds) {
+        d.wideEnds(leftEnd, rightEnd);
+    }
+    int x[2] = {d.startX[0], d.startX[1]};
+    if (x[0] == 0 && x[1] == 0) {
+        x[0] = X(0); // (none given: where the round began)
+        x[1] = X(1);
+    }
+    int camera = static_cast<int16_t>(Ram16(CameraX())); // (the middle: where it is)
+    int stageLeft = d.stageLeft, stageRight = d.stageRight, cameraLeft = d.cameraLeft, cameraRight = d.cameraRight;
+    if (d.ends) {
+        d.ends(stageLeft, stageRight, cameraLeft, cameraRight);
+    }
+    if (place % 3 == 1) {
+        x[0] = stageLeft;
+        x[1] = stageLeft + d.cornerApart;
+        camera = cameraLeft + leftEnd;
+    } else if (place % 3 == 2) {
+        x[0] = stageRight - d.cornerApart;
+        x[1] = stageRight;
+        camera = cameraRight - rightEnd;
+    }
+    if (place >= 3) {
+        std::swap(x[0], x[1]);
+    }
+    for (int n = 0; n < 2; n++) {
+        SetX(n, x[n]);
+    }
+    for (const uint32_t copy : d.cameraCopies) {
+        SetRam16(copy, static_cast<uint16_t>(camera));
+    }
+    if (d.cameraXAt) {
+        SetRam16(CameraX(), static_cast<uint16_t>(camera));
+    }
+    // (and the training aids start afresh; a recording being replayed from its beginning)
+    Afresh(true);
+    return true;
+}
+
+namespace {
 
     void Dummy(Machine &machine) {
         fight::DummyView view;
@@ -213,6 +225,13 @@ void StartSession(Machine &machine) {
 
 bool InSession() {
     return FeatureOn("training_mode");
+}
+
+namespace {
+    bool g_described = false;
+}
+bool Described() {
+    return g_described;
 }
 
 int WantedStage() {
@@ -266,8 +285,13 @@ fight::Doing Now(int player) {
 }
 
 void BeforeFrame(Machine &machine) {
+    M68K::NoWaits quiet(machine.cpu); // (the dummy's reads: M68K::NoWaits)
     if (g_boot) {
         Boot(machine);
+        return;
+    }
+    if (OnlinePlay()) {
+        // (online: each player chooses their own character and plays their own side; there is no dummy)
         return;
     }
     if (InSession() && modes::Choosing() && d.chosen && d.chosen(0) && !d.chosen(1)) {
@@ -291,6 +315,7 @@ void BeforeFrame(Machine &machine) {
 }
 
 void Frame(Machine &machine) {
+    M68K::NoWaits quiet(machine.cpu); // (the boxes' and readouts' reads: M68K::NoWaits)
     if (modes::StageViewer() || BattleMode()) {
         // (nothing of training's is shown, or kept)
         g_fighting = false;
@@ -370,6 +395,16 @@ void Frame(Machine &machine) {
 
 void State(Archive &ar) {
     ar.Mark(0x5452414E); // TRAN
+    // (the session itself and the way to it: online, a frame run again after a rollback must see them as they were)
+    bool on = InSession();
+    ar.Pod(on);
+    if (!ar.Saving() && on != InSession()) {
+        SetFeature("training_mode", on);
+    }
+    ar.Pod(g_boot);
+    ar.Pod(g_bootFrames);
+    ar.Pod(g_choosingTwo);
+    ar.Pod(g_heldOver);
     if (d.framesFirstInState) {
         g_frames.Serialize(ar);
         g_dummy.Serialize(ar);
@@ -391,6 +426,7 @@ void State(Archive &ar) {
 
 void Register(const Description &description) {
     d = description;
+    g_described = true;
     g_frames.print = getenv("CPS2RECOMP_FRAMES") != nullptr || (d.framesPrintVariable && getenv(d.framesPrintVariable));
     Game &game = TheGame();
     const char *page = modes::kTraining;

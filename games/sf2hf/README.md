@@ -12,11 +12,12 @@ Edition's program, and Super Street Fighter II Turbo's grew out of the same line
 [Super Street Fighter II Turbo port](../ssf2t/README.md), with this game's own places and board, so it has what that
 one has but what Super Turbo added to the game (super combos, the hidden characters, the speeds).
 
-It has a full **training mode** (hit boxes, frame data and a frame meter, input display, combo and stun readouts, a
-dummy that records, replays and guards), the **alternative modes** (attract mode, the stage and model viewers,
-survival, endless battle, ring out, a tag team battle, the [Ball battle](../../docs/COURT.md)), **widescreen**, **custom colours** with a colour editor, and
-the features every game shares: free play, straight to the title, the board's DIP switches, cheats, save states,
-run-ahead, the board's speed, a custom soundtrack.
+It has a full **training mode** (hit boxes and throw range, frame data and a frame meter, input display, combo and
+stun readouts, fixed damage, a dummy that records, replays and guards high or low as each attack needs, mashes out
+of stun or is played by the game's own computer player), the **alternative modes** (attract mode, the stage and
+model viewers, survival, endless battle, ring out, a tag team battle, the [Ball battle](../../docs/COURT.md)), **widescreen**, **custom colours** with a
+colour editor, and the features every game shares: free play, straight to the title, the board's DIP switches,
+cheats, save states, run-ahead, the board's speed, a custom soundtrack.
 
 > **Beta.** The game plays from start to ending and its code is checked instruction by instruction, but nobody has
 > played it by hand yet. Expect rough edges, and please [report what you find](#feedback-and-contributing).

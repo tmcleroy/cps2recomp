@@ -89,6 +89,15 @@ namespace {
     }
 } // namespace
 
+// The game's guard test for the player of `side` (training.cpp's dummy guards by it), and whether who plays a player may
+// change now (its dummy played by the game)
+bool AttackComingAt(int side) {
+    return AttackComing(side);
+}
+bool HandsOver(uint32_t player) {
+    return HandOver(player);
+}
+
 // The ring out's own movements (fight/battle.h, RingOutMove) at a player's step (A6): true when it has made the step,
 // the game's own routine for the player not run (training.cpp's PlayerStep, at 0782D4)
 bool RingOutStep(M68K &c) {

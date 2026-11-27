@@ -28,6 +28,8 @@ inline constexpr Place kPlaceList[] = {
     {0x00490A, 0x003810}, // sub.w d4,0x2A(a3), a throw's damage at once (after its tst.b 9D4) by hand
     {0x0049B0, 0x003512}, // moved as the code before or after it, 6 on alike
     {0x004A58, 0x0035AC}, // move.w d4,0x78(a3), a throw's damage put by (after bsr 3626) by hand
+    {0x004BDA, 0x000000}, // none: a classic throw's damage has no random part by hand
+    {0x004BDC, 0x000000}, // none: a classic throw's damage has no random part by hand
     {0x00502A, 0x00394C}, // a place the code names so (1/1)
     {0x008FFC, 0x000000}, // none: the Board page is the DIP switches (game.cfg) by hand
     {0x00D69C, 0x00796A}, // moved as the code before or after it, 9 on alike
@@ -63,6 +65,14 @@ inline constexpr Place kPlaceList[] = {
     {0x0BE678, 0x095042}, // clr.b 0x71(a2), where that hit's ways meet by hand
     {0x0BEBA6, 0x0951D2}, // sub.w d6,0x2A(a2), a thrown thing's damage (portmap took the player's) by hand
     {0x0BEBDA, 0x0951E6}, // where that hit's ways meet by hand
+    {0x0BEE72, 0x095574}, // moveq #1,d6 after a hit's random part is added (0BEE40's code alike) by hand
+    {0x0BEE74, 0x095576}, // mulu d6,d5 after it, where both ways meet by hand
+    {0x0BEED8, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
+    {0x0BEF66, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
+    {0x0BEF7C, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
+    {0x0BEF82, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
+    {0x0BEF88, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
+    {0x0BEF8A, 0x000000}, // none: the classic guard decision goes by a table of rows (family.h, kGuardRows) by hand
     {0x0BF662, 0x09626A}, // the players pushed apart (its clr.w; lea of player 1) (the court) by hand
     {0x0CC4E4, 0x09C77C}, // the same entry of a jump table, 1 on alike
     {0x0CC630, 0x09C880}, // the camera's place up (tests ACE and ACC: no flag of its own first) by hand
@@ -203,6 +213,17 @@ inline constexpr uint32_t kThrownToo = 0, kSeenAsOther = 0, kNotKeptIn = 0, kCle
 // The computer's plan for the character, a long the computer's set-up writes (its sign of having been set up); 0:
 // none kept in the record (the set-up's +273, 2, is the sign then)
 inline constexpr uint32_t kPlanTable = 0x1E0;
+
+// The box tables' kinds (src/ssf2t.h's kTable...: head +0, body +2, legs +4 in every game): an attack's and the pushing
+// box's places in the tables, and the bytes of an attack box (this game's hit test, 096126 and 096190: an attack's
+// table at +8, twelve bytes a box, the pushing box's at +A)
+inline constexpr uint32_t kTableAttack = 0x8, kTablePush = 0xA, kAttackBoxSize = 0x0C;
+
+// The guard decision as a hit lands (src/guard.cpp): a table of rows by the guarding pose, at 09567C (read at 09562C).
+// Super Turbo's kind of it goes by the attack's +0B through the table's routines (the bytes of the table:
+// kGuardTypeBytes, 0 for none); the classic games' by the attack's +07 through a row of bytes for each guarding pose
+// (kGuardRows: where the rows' table is, 0 for none)
+inline constexpr uint32_t kGuardTypeBytes = 0, kGuardRows = 0x09567C;
 
 // The loop with no coin in (--watch FF8000-FF8007, pictures every 250 frames): the board's start steps 2 to 10 and ends
 // at frame 857; 2 the introduction and the title (the title from FF8004 = 8), 4 and 8 a fade, 0A the demonstration (the
