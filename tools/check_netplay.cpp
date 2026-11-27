@@ -916,6 +916,137 @@ struct NetplayTest {
         Require(gap.upTo[1] == 3 && gap.events[1][1] == "mode,2", "cumulative input did not repair the missing prefix");
     }
 
+    // The relay's TURN client (port/turn.h): its digests against their standards' examples, the addresses it keeps off
+    // the relay, and an allocation against a scripted server: the first request unsigned, the 401's realm and nonce,
+    // the request again signed with MD5(user:realm:password), the relayed address, a permission, a peer's packet
+    static void TurnClient() {
+        const auto hex = [](const uint8_t *data, size_t size) {
+            static const char *digits = "0123456789abcdef";
+            std::string out;
+            for (size_t i = 0; i < size; ++i) out += digits[data[i] >> 4], out += digits[data[i] & 15];
+            return out;
+        };
+        const auto md5 = turn::Md5("abc");
+        Require(hex(md5.data(), 16) == "900150983cd24fb0" "d6963f7d28e17f72", "MD5 of abc");
+        const std::string jefe = "Jefe", what = "what do ya want for nothing?";
+        const auto mac = turn::HmacSha1({jefe.begin(), jefe.end()}, {what.begin(), what.end()});
+        Require(hex(mac.data(), 20) == "effcdf6ae5eb2fa2d274" "16d5f184df9c259a7c79", "HMAC-SHA1 (RFC 2202, case 2)");
+        const std::string nine = "123456789";
+        Require(turn::Crc32(reinterpret_cast<const uint8_t *>(nine.data()), 9) == 0xCBF43926u, "CRC-32 of 123456789");
+        const uint32_t cloudflare = 0x8D654B01; // (141.101.75.1: a relay on the internet)
+        Require(turn::Unrelayable(0xC0A80105, cloudflare) && turn::Unrelayable(0x0A000001, cloudflare) &&
+                    turn::Unrelayable(0x7F000001, cloudflare) && turn::Unrelayable(0x64400001, cloudflare) &&
+                    !turn::Unrelayable(0xCB007107, cloudflare),
+                "private addresses kept off an internet relay, public ones not");
+        Require(!turn::Unrelayable(0xC0A80122, 0xC0A80105) && turn::Unrelayable(0x0A000001, 0xC0A80105),
+                "a test relay on a private network reaches only that network");
+
+        turn::Client client;
+        client.Start("user", "pass", 1000, 7);
+        auto out = client.Tick(1000);
+        turn::Parsed first;
+        Require(out.size() == 1 && turn::Parse(out[0].data(), out[0].size(), first) && first.type == turn::kAllocate &&
+                    first.Find(turn::kTransport) && !first.Find(turn::kIntegrity) && first.Find(turn::kFingerprint),
+                "the first Allocate was not one unsigned request with its transport and fingerprint");
+        const auto answer = [](uint16_t type, const std::array<uint8_t, 12> &id) { return turn::Writer(type, id); };
+        turn::Writer challenge = answer(turn::kAllocateError, first.id);
+        const uint8_t unauthorized[4] = {0, 0, 4, 1};
+        challenge.Attribute(turn::kErrorCode, unauthorized, 4);
+        challenge.Text(turn::kRealm, "example.org");
+        challenge.Text(turn::kNonce, "n0nce");
+        std::vector<uint8_t> payload;
+        uint32_t ip = 0;
+        int port = 0;
+        Require(client.Take(challenge.out.data(), challenge.out.size(), payload, ip, port, 1010) == turn::Client::Took::Ours,
+                "the 401 was not taken");
+        out = client.Tick(1010);
+        turn::Parsed signedAsk;
+        Require(out.size() == 1 && turn::Parse(out[0].data(), out[0].size(), signedAsk) && signedAsk.type == turn::kAllocate &&
+                    signedAsk.Text(turn::kUsername) == "user" && signedAsk.Text(turn::kRealm) == "example.org" &&
+                    signedAsk.Text(turn::kNonce) == "n0nce",
+                "the Allocate again did not carry the username, realm and nonce");
+        // (its integrity: the HMAC, by MD5(user:realm:pass), of the message up to it with the length counting it)
+        const turn::Parsed::Item *integrity = signedAsk.Find(turn::kIntegrity);
+        Require(integrity && integrity->size == 20, "the Allocate again was not signed");
+        const size_t upTo = static_cast<size_t>(integrity->value - 4 - out[0].data());
+        std::vector<uint8_t> covered(out[0].begin(), out[0].begin() + static_cast<long>(upTo));
+        covered[2] = static_cast<uint8_t>((upTo - 20 + 24) >> 8), covered[3] = static_cast<uint8_t>(upTo - 20 + 24);
+        const auto key = turn::Md5("user:example.org:pass");
+        const auto expected = turn::HmacSha1({key.begin(), key.end()}, covered);
+        Require(memcmp(expected.data(), integrity->value, 20) == 0, "the Allocate's MESSAGE-INTEGRITY was wrong");
+        turn::Writer granted = answer(turn::kAllocateOk, signedAsk.id);
+        granted.Address(turn::kRelayed, 0xCB007107, 50123);
+        Require(client.Take(granted.out.data(), granted.out.size(), payload, ip, port, 1020) == turn::Client::Took::Ours &&
+                    client.Ready() && client.RelayIp() == 0xCB007107 && client.RelayPort() == 50123,
+                "the relayed address was not taken");
+        client.Permit(0xC6336401); // (198.51.100.1)
+        client.Permit(0xC0A80105); // (a LAN's: not asked for)
+        out = client.Tick(1030);
+        turn::Parsed permission;
+        Require(out.size() == 1 && turn::Parse(out[0].data(), out[0].size(), permission) && permission.type == turn::kPermission &&
+                    std::count_if(permission.items.begin(), permission.items.end(),
+                                  [](const turn::Parsed::Item &item) { return item.type == turn::kPeer; }) == 1,
+                "the CreatePermission did not ask for the public peer alone");
+        turn::Writer data = answer(turn::kData, {});
+        data.Address(turn::kPeer, 0xC6336401, 7845);
+        const uint8_t game[3] = {'C', 'P', 'S'};
+        data.Attribute(turn::kDataAttr, game, 3);
+        Require(client.Take(data.out.data(), data.out.size(), payload, ip, port, 1040) == turn::Client::Took::Data && ip == 0xC6336401 &&
+                    port == 7845 && payload == std::vector<uint8_t>(game, game + 3),
+                "a peer's packet through the relay was not given out");
+        const auto wrapped = client.Wrap(0xC6336401, 7845, game, 3);
+        turn::Parsed sent;
+        Require(turn::Parse(wrapped.data(), wrapped.size(), sent) && sent.type == turn::kSend && sent.Address(turn::kPeer, ip, port) &&
+                    ip == 0xC6336401 && sent.Find(turn::kDataAttr) && sent.Find(turn::kDataAttr)->size == 3,
+                "a packet for a peer was not a Send indication");
+        // (a request unanswered: sent again, and after 5 seconds the relay is given up)
+        turn::Client silent;
+        silent.Start("user", "pass", 0, 9);
+        Require(silent.Tick(0).size() == 1 && silent.Tick(600).size() == 1 && !silent.Failed(), "an unanswered request was not sent again");
+        silent.Tick(5600);
+        Require(silent.Failed(), "a server that never answered was not given up");
+    }
+
+    // A strict network (a symmetric or carrier-grade NAT): the two STUN servers see this socket at two ports; one that
+    // keeps one address shows the same to both, and an answer from neither server, or for another request, is not counted
+    static void StrictNetwork() {
+        const auto answer = [](const std::array<uint8_t, 12> &id, uint32_t ip, int port) {
+            std::vector<uint8_t> p = {0x01, 0x01, 0x00, 0x0C, 0x21, 0x12, 0xA4, 0x42};
+            p.insert(p.end(), id.begin(), id.end());
+            const int xport = port ^ 0x2112;
+            const uint32_t xip = ip ^ 0x2112A442u;
+            for (int b : {0x00, 0x20, 0x00, 0x08, 0x00, 0x01, xport >> 8, xport & 0xFF, static_cast<int>(xip >> 24),
+                          static_cast<int>((xip >> 16) & 0xFF), static_cast<int>((xip >> 8) & 0xFF), static_cast<int>(xip & 0xFF)}) {
+                p.push_back(static_cast<uint8_t>(b));
+            }
+            return p;
+        };
+        for (const bool strict : {true, false}) {
+            Netplay net(Settings(false));
+            NetAddress one, two, other;
+            std::string error;
+            Require(UdpSocket::Resolve("127.0.0.1", 3478, one, error) && UdpSocket::Resolve("127.0.0.2", 19302, two, error) &&
+                        UdpSocket::Resolve("127.0.0.3", 3478, other, error),
+                    "stun addresses: " + error);
+            net.stunServers = {one, two};
+            net.stunId = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+            const uint32_t ip = 0xCB007107; // (203.0.113.7)
+            Require(net.StrictNetwork() < 0, "a network was judged before STUN answered");
+            auto first = answer(net.stunId, ip, 40000);
+            Require(net.TakeStun(first.data(), static_cast<int>(first.size()), one) && net.seenAs == "203.0.113.7:40000",
+                    "the first STUN answer was not read");
+            auto stray = answer(net.stunId, ip, 50000);
+            net.TakeStun(stray.data(), static_cast<int>(stray.size()), other);
+            auto stale = answer({}, ip, 50000);
+            net.TakeStun(stale.data(), static_cast<int>(stale.size()), two);
+            Require(net.StrictNetwork() < 0, "an answer from no server, or for another request, judged the network");
+            auto second = answer(net.stunId, ip, strict ? 40001 : 40000);
+            net.TakeStun(second.data(), static_cast<int>(second.size()), two);
+            Require(net.StrictNetwork() == (strict ? 1 : 0), strict ? "a strict network was not seen" : "a network keeping one address was called strict");
+            Require(net.seenAs == "203.0.113.7:40000", "the address told the others changed with the second answer");
+        }
+    }
+
     // Issue #448: the host moves the people between the sides in a match of four, as an event on its own stream, and
     // every machine plays the frames from the event's on with the new seats; nobody else can, and a malformed change is
     // nothing
@@ -1173,7 +1304,9 @@ struct NetplayTest {
                  {"reliable mode events and four-human mode guard", ModeEvents},
                  {"fighter picks before same-frame mode commands under rollback", ModePickOrder},
                  {"four-stream confirmed spectators and read-only controls", SpectatorControls},
-                 {"host seat changes in a match of four, three or two, frame-exact and rolled back to", SeatChanges}}) {
+                 {"host seat changes in a match of four, three or two, frame-exact and rolled back to", SeatChanges},
+                 {"a strict network from two STUN servers' answers", StrictNetwork},
+                 {"the relay's TURN client: digests, private addresses, an allocation", TurnClient}}) {
             run();
             std::cout << "PASS: " << name << '\n';
         }
