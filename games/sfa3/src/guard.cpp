@@ -85,7 +85,8 @@ bool AttackInRange(M68K &c, uint32_t player) {
     return false;
 }
 
-// The other's attack must be guarded standing: its entry says a crouching guard cannot take it (an overhead, a jump-in)
+// The other's attack is to be guarded standing, as a player would: anything but a low (its entry says a standing guard
+// cannot take it, and a crouching one can); a jab, an overhead, a jump-in, a fireball all standing
 bool GuardStanding(M68K &c, uint32_t player) {
     player &= 0xFFFFFF;
     const uint32_t other = 0xFF0000u | Ram16(player + kOpponent);
@@ -93,13 +94,13 @@ bool GuardStanding(M68K &c, uint32_t player) {
     for (int n = 0; n < 64 && frame < 0x400000; n++, frame += kFrameSize) {
         if (const uint8_t number = Mem8(c, frame + kFrameAttack)) {
             const uint8_t bits = Mem8(c, Ram32(other + kAttackBoxes) + number * kAttackBoxSize + kAttackUnguardable);
-            return (bits & 2) && !(bits & 1);
+            return !((bits & 1) && !(bits & 2));
         }
         if (Mem8(c, frame + 1) & 0x80) {
             break;
         }
     }
-    return Ram8(other + kInAir) != 0;
+    return true;
 }
 
 } // namespace cps2recomp

@@ -46,6 +46,8 @@ namespace {
                 SetRam8(Player(player) + kReaction, 0x12);
             }
         }
+        // (for the training session: the combo readout, and the dummy's "after a hit", go by it; guarded, chip damage)
+        session::Hit(player, damage & 0xFFFF, 0, Ram8(Player(player) + kGuardedHit) == 0xFF);
         return false;
     }
     // 023C4C: `add.b d0,0x2CC(a1)`, a hit's stun added to what has built up in the player at A1 (stunned when it reaches

@@ -105,7 +105,7 @@ loses, and the page holds the aids below.
 | Fixed damage | No random part in a hit's damage (the average in its place), so a combo always does the same |
 | Health refills | Health comes back when a player has not been hit for a moment |
 | Gauge refills | Both players' super combo gauge kept full, for supers and combos into supers (filled again after a V-ism custom combo) |
-| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random; high or low by the game's own rule for each attack); Alpha counters while guarding; techs throws; recovers in the air after a juggle (neutral, forward, back, or at random); rises quickly after a knock-down; mashes out of stun; or is played by the game's own computer player; records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
+| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only; high or low by the game's own rule for each attack); Alpha counters while guarding; techs throws; recovers in the air after a juggle (neutral, forward, back, or at random); rises quickly after a knock-down; mashes out of stun; or is played by the game's own computer player; records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
 | Start over | The round as it began, in the middle or a corner, sides swapped or not (Backspace, or a gamepad's left shoulder) |
 | Stage | Any of the 26 stages, or the game's own choice |
 | Stop, step, slow | Stop the game, go on a frame at a time, or play at a half, a quarter or an eighth of the speed |
