@@ -818,6 +818,8 @@ Reaction ReactionWanted(int side, int &away) {
 }
 
 void Begin(int cameraX, int cameraY, int left, int right, int points, bool computer, int level) {
+    cameraX += d.pictureLeft; // (the camera in the court's terms: Description::pictureLeft, cameraHeight)
+    cameraY = d.cameraHeight ? d.cameraHeight(cameraY) : cameraY;
     const uint32_t random = g.random;
     g = {};
     g.random = random * 2654435761u + 1;
@@ -878,6 +880,8 @@ void Frame(Machine &machine, std::vector<HudLine> &lines, std::vector<HudBox> &b
         return;
     }
     g_frames = static_cast<int>(machine.frame);
+    cameraX += d.pictureLeft; // (the camera in the court's terms: Description::pictureLeft, cameraHeight)
+    cameraY = d.cameraHeight ? d.cameraHeight(cameraY) : cameraY;
     // (the picture being made shows the ball where it was a frame ago, as it shows the fighters)
     Draw(boxes, cameraX, cameraY);
     g.cameraX = cameraX;

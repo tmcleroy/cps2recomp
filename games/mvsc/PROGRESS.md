@@ -237,6 +237,46 @@ listing.
   player 1 went over an end each time (at 907, 698 and 4,204 frames of fighting) and the computer never, where origin/main's
   computer went over twice in one of the same runs.
 
+## Ball battle (2026-11-27)
+
+The toolkit's ball game (`fight/court.h`, docs/COURT.md) on hooks only (`src/court.cpp`), as Alpha 3's. Found with
+`MVSC_COURT_LOG=1` (each attack's entry as it comes out, the sounds queued, the characters' +06/+B0 as they change),
+`--watch-writes` and RAM dumps over CPU-against-CPU court games, and the listing.
+
+- **A hit, as the game makes it**: the hit test (0D710E, 0D719E; 0D7270 for a record) leaves the victim's +87 (which of
+  its four boxes, 1-4), +88 (the record whose attack it was), +A2 (the box's number); then 0D6ED2 goes over the four
+  records and calls 01A8C6 for each with +87 set (A6 the victim, A4 the attacker), which takes the attack's entry at
+  01A934 (0E68AE by the attacker's +52, +81 = the attacker's +80, 0x20 bytes) into +8C. The victim's +A4 is just its
+  opponent, set at the round's start (012E76). So the ball's hit is put in at 0D6EDA (+87 2, +88 the other side's
+  character on point) and its entry swapped at 01A952 for Ryu's (0F1544: standing light, medium, hard punch 00-02; his
+  sweep 0B, reaction 08, for a knock-down). Seen: the victim goes to +06 0C, +B0 36 (reeling), and the sweep's trips it
+  (`CPS2RECOMP_COURT_SHOT=300,60,10,0.5`). Both sides take the entry's hitstop (+85, 01A96E); the attacker gets its own
+  back at 0D6E9E.
+- **Guarding**: 01A9F4 (0171EC, then 01BAB8/01BAA0) guards only a character already in its guard (+B0 24/26), begun as
+  an attack list said something was coming (017294); a character holding back with only the ball coming walks back. A
+  ball the court has guarded goes to 01AA08 (the guard, 01B990) at once: +B0 24 after.
+- **Strength**: the entry's +0D, low two bits (0, 1, 2 for light, medium, hard in every character's first twelve, its
+  standing and crouching punches and kicks; Strider's have bit 3 set besides; 3 most specials). A button's attack is
+  +B0 28 (on the floor or jumping), a special 2A, a thrown thing 2C. A super: the gauge's levels (+274) going down.
+- **Sounds** (the queue, FF27D8): the ball's hits with Ryu's entries queued 0104, 0105, 0106 (punches) and 0108-010A
+  (kicks) for player 1's side, 0504-050A for player 2's.
+- **First attack**: 01D11C (from 01AA68), FF4011 0 until a round's first hit, then the hitting side with bit 7; setting
+  it says FIRST ATTACK, so 01D12A goes on at 01D180 on the court.
+- **The push**: 013758 pushes the four pairs of records (FF40C8/CC against FF40D0/D4) through 0137CE; on the court the
+  two on point are kept to their halves and it goes on at 01378C. **Throws**: 0186E6 (D0 0 no: 01870E), the test 0182F0
+  and the air throws (02052C, 020546) go by. Command grabs go to 0187CA or 018928 from the characters' own code, not
+  through it; the halves keep the two at least 76 apart.
+- **Tags, the special partner, Duo Team Attacks**: all chords matched by 01A0C2 (D0 the buttons; the tag's 0440 at 019456
+  and 019526, 0196F0's, the special partner's 0220 at 0195CE); the court's hook says no to 0440 and 0220. Checked: HP + HK
+  and MP + MK pressed every 50 frames over 1,400 frames of a court game, FF40C8-FF40D7 (the records on point) never
+  written after the round's start.
+- **The panel**: ThePanel, and the faces beside the bars, in the fighters' own colour sets (tiles 16EC0-16EFF, at y 30).
+- **The court's width**: the shared widescreen (fight/marvel.cpp) with the court's side (Engine::courtSide). The game
+  draws a stage's scroll screens only as far as its camera needs; a camera put at the right end for two frames, then the
+  left (0: the modes' camera place -1 is "none"), then the middle has it draw them (Onslaught's city's top corners and
+  the canyon's lower corners black otherwise, at 64 as at 192). Judged by eye from the court's pictures at 16-192 a side
+  (`MVSC_COURT_SIDE`), with and without (`MVSC_COURT_NO_SWEEP`): 64, 80, 192, 192, 192, 192, 16, 32, 32, 64.
+
 ## The checks
 
 (2026-10-28, all on the Mac.)

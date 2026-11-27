@@ -9,6 +9,7 @@
 #include "alternative.h"
 #include "battle.h"
 #include "colours.h"
+#include "court.h"
 #include "model.h"
 #include "session.h"
 #include "state.h"
@@ -270,8 +271,17 @@ namespace {
     bool g_shown = false; // fights are shown in the wide picture (played in it, or played as on the board)
     int g_side = 0, g_shift = 0, g_cameraBefore = 0;
 
+    // The ball game's (fight/court.h), where the game has one: the wide picture as wide as the stage is drawn
+    // (Engine::courtSide); else widescreen's
+    bool Court() {
+        return e.courtSide && court::On();
+    }
+    int Side() {
+        return Court() ? e.courtSide() : kSide;
+    }
+
     int Margin() {
-        return g_play ? kSide : 0;
+        return g_play ? Side() : 0;
     }
     // The stage's widescreen facts (none: nothing to change)
     const wide::Stage *StageWide() {
@@ -280,12 +290,12 @@ namespace {
     }
     wide::Ends StageEnds() {
         const wide::Stage *facts = StageWide();
-        return facts ? facts->ends : wide::Ends{};
+        return facts && !Court() ? facts->ends : wide::Ends{}; // (the court's sides are its own)
     }
     // How far short of its ends a camera record (A6) is kept: the stage's camera, 64 and the stage's own; another (a
     // plane's), 64
     void KeptShort(uint32_t camera, int &left, int &right) {
-        left = right = kSide;
+        left = right = Side();
         if (camera == (e.cameraRecord() & 0xFFFFFF)) {
             const wide::Ends ends = StageEnds();
             left += ends.left;
@@ -375,11 +385,11 @@ namespace {
             const uint32_t word = (static_cast<uint32_t>(c.Read(e.planes + plane, 1)) << 16) | c.Read(e.planes + plane + 2, 1);
             const int camera = Word(word & 0xFFFFFF);
             const int x = Word(player + e.x);
-            if (x <= camera + 0x55 - kSide) {
-                SetRam16(player + e.x, static_cast<uint16_t>(camera + 0x55 - kSide));
+            if (x <= camera + 0x55 - Side()) {
+                SetRam16(player + e.x, static_cast<uint16_t>(camera + 0x55 - Side()));
                 SetRam8(player + e.atEdge, 2);
-            } else if (x >= camera + 0x1AB + kSide) {
-                SetRam16(player + e.x, static_cast<uint16_t>(camera + 0x1AB + kSide));
+            } else if (x >= camera + 0x1AB + Side()) {
+                SetRam16(player + e.x, static_cast<uint16_t>(camera + 0x1AB + Side()));
                 SetRam8(player + e.atEdge, 1);
             }
         }
@@ -396,7 +406,7 @@ namespace {
         return Word(e.cameraRecord() + e.cameraRight);
     }
     bool OnStage(int camera) {
-        return CameraRightEnd() >= CameraLeftEnd() + 2 * kSide && camera >= CameraLeftEnd() && camera <= CameraRightEnd();
+        return CameraRightEnd() >= CameraLeftEnd() + 2 * Side() && camera >= CameraLeftEnd() && camera <= CameraRightEnd();
     }
 
     // An object's place: the panel's stay in the middle, the stage's and the fighters' go with the view
@@ -409,10 +419,10 @@ namespace {
     void SetWide(Machine &machine, int camera, int shown) {
         g_side = g_shift = 0;
         if (g_shown && OnStage(camera) && OnStage(shown)) {
-            g_side = kSide;
+            g_side = Side();
             // (the view's left edge is 64 left of the board's, and no nearer the camera's own end than the stage's art
             // allows: nearer the end than that, the stage is drawn to the side by what is missing)
-            g_shift = wide::ViewShift(shown, CameraLeftEnd(), CameraRightEnd(), kSide, StageEnds());
+            g_shift = wide::ViewShift(shown, CameraLeftEnd(), CameraRightEnd(), g_side, StageEnds());
         }
         Video::Wide &wide = machine.video.wide;
         wide.side = g_side;
@@ -420,7 +430,7 @@ namespace {
         if (const wide::Stage *facts = g_side ? StageWide() : nullptr) {
             // (the far planes kept inside their painting over the camera's range: its ends in the picture played in, or
             // with invisible walls the board's)
-            wide::FarPlanes(wide.scroll, facts->places, shown, CameraLeftEnd(), CameraRightEnd(), g_play, kSide, facts->ends);
+            wide::FarPlanes(wide.scroll, facts->places, shown, CameraLeftEnd(), CameraRightEnd(), g_play, g_side, StageEnds());
         }
         wide.object = g_side ? MoveObject : nullptr;
         wide.tile = nullptr;
@@ -466,8 +476,8 @@ bool InPictureLoading(M68K &c) {
 }
 void WideEnds(int &left, int &right) {
     const wide::Ends ends = StageEnds();
-    left = g_play ? kSide + ends.left : 0;
-    right = g_play ? kSide + ends.right : 0;
+    left = g_play ? Side() + ends.left : 0;
+    right = g_play ? Side() + ends.right : 0;
 }
 int WideSide() {
     return g_side;
@@ -488,8 +498,9 @@ void WidescreenBeforeFrame(Machine &machine) {
     const int camera = Word(e.cameraRecord() + e.cameraX), shown = g_cameraBefore;
     g_cameraBefore = camera;
     // (fights only; the stage viewer keeps the board's picture. With invisible walls the rules stay the board's)
-    g_shown = FeatureOn("widescreen") && e.inFight() && !modes::StageViewer();
-    g_play = g_shown && !FeatureOn("widescreen_walls");
+    // (the ball game: always the wide picture, played in it, for the room)
+    g_shown = (FeatureOn("widescreen") || Court()) && e.inFight() && !modes::StageViewer();
+    g_play = g_shown && (!FeatureOn("widescreen_walls") || Court());
     SetWide(machine, camera, shown);
 }
 
