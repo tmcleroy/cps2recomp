@@ -43,9 +43,15 @@ about its match, and takes it back when the match is full; a player declines wit
 host's next question says (`invite: "declined"`, or `"away"` if it couldn't be given). Players block each other with
 ids their launchers keep, sent with each check-in.
 
-Two routers that each give every destination a port of its own ("symmetric" NAT, as some mobile networks do) can't be
-met this way; a relay would be needed, which the service doesn't have yet. Then the host's address, with its port
-forwarded, or a VPN such as Tailscale, still works.
+A router that gives every destination a port of its own ("symmetric" or carrier-grade NAT, as some mobile networks,
+home internet services and school or work networks do) can't be met this way. For it there is the **relay**: `GET
+/v1/relay` gives a username and password for [Cloudflare's TURN service](https://developers.cloudflare.com/realtime/turn/),
+lasting four hours, made with the service's TURN key. The game asks as it starts STUN, asks the TURN server for an
+address of its own there (`port/turn.h`), and says it with its others; the other side sends to it as to any address, and
+the TURN server passes their packets on. A peer heard only through the relay is answered through it; every other is
+answered directly, so a match that can be made directly never uses the relay. Without the key the answer is 404 and the
+games play as before. Cloudflare's TURN is free for the first 1,000 GB a month (shared with its SFU), then $0.05 a GB
+sent out; a relayed match is around 8 MB an hour each way.
 
 **Stats** for whoever runs the service: the Stats Durable Object counts matches hosted and joined per UTC day, by
 game (90 days kept), and knows the hosts asking about a match in the last 30 seconds; nothing about who. `GET
@@ -79,6 +85,9 @@ cd online
 npx wrangler login     # once: Cloudflare's tool, signed in to the account in a browser
 npx wrangler deploy    # https://cps2recomp-online.<the account's subdomain>.workers.dev
 npx wrangler secret put STATS_KEY   # once, for the stats page
+# once, for the relay: a TURN key made in Cloudflare's dashboard (Realtime, TURN) or with its API, its id and API token
+npx wrangler secret put TURN_KEY_ID
+npx wrangler secret put TURN_KEY_API_TOKEN
 npx wrangler dev       # or on this machine, at http://localhost:8787, for tests
 ```
 

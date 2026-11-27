@@ -1904,12 +1904,16 @@ void Port::Overlays(uint32_t *px, int W, int H, std::vector<SDL_Rect> *panels, b
                 }
             }
             if (differ && !net->Watching()) delays += " (" + others + ")";
+            // (and RELAY, while a machine in the match is reached through the relay: a little slower than directly)
+            const char *relay = net->Relayed() ? "   RELAY" : "";
             if (FeatureOn("online_ping") && FeatureOn("online_delay")) {
-                snprintf(text, sizeof(text), "PING %d ms   %s", net->Ping(), delays.c_str());
+                snprintf(text, sizeof(text), "PING %d ms   %s%s", net->Ping(), delays.c_str(), relay);
             } else if (FeatureOn("online_ping")) {
-                snprintf(text, sizeof(text), "PING %d ms", net->Ping());
+                snprintf(text, sizeof(text), "PING %d ms%s", net->Ping(), relay);
             } else if (FeatureOn("online_delay")) {
-                snprintf(text, sizeof(text), "%s", delays.c_str());
+                snprintf(text, sizeof(text), "%s%s", delays.c_str(), relay);
+            } else if (*relay) {
+                snprintf(text, sizeof(text), "RELAY");
             }
         }
         if (*text) {
@@ -2106,7 +2110,8 @@ void Port::Overlays(uint32_t *px, int W, int H, std::vector<SDL_Rect> *panels, b
         // its jitter, each machine's players with its input delay and run-ahead, and the last second's rollbacks
         if (notices && FeatureOn("online_stats") && !net->Watching() && !waiting) {
             std::vector<std::string> lines;
-            lines.push_back("PING " + std::to_string(net->Ping()) + " MS  JITTER " + std::to_string(net->Jitter()) + " MS");
+            lines.push_back("PING " + std::to_string(net->Ping()) + " MS  JITTER " + std::to_string(net->Jitter()) + " MS" +
+                            (net->Relayed() ? "  RELAY" : ""));
             for (int m = 0; m < net->Machines(); ++m) {
                 std::string who;
                 for (int person = 0; person < net->People(m); ++person) {
@@ -4904,6 +4909,8 @@ void Usage() {
             "                         player 2 controls): the Online page's People at this machine unless said\n"
             "  --net-service URL      the online service that gives hosts codes (online/), or off\n"
             "  --net-list             (hosting) the match in the lobby, the Online card's list of open matches\n"
+            "  --net-relay on|only|off  the online service's relay (TURN) for a network that stops direct connections:\n"
+            "                         on beside the direct addresses (the default), only (every packet through it), off\n"
             "  --net-name NAME        ... under this name; and any machine's: shown to the other players\n"
             "  --net-say [FRAME:]TEXT (tests) TEXT said in the chat at FRAME of the match (120 unless said)\n"
             "  --net-typing TEXT      (pictures) TEXT shown as a chat line being typed, all through the match\n"
@@ -5061,6 +5068,9 @@ bool ParseArgs(int argc, char **argv, port::Options &o) {
         } else if (a == "--join") {
             o.online = true;
             o.net.address = next();
+        } else if (a == "--net-relay") {
+            const std::string how = next();
+            o.net.relay = how == "only" ? 1 : how == "off" ? -1 : 0;
         } else if (a == "--net-list") {
             o.net.listed = true;
         } else if (a == "--net-arcade") {
