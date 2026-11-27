@@ -885,7 +885,11 @@ bool Netplay::Begin(Port &port, std::string &error) {
     }
     local = settings.hosting ? 0 : 1; // (joining: which, the host says as the match begins)
     build = BuildHash(port);
-    fprintf(stderr, "online: %s %s, protocol %d, game signature %08x\n", GAME_ID, RECOMP_VERSION, kProtocol, build);
+#ifndef RECOMP_COMMIT
+#define RECOMP_COMMIT "unknown"
+#endif
+    fprintf(stderr, "online: %s %s (commit %s), protocol %d, game signature %08x\n", GAME_ID, RECOMP_VERSION, RECOMP_COMMIT, kProtocol,
+            build);
     began = NowMs();
     if (settings.hosting) {
         StartAt(settings.delay);
@@ -1146,6 +1150,24 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
                 stunSent = now;
             }
             return true;
+        }
+        if (!stunSaid) {
+            // (the check over without its verdict: said too, so a log shows why there is none)
+            stunSaid = true;
+            size_t answered = 0;
+            for (const std::string &seen : stunSeen) {
+                answered += !seen.empty();
+            }
+            if (stunServers.empty()) {
+                fprintf(stderr, "online: network check: the STUN servers' names were not found (no DNS?)\n");
+            } else if (strict < 0) {
+                fprintf(stderr, "online: network check: %zu of %zu STUN servers answered in 3 seconds%s%s%s\n", answered,
+                        stunServers.size(), seenAs.empty() ? "" : " (seen as ", seenAs.c_str(), seenAs.empty() ? "" : ")");
+                if (!answered) {
+                    fprintf(stderr, "online: network check: no UDP answer came back: a firewall (Windows: \"Allow an app through "
+                                    "firewall\") or the network may be stopping this game's UDP\n");
+                }
+            }
         }
         // (the relay: its server, then an address there, for a moment (3 seconds from the start for the server, 4 more
         // for the address: 1.2 at each of its servers that doesn't answer), or the match goes on without)

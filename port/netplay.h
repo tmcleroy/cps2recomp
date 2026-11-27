@@ -415,6 +415,7 @@ private:
     std::vector<std::string> stunSeen;
     uint64_t stunFirst = 0;
     int strict = -1; // (1: the servers saw two ports, 0: the same, -1: not known)
+    bool stunSaid = false; // (the check's end said in the log)
     std::future<HttpAnswer> asking, watchAsking;
     uint64_t askedAt = 0;
     uint64_t codeAt = 0; // (hosting: when the code was had, for how often it is asked about: Introduce)

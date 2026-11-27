@@ -46,11 +46,14 @@ if [ -n "${CCACHE_BASE:-}" ]; then
     mkdir -p "$CCACHE_BASE"
     CCACHE_BASE="$(cd "$CCACHE_BASE" && pwd)"
 fi
+# (the commit, for the games' logs: the image has no git of this tree. CMakeLists.txt's RECOMP_COMMIT)
+RECOMP_COMMIT="${RECOMP_COMMIT:-$(git -C "$(dirname "$0")" describe --always --dirty --abbrev=8 --match=NONE 2>/dev/null || true)}"
+export RECOMP_COMMIT
 # a release script in a build image: $1 the image, $2 the script, the rest more arguments for docker run
 in_image() {
     image=$1 script=$2; shift 2
     set -- docker run --rm "$@" -e GAMES="${GAMES:-}" -e NO_GAME_CODE="${NO_GAME_CODE:-}" -e NO_CCACHE="${NO_CCACHE:-}" \
-        -e TRANSLATED="${TRANSLATED:-}"
+        -e TRANSLATED="${TRANSLATED:-}" -e RECOMP_COMMIT
     [ -z "${CMAKE_BUILD_PARALLEL_LEVEL:-}" ] || set -- "$@" -e CMAKE_BUILD_PARALLEL_LEVEL="$CMAKE_BUILD_PARALLEL_LEVEL"
     [ -z "${CCACHE_BASE:-}" ] || set -- "$@" -v "$CCACHE_BASE":/ccache -e CCACHE_BASE=/ccache
     # (Windows' signing, docs/RELEASING.md: the certificate's folder read-only, its password passed on from this
