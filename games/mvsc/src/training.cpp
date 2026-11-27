@@ -206,9 +206,9 @@ void RegisterTraining() {
                              "Player 2's characters are the game's own computer player, as in a one-player game (at the board's "
                              "difficulty setting).",
                              kFeatureExclusive});
-    TrainingAids({"dummy_computer"});
     game.features.push_back({"fixed_damage", "Training mode", "Fixed damage",
                              "No random part in a hit's damage (the average in its place), so a combo always does the same."});
+    TrainingAids({"dummy_computer", "fixed_damage", "stun_readout"});
     AddHook(HookAt(0x00D0D8), "PlayerStep", marvel::PlayerStep);
     AddHook(HookAt(0x01C9C0), "RandomPart", RandomPart);
     AddHook(HookAt(0x023F96), "SideOnPanel", SideOnPanel);

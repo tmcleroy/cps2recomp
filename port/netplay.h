@@ -25,6 +25,8 @@
 
 #include "first_to.h"
 
+#include "turn.h"
+
 #include <array>
 #include <cstdint>
 #include <cstdlib>
@@ -69,6 +71,43 @@ public:
 private:
     intptr_t handle = -1;
     bool six = false; // (IPv6, and IPv4 through it)
+};
+
+// The match's socket: a UdpSocket, and the relay when there is one (port/turn.h). Packets to a peer go to it directly,
+// unless it was only ever heard through the relay (its packets came to the relayed address), or `only` (--net-relay
+// only): then they go wrapped to the relay server. The server's own answers are kept here; a peer's packet that came
+// through it is given out as from that peer.
+class RelaySocket {
+public:
+    bool Open(int port, std::string &error) { return raw.Open(port, error); }
+    int LocalPort() const { return raw.LocalPort(); }
+    void Send(const NetAddress &to, const uint8_t *data, size_t size);
+    int Receive(uint8_t *data, size_t size, NetAddress &from);
+    // (the servers, as UdpSocket::Resolve gave them: the next tried when one says nothing for a moment (its port blocked,
+    // say); the username and password; every packet through it, or not)
+    void StartRelay(const std::vector<NetAddress> &servers, const std::string &user, const std::string &password, bool only);
+    bool RelayStarted() const { return client.Started(); }
+    bool RelayReady() const { return client.Ready(); }
+    bool RelayFailed() const { return client.Failed(); }
+    const std::string &RelayWhy() const { return client.Why(); }
+    std::string RelayAddress() const; // ("IP:PORT", "" until it has one)
+    void Permit(const NetAddress &peer); // (a peer's address: its IP let through the relay)
+    bool Through(const NetAddress &peer) const; // (whether a packet to it goes through the relay)
+    bool HeardThrough(const NetAddress &peer) const; // (whether its packets came through the relay)
+
+private:
+    UdpSocket raw;
+    UdpSocket toServer; // (the relay's own socket, a new port each time: the game's is the same port each match, 7845 for
+                        // a host, and a TURN server refuses a new allocation from the port of one still alive, 437)
+    turn::Client client;
+    NetAddress server;
+    std::vector<NetAddress> servers; // (all of them; `server` the one asked now, servers[next - 1])
+    size_t next = 0;
+    std::string user, password;
+    bool only = false, saidFailed = false;
+    int wrapsSaid = 0, dataSaid = 0, directSaid = 0; // (CPS2RECOMP_NET_DEBUG: the first packets through the relay, said)
+    std::vector<NetAddress> direct, relayed; // (peers heard directly, and only through the relay)
+    void Tick();
 };
 
 class Netplay {
@@ -116,6 +155,10 @@ public:
         bool watching = false, spectators = false;
         std::string address; // (joining: the host's)
         int port = kDefaultPort;
+        // (--net-relay: 0 the relay the service offers, beside the direct addresses; 1 only the relay, every packet
+        // through it (to try it); -1 none. CPS2RECOMP_NET_RELAY="HOST:PORT USER PASSWORD": that server, not the
+        // service's)
+        int relay = 0;
         int delay = kDefaultDelay;
         int runAhead = 0; // (this machine's run-ahead, as the others' network readout shows it: its own)
         std::string service = Service(); // (--net-service URL; "off": none, the host's address only)
@@ -146,6 +189,10 @@ public:
     bool Begin(Port &port, std::string &error);
     int Waiting(Port &port, std::string &error);
     std::string waiting; // what is being waited for ("Waiting for the other player...")
+    // Whether this machine's router gives each place it sends to a port of its own (a "symmetric" or carrier-grade
+    // NAT: two STUN servers saw two ports): then the address the other players are told is not the one their packets
+    // reach, and a direct connection with most of them can't be made. -1: not known (a server didn't answer)
+    int StrictNetwork() const { return strict; }
     std::string code;    // (hosting) the match's code, once the service has given one, as said ("K7Q-M2X")
     const std::string &Secret() const {
         return secret;
@@ -184,6 +231,7 @@ public:
     // or to the farthest in a match of more machines (a joining machine's to the host and on to the farthest of the
     // others); and how long since a machine this one plays with was last heard (the longest)
     int Ping() const;
+    bool Relayed() const; // (whether a machine in the match is reached through the relay)
     int DirectRtt(int machine) const; // measured direct packet round trip in ms; -1 until sampled or if routed via the host
     // This machine's input delay: the frames its own players' controls are held back (each machine's own choice)
     int Delay() const {
@@ -316,7 +364,7 @@ private:
     void WatchSend();
     void WatchCapture(Port &port);
     void WatchService();
-    UdpSocket socket;
+    RelaySocket socket;
     // (the handshake: the hello or the welcome, sent again until answered)
     std::vector<uint8_t> greeting;
     uint32_t build = 0;
@@ -348,10 +396,26 @@ private:
     std::string joinCode; // (joining by a code: it, as typed)
     uint32_t ticket = 0;  // (joining by a code: the service's number for this machine, said in the hello)
     std::future<std::vector<NetAddress>> stunLookup;
+    // (the relay: its server and credentials, asked of the service (GET /v1/relay) as STUN is; then the allocation,
+    // waited for a moment before the addresses are said. Settings::relay)
+    struct RelayGrant {
+        bool ok = false;
+        std::vector<NetAddress> servers;
+        std::string where, user, password, why;
+    };
+    std::future<RelayGrant> relayLookup;
+    bool relayAsked = false, relayTold = false, relaySaid = false;
+    uint64_t relayAskedAt = 0, relayStartedAt = 0;
     std::vector<NetAddress> stunServers;
     std::array<uint8_t, 12> stunId{};
     uint64_t stunBegan = 0, stunSent = 0;
     std::string seenAs; // ("IP:PORT")
+    // (each STUN server's answer, by stunServers' order: where it saw this socket's packets come from, "" until it
+    // answers; and when the first came. Two that differ: a strict router, StrictNetwork)
+    std::vector<std::string> stunSeen;
+    uint64_t stunFirst = 0;
+    int strict = -1; // (1: the servers saw two ports, 0: the same, -1: not known)
+    bool stunSaid = false; // (the check's end said in the log)
     std::future<HttpAnswer> asking, watchAsking;
     uint64_t askedAt = 0;
     uint64_t codeAt = 0; // (hosting: when the code was had, for how often it is asked about: Introduce)
@@ -369,7 +433,7 @@ private:
     int toldPlayers = 0, toldHere = 0; // (hosting: the match's players and the host's, as the service was told them)
     uint64_t punchedAt = 0;
     bool Introduce(uint64_t now, std::string &error);
-    bool TakeStun(const uint8_t *data, int size);
+    bool TakeStun(const uint8_t *data, int size, const NetAddress &from);
     std::string Addresses() const; // (this side's, as JSON)
 
     // The match: the players it is for (4 in tag team's 2 vs 2), and each machine's people and players
@@ -428,6 +492,7 @@ private:
         uint32_t echo = 0;       // its time on its last packet
         uint64_t echoAt = 0;     // ... and when it came, ours
         double ping = -1;
+        uint64_t relayNoted = 0, relayHeard = 0; // (the last "through a relay" said to it, and heard from it: kRelay)
         double jitter = 0;       // (how far its times there and back differ from `ping`, on average)
         int farthest = 0;        // (from the host) the longest ping of the other joining machines to it, ms
         // (the chat to it: the lines it hasn't said it has, and when they were last sent; and the lines from it, all

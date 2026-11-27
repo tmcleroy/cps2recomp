@@ -13,6 +13,15 @@ endif ()
 # The release's version (VERSION): online play's two copies must have the same (port/netplay.cpp)
 file(STRINGS "${CMAKE_SOURCE_DIR}/VERSION" RECOMP_VERSION LIMIT_COUNT 1)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/VERSION")
+# The commit it was built from, for the logs (a test build has the release's VERSION): RECOMP_COMMIT, or git's
+set(RECOMP_COMMIT "$ENV{RECOMP_COMMIT}")
+if (RECOMP_COMMIT STREQUAL "")
+    execute_process(COMMAND git describe --always --dirty --abbrev=8 --match=NONE WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                    OUTPUT_VARIABLE RECOMP_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+endif ()
+if (RECOMP_COMMIT STREQUAL "")
+    set(RECOMP_COMMIT "unknown")
+endif ()
 
 # Game selection: the game id names a directory under games/ and the generated code under work/
 set(GAME "vampire_savior" CACHE STRING "Game id (directory under games/)")
@@ -151,5 +160,5 @@ foreach (target ${GAME} ${GAME}-check)
     # (a char is signed, as on x86 and Apple's ARM, also on Linux ARM64, whose own is unsigned: every build does the
     # same sums)
     target_compile_options(${target} PRIVATE -fsigned-char)
-    target_compile_definitions(${target} PRIVATE RECOMP_VERSION="${RECOMP_VERSION}")
+    target_compile_definitions(${target} PRIVATE RECOMP_VERSION="${RECOMP_VERSION}" RECOMP_COMMIT="${RECOMP_COMMIT}")
 endforeach ()
