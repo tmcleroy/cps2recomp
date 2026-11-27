@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Marvel vs. Capcom: more training, and a ring out the CPU plays.** The dummy techs throws (off, always, at
+  random), guards high or low by the game's own rule for each attack, and can be played by the game's own computer
+  player. New aids: a stun readout and fixed damage (no random part in a hit's damage). In the ring out the CPU now
+  plays for the ring out: it walks you towards an end, throws or sweeps you over it, and gets out of its own corner,
+  more or less often by its difficulty. (The game has no air recovery input, no rolls after a knock-down and no
+  dizzy to mash out of, so those dummy choices aren't offered.)
 - **Training online** (every fighting game). In a two-person match the host's Esc menu has **Start Training**: the
   board starts again, each player chooses their own character, and the fight has no clock and no knock-outs. The host's
   Training mode settings apply to both (health and gauge refills, fixed damage). Hit boxes, frame data, the frame meter,
