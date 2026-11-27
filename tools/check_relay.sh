@@ -7,7 +7,9 @@
 # loopback copy (online/dev-service.mjs) and two copies of the game joining by a code. Each side is `on` (the relay
 # beside the direct addresses) or `only` (--net-relay only: nothing directly once the relay is there, as on a network
 # that lets nothing else through). Each case must make the match, play it with every packet late (50 ms, give or take
-# 25) and one in twenty lost, and the two hash logs agree; a side `only` must have sent through the TURN server.
+# 25) and one in twenty lost, and the two hash logs agree; a side `only` must have sent through the TURN server. Each
+# side is given a server that never answers first (a port its network doesn't let through, as it were), and must go on
+# to the real one.
 #
 #   GAME=<id> [CASES="on:only only:on only:only on:on"] tools/check_relay.sh [FRAMES]
 #
@@ -24,7 +26,7 @@ lan=${RELAY_IP:-$( (ipconfig getifaddr en0 || ipconfig getifaddr en1 || hostname
 [ -n "$lan" ] || { echo "no LAN address for the TURN server (RELAY_IP=...)"; exit 2; }
 work=$(mktemp -d "${TMPDIR:-/tmp}/cps2recomp-relay.XXXXXX")
 trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$work"' EXIT
-turnPort=$((34000 + RANDOM % 1000)) servicePort=$((35000 + RANDOM % 1000))
+turnPort=$((34000 + RANDOM % 1000)) servicePort=$((35000 + RANDOM % 1000)) deadPort=$((37000 + RANDOM % 1000))
 status=0
 for case in $CASES; do
     hostMode=${case%%:*} joinMode=${case#*:}
@@ -37,7 +39,7 @@ for case in $CASES; do
     PORT=$servicePort node online/dev-service.mjs > "$dir/service.log" 2>&1 &
     service=$!
     sleep 1.5
-    export CPS2RECOMP_NET_SERVICE="http://127.0.0.1:$servicePort" CPS2RECOMP_NET_RELAY="$lan:$turnPort test secret"
+    export CPS2RECOMP_NET_SERVICE="http://127.0.0.1:$servicePort" CPS2RECOMP_NET_RELAY="$lan:$deadPort,$lan:$turnPort test secret"
     side() { # NAME MODE SEED, then more arguments
         local name=$1 mode=$2 seed=$3; shift 3
         timeout 120 "build/$GAME/$GAME" --rom "$ROM" --headless --frames "$FRAMES" --settings "$dir/$name.ini" \
@@ -67,8 +69,14 @@ for case in $CASES; do
             echo "FAILED ($case): only $shared frames hashed on both sides"; status=1
         elif ! diff <(head -"$shared" "$dir/host.txt") <(head -"$shared" "$dir/join.txt") > /dev/null; then
             echo "FAILED ($case): the hash logs differ"; status=1
+        elif ! grep -q "trying the next" "$dir/host.err" || ! grep -q "trying the next" "$dir/join.err"; then
+            echo "FAILED ($case): a side did not go on from the server that never answers"; status=1
         elif [ "$case" != on:on ] && [ "$relayed" -lt $((FRAMES / 4)) ]; then
             echo "FAILED ($case): only $relayed packets went through the relay"; status=1
+        elif [ "$case" != on:on ] && ! grep -q "online: the match goes through a relay" "$dir/host.err"; then
+            echo "FAILED ($case): the host did not know the match went through the relay"; status=1
+        elif [ "$case" != on:on ] && ! grep -q "online: the match goes through a relay" "$dir/join.err"; then
+            echo "FAILED ($case): the joiner did not know the match went through the relay"; status=1
         else
             echo "ok: host $hostMode, joiner $joinMode: $shared frames the same, $relayed packets through the relay"
         fi

@@ -754,10 +754,17 @@ async function relay(request, env) {
     return json({ error: "the relay's credentials could not be made" }, 502);
   }
   const urls = Array.isArray(turn.urls) ? turn.urls : [turn.urls];
-  const udp = urls.find((url) => typeof url === "string" && /^turn:[^?]+:\d+\?transport=udp$/.test(url)) ||
-    urls.find((url) => typeof url === "string" && /^turn:[^?]+:\d+$/.test(url));
-  const server = udp ? udp.slice(5).split("?")[0] : "turn.cloudflare.com:3478";
-  return json({ server, username: turn.username, credential: turn.credential, ttl: kRelayTtl });
+  // (every UDP server, in Cloudflare's order: 3478, then 443 for a network that lets only the web's ports through;
+  // "server" the first, for a game that knows only one)
+  const udpServers = [];
+  for (const url of urls) {
+    if (typeof url === "string" && /^turn:[^?]+:\d+(\?transport=udp)?$/.test(url)) {
+      const where = url.slice(5).split("?")[0];
+      if (!udpServers.includes(where)) udpServers.push(where);
+    }
+  }
+  if (!udpServers.length) udpServers.push("turn.cloudflare.com:3478");
+  return json({ server: udpServers[0], servers: udpServers, username: turn.username, credential: turn.credential, ttl: kRelayTtl });
 }
 
 async function statsPage(env, key) {

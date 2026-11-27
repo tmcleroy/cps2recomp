@@ -83,8 +83,9 @@ public:
     int LocalPort() const { return raw.LocalPort(); }
     void Send(const NetAddress &to, const uint8_t *data, size_t size);
     int Receive(uint8_t *data, size_t size, NetAddress &from);
-    // (the server, as UdpSocket::Resolve gave it; its username and password; every packet through it, or not)
-    void StartRelay(const NetAddress &server, const std::string &user, const std::string &password, bool only);
+    // (the servers, as UdpSocket::Resolve gave them: the next tried when one says nothing for a moment (its port blocked,
+    // say); the username and password; every packet through it, or not)
+    void StartRelay(const std::vector<NetAddress> &servers, const std::string &user, const std::string &password, bool only);
     bool RelayStarted() const { return client.Started(); }
     bool RelayReady() const { return client.Ready(); }
     bool RelayFailed() const { return client.Failed(); }
@@ -92,6 +93,7 @@ public:
     std::string RelayAddress() const; // ("IP:PORT", "" until it has one)
     void Permit(const NetAddress &peer); // (a peer's address: its IP let through the relay)
     bool Through(const NetAddress &peer) const; // (whether a packet to it goes through the relay)
+    bool HeardThrough(const NetAddress &peer) const; // (whether its packets came through the relay)
 
 private:
     UdpSocket raw;
@@ -99,6 +101,9 @@ private:
                         // a host, and a TURN server refuses a new allocation from the port of one still alive, 437)
     turn::Client client;
     NetAddress server;
+    std::vector<NetAddress> servers; // (all of them; `server` the one asked now, servers[next - 1])
+    size_t next = 0;
+    std::string user, password;
     bool only = false, saidFailed = false;
     int wrapsSaid = 0, dataSaid = 0, directSaid = 0; // (CPS2RECOMP_NET_DEBUG: the first packets through the relay, said)
     std::vector<NetAddress> direct, relayed; // (peers heard directly, and only through the relay)
@@ -226,6 +231,7 @@ public:
     // or to the farthest in a match of more machines (a joining machine's to the host and on to the farthest of the
     // others); and how long since a machine this one plays with was last heard (the longest)
     int Ping() const;
+    bool Relayed() const; // (whether a machine in the match is reached through the relay)
     int DirectRtt(int machine) const; // measured direct packet round trip in ms; -1 until sampled or if routed via the host
     // This machine's input delay: the frames its own players' controls are held back (each machine's own choice)
     int Delay() const {
@@ -394,11 +400,11 @@ private:
     // waited for a moment before the addresses are said. Settings::relay)
     struct RelayGrant {
         bool ok = false;
-        NetAddress server;
+        std::vector<NetAddress> servers;
         std::string where, user, password, why;
     };
     std::future<RelayGrant> relayLookup;
-    bool relayAsked = false, relayTold = false;
+    bool relayAsked = false, relayTold = false, relaySaid = false;
     uint64_t relayAskedAt = 0, relayStartedAt = 0;
     std::vector<NetAddress> stunServers;
     std::array<uint8_t, 12> stunId{};
@@ -485,6 +491,7 @@ private:
         uint32_t echo = 0;       // its time on its last packet
         uint64_t echoAt = 0;     // ... and when it came, ours
         double ping = -1;
+        uint64_t relayNoted = 0, relayHeard = 0; // (the last "through a relay" said to it, and heard from it: kRelay)
         double jitter = 0;       // (how far its times there and back differ from `ping`, on average)
         int farthest = 0;        // (from the host) the longest ping of the other joining machines to it, ms
         // (the chat to it: the lines it hasn't said it has, and when they were last sent; and the lines from it, all

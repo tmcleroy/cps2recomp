@@ -77,6 +77,8 @@ namespace {
         kWatchControls = 16,
         kWatchAck = 17,
         kOver = 13,   // host -> joining: the match is over, another machine having gone (the host waits for all again)
+        kRelay = 18,  // either: the packets between the two go through this side's relay (for the RELAY tag; a copy
+                      // without it ignores it, as any kind it doesn't know)
     };
 
     // A name or a line of the chat as the screen's font has it (ASCII's letters, digits and marks), at most `most` of
@@ -488,14 +490,18 @@ namespace {
     }
 } // namespace
 
-void RelaySocket::StartRelay(const NetAddress &to, const std::string &user, const std::string &password, bool onlyRelay) {
-    server = to;
+void RelaySocket::StartRelay(const std::vector<NetAddress> &list, const std::string &name, const std::string &secret, bool onlyRelay) {
+    if (list.empty()) return;
+    servers = list;
+    user = name, password = secret;
     only = onlyRelay;
     std::string error;
     if (!toServer.Open(0, error)) {
         fprintf(stderr, "online: no relay: %s\n", error.c_str());
         return;
     }
+    server = servers[0];
+    next = 1;
     client.Start(user, password, NowMs(), static_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count()));
     Tick();
 }
@@ -510,6 +516,10 @@ void RelaySocket::Permit(const NetAddress &peer) {
     if (client.Started() && AsFour(peer, ip, port)) client.Permit(ip);
 }
 
+bool RelaySocket::HeardThrough(const NetAddress &peer) const {
+    return client.Ready() && Among(relayed, peer);
+}
+
 bool RelaySocket::Through(const NetAddress &peer) const {
     uint32_t ip = 0;
     int port = 0;
@@ -519,6 +529,15 @@ bool RelaySocket::Through(const NetAddress &peer) const {
 
 void RelaySocket::Tick() {
     if (!client.Started()) return;
+    // (a server that hasn't answered the allocation in 1.2 seconds, or that failed before giving an address: the next,
+    // which may be on a port this network lets through)
+    const bool silent = client.Asking() && NowMs() - client.StartedAt() > 1200;
+    if ((silent || (client.Failed() && client.RelayPort() == 0)) && next < servers.size()) {
+        fprintf(stderr, "online: the relay server %zu of %zu: %s; trying the next\n", next, servers.size(),
+                client.Failed() ? client.Why().c_str() : "no answer");
+        server = servers[next++];
+        client.Start(user, password, NowMs(), static_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count()));
+    }
     for (const auto &message : client.Tick(NowMs())) toServer.Send(server, message.data(), message.size());
     if (client.Failed() && !saidFailed) {
         saidFailed = true;
@@ -1071,7 +1090,7 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
                 RelayGrant grant;
                 const char *fixed = getenv("CPS2RECOMP_NET_RELAY");
                 if (fixed && *fixed) {
-                    // ("HOST:PORT USER PASSWORD")
+                    // ("HOST:PORT USER PASSWORD", or "HOST:PORT,HOST:PORT USER PASSWORD")
                     std::string words[3];
                     size_t at = 0;
                     const std::string text = fixed;
@@ -1089,14 +1108,22 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
                                            : "the online service did not answer about the relay";
                         return grant;
                     }
-                    grant.where = JsonText(body, "server");
+                    // (every server: "servers", the UDP ports to try in turn; "server" alone from an older service)
+                    for (const std::string &one : JsonList(body, "servers")) grant.where += (grant.where.empty() ? "" : ",") + one;
+                    if (grant.where.empty()) grant.where = JsonText(body, "server");
                     grant.user = JsonText(body, "username");
                     grant.password = JsonText(body, "credential");
                 }
-                std::string host, error;
-                int port = 3478;
-                UdpSocket::Split(grant.where, host, port);
-                grant.ok = !host.empty() && !grant.user.empty() && UdpSocket::Resolve(host, port, grant.server, error, true);
+                for (size_t at = 0; at <= grant.where.size() && grant.servers.size() < 4;) {
+                    const size_t end = std::min(grant.where.find(',', at), grant.where.size());
+                    std::string host, error;
+                    int port = 3478;
+                    UdpSocket::Split(grant.where.substr(at, end - at), host, port);
+                    NetAddress server;
+                    if (!host.empty() && UdpSocket::Resolve(host, port, server, error, true)) grant.servers.push_back(server);
+                    at = end + 1;
+                }
+                grant.ok = !grant.servers.empty() && !grant.user.empty();
                 if (!grant.ok) grant.why = "the relay's server was not found (" + grant.where + ")";
                 return grant;
             });
@@ -1120,14 +1147,14 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
             }
             return true;
         }
-        // (the relay: its server, then an address there, for a moment (3 seconds from the start for the server, 2.5 more
-        // for the address), or the match goes on without)
+        // (the relay: its server, then an address there, for a moment (3 seconds from the start for the server, 4 more
+        // for the address: 1.2 at each of its servers that doesn't answer), or the match goes on without)
         if (relayLookup.valid() && !relayTold) {
             if (relayLookup.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
                 relayTold = true;
                 const RelayGrant grant = relayLookup.get();
                 if (grant.ok) {
-                    socket.StartRelay(grant.server, grant.user, grant.password, settings.relay == 1);
+                    socket.StartRelay(grant.servers, grant.user, grant.password, settings.relay == 1);
                     relayStartedAt = now;
                 } else {
                     fprintf(stderr, "online: no relay: %s\n", grant.why.c_str());
@@ -1139,7 +1166,7 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
                 fprintf(stderr, "online: no relay: the online service did not answer about it in time\n");
             }
         }
-        if (socket.RelayStarted() && !socket.RelayReady() && !socket.RelayFailed() && now - relayStartedAt < 2500) {
+        if (socket.RelayStarted() && !socket.RelayReady() && !socket.RelayFailed() && now - relayStartedAt < 4000) {
             return true;
         }
         if (socket.RelayStarted() && relayStartedAt) {
@@ -1851,6 +1878,16 @@ int Netplay::Ping() const {
     return most;
 }
 
+bool Netplay::Relayed() const {
+    const uint64_t now = NowMs();
+    for (const Link &link : links) {
+        if (socket.Through(link.address) || socket.HeardThrough(link.address) || (link.relayHeard && now - link.relayHeard < 5000)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 int Netplay::DirectRtt(int machine) const {
     for (const Link &link : links) {
         if (link.machine == machine) return static_cast<int>(std::lround(link.ping));
@@ -2108,6 +2145,7 @@ void Netplay::Take(Link &link, const uint8_t *data, size_t size) {
         }
         return;
     }
+    case kRelay: link.relayHeard = NowMs(); return;
     case kControls: break;
     default: return;
     }
@@ -2255,6 +2293,17 @@ bool Netplay::Ready(uint64_t frame) {
         Take(*link, packet, static_cast<size_t>(got));
     }
     now = NowMs(); // (after what came, each heard at its own time)
+    // (each machine reached through this side's relay: told so every 2 seconds, so its RELAY tag shows too)
+    for (Link &link : links) {
+        if ((socket.Through(link.address) || socket.HeardThrough(link.address)) && now - link.relayNoted >= 2000) {
+            SendTo(link.address, Writer(kRelay).out);
+            link.relayNoted = now;
+        }
+    }
+    if (!relaySaid && Relayed()) {
+        relaySaid = true;
+        fprintf(stderr, "online: the match goes through a relay\n");
+    }
     // (hosting: the start, again, to those whose controls haven't come since)
     for (Link &link : links) {
         if (settings.hosting && !link.started && now - link.greeted > 100) {

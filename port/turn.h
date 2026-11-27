@@ -257,15 +257,22 @@ class Client {
 public:
     // (the server's username and password; the time now, in milliseconds; a seed for the transaction ids)
     void Start(const std::string &user, const std::string &password, uint64_t now, uint64_t seed) {
+        // (again, for another server: what the last one said forgotten, the peers' IPs kept)
         username = user;
         secret = password;
         random = seed | 1;
         started = now;
+        realm.clear(), nonce.clear(), why.clear(), key.clear();
+        pending.clear(), queued.clear();
+        relayIp = 0, relayPort = 0, challenges = 0;
+        permitsDue = !permitted.empty();
         state = State::Asking;
         Ask(kAllocate, now);
     }
     bool Started() const { return state != State::Off; }
     bool Ready() const { return state == State::Ready; }
+    bool Asking() const { return state == State::Asking; }
+    uint64_t StartedAt() const { return started; }
     bool Failed() const { return state == State::Failed; }
     const std::string &Why() const { return why; }
     uint32_t RelayIp() const { return relayIp; }
@@ -279,17 +286,19 @@ public:
     }
     bool Permitted(uint32_t ip) const { return std::find(permitted.begin(), permitted.end(), ip) != permitted.end(); }
     bool Reaches(uint32_t ip) const { return Ready() && !Unrelayable(ip, relayIp); }
-    // What to send the server now: a request again (one not answered in half a second, for 5 seconds), the allocation
-    // refreshed (every 5 minutes, for 10 more), the permissions (when there are new ones, and every 4 minutes: they
-    // last 5)
+    // What to send the server now: a request again (one not answered in half a second: the allocation for 5 seconds;
+    // a refresh or permissions, which the address outlasts, every 2 seconds after the first 5, for 2 minutes), the
+    // allocation refreshed (every 5 minutes, for 10 more), the permissions (when there are new ones, and every 4
+    // minutes: they last 5)
     std::vector<std::vector<uint8_t>> Tick(uint64_t now) {
         std::vector<std::vector<uint8_t>> out;
         out.swap(queued);
         if (state == State::Off || state == State::Failed) return out;
         for (Pending &p : pending) {
-            if (now - p.sent >= 500) {
-                if (now - p.first > 5000) {
-                    Fail(p.type == kAllocate ? "the relay server did not answer" : "the relay server stopped answering");
+            const bool allocating = p.type == kAllocate;
+            if (now - p.sent >= (allocating || now - p.first < 5000 ? 500u : 2000u)) {
+                if (now - p.first > (allocating ? 5000u : 120000u)) {
+                    Fail(allocating ? "the relay server did not answer" : "the relay server stopped answering");
                     return {};
                 }
                 p.sent = now;
