@@ -189,6 +189,54 @@ is FF4000 here), and the players' records 0x20 further on from +0x250 (health +2
 Facts were confirmed with the help of the FBNeo training mode's scripts (peon2/fbneo-training-mode: `games/mvsc`,
 `hitboxes/marvel-hitboxes.lua`), each found again here; no code was taken.
 
+## The training dummy, stun, damage and the ring out's coach (2026-11-27)
+
+Hooks only, as Alpha 3's (`src/training.cpp`, `src/guard.cpp`, `src/battle.cpp`); no routine rewritten. Found by
+`--trace` and `--watch-writes` over scripted fights from a training save state (Ryu against Spider-Man), and the
+listing.
+
+- **Reading the panel while reeling**: a record reads its controls only while its own master or held in a throw;
+  in a hit's reel (+06 0C) nothing pressed counts. The reel ends on its own: a timer (+BC, from the hit's +F5, 0110D0
+  on) gives the character back its control in the air (+B0 1E) once it falls fast enough. So the game has **no air
+  recovery input** to give the dummy (the control comes back by itself after a launcher or a juggle), and no rolls
+  or quick rise after a knock-down: lying (+B0 2E) lasts 7 frames and getting up (22) 25, and pressing changes that by a
+  frame at most (0147BC counts presses down from +CB, which 00FE78 sets to 100 as it lies down). Not offered.
+- **Throw techs**: thrown, a record's +06 is 8 (01880E) and +B0 34. While it is held, 018B78 and 018BE2 (the
+  thrower's character and throw, +A8 and +E4, through the table at 0EA1B4, say which throws can be teched) take a
+  person's stick held left or right with a medium or strong punch or kick newly pressed (+D6 & 3, +DA & 0660; the
+  computer's at random, 0EB10C), late in the throw: the two fly apart (+B0 3E) and nothing is taken. Checked: ten
+  throws, Off 10 hit for 16, Always 10 teched, At random 5 and 5; a single press, or the stick and button held, never
+  teched.
+- **Guarding**: a character holding back guards (+B0 24, its posture +B4 0 standing, 2 crouching; 26 in the air) when
+  0173E6 says something of the other side's attacks: the other side's list at FFDDBA/FFDDB6 (player 2's guard) or
+  FFDDBE/FFDDB8, any record of it with +64's top bits 80 or on. When a hit lands on a guard (01BAB8) the hit's entry
+  (0E68AE by the attacker's +52, 0x20 bytes by its +80) byte +4 says how: low nybble 0 either way, 2 not crouching (an
+  overhead: Ryu's jumping attacks), 4 not standing (a low: his crouching kicks and sweep), bit 3 no guard. The
+  dummy's guard takes both (`guard.cpp`). Checked over six tries each (Ryu: standing jab, crouching short, sweep,
+  jumping roundhouse): Always guarded the jump-in standing and the short and sweep crouching (the jab misses a
+  crouching Spider-Man); Standing only let the lows through; Crouching only the jump-in; After a hit and Off let all
+  land.
+- **Played by the game**: the records' +03 (1 a person, 0 the computer, 01367E) of player 2's point character and
+  partner set to 0. A side whose first record says the computer plays it counts down a continue on the panel
+  (023F96, the side's place: 02439A on), so in training that routine is passed by for player 2 while the feature is on.
+  Seen: Spider-Man walked, jumped and attacked, Ryu's health 0x90 to 0x60 in 800 frames; the panel as a person's.
+- **Stun**: +C9 the stun left (the character's own whole, a word by +52 at 0E7CD6: 0x50 for most), +CA a timer set to
+  60 at every hit after which it comes back whole (00D7E8). A hit whose entry's byte +6 is not 0 takes 0 to 2 at random
+  (0E7D04), and one more when player 2's side hits player 1's (01B842: the attacker's side number is where it starts),
+  never past 1 at once unless it is 1 already. At 0 the hit's reaction is 6 (01AA96): thrown high into the air, the
+  character's own again on the way down, the stun whole again. There is no dizzy to mash out of, so no "mashes out
+  of stun". The readout shows the stun taken against the whole while it is not whole.
+- **Damage's random part**: 01C952 scales a hit's damage by a number from a row of 32 (by the entry's byte +1,
+  0E960A on: 28 to 38 of 32) picked by the random number (01C9B2), multiplied at 01C9C0. Fixed damage puts the row's
+  average there (the random number still drawn). Checked: thirty standing forwards, 9 and 6 every time with it, 5 now
+  and then in place of 6 without.
+- **The ring out's coach** (`battle.cpp`: `canAct`, `difficultyNow` FFF956, `attackComing` the guard test above, and a
+  new `throwReach` of 72: two characters standing together are 60 to 68 apart here, where the toolkit's 50 suits Street
+  Fighter's). With `CPS2RECOMP_BATTLE_LOG`: the computer walked player 1 to an end and threw from its own corner over
+  its head (player 1 thrown from 574 to 300 from its end); over three runs of player 1 pressing forward with an attack,
+  player 1 went over an end each time (at 907, 698 and 4,204 frames of fighting) and the computer never, where origin/main's
+  computer went over twice in one of the same runs.
+
 ## The checks
 
 (2026-10-28, all on the Mac.)

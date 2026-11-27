@@ -121,7 +121,7 @@ public:
     static constexpr int kDefaultPort = 7845;
     // The packets' layout (2: the host's state sent at the start); two copies must have the same to play, and the
     // lobby shows only matches of this one (the launcher asks with it too)
-    static constexpr int kProtocol = 20; // (3: the version said in the hello and to the service; 4: the welcome's flags;
+    static constexpr int kProtocol = 21; // (3: the version said in the hello and to the service; 4: the welcome's flags;
                                         // 5: the welcome's program words, so two regions' sets play together;
                                         // 6: each player's name in the hello and the welcome, and the chat;
                                         // 7: two players at each machine, as the welcome says, and each one's controls;
@@ -138,7 +138,8 @@ public:
                                         // 17: events in a match of four too: the host's seat changes;
                                         // 18: both players back to the character choice, "reselect", in the rollback state;
                                         // 19: spectators in the chat: their lines through the host, under their names;
-                                        // 20: the host's seat change in a match of two too: Swap sides)
+                                        // 20: the host's seat change in a match of two too: Swap sides;
+                                        // 21: the training session played online, mode 3, and Start over's restart event)
     static constexpr int kMostSeats = 2;    // players at one machine
     static constexpr int kMostMachines = 4; // machines in a match: the host's, and up to three joining
     static constexpr int kMostAhead = 8;    // frames run on guessed controls at most

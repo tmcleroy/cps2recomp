@@ -18,6 +18,7 @@
 
 #include "game_info.h"
 #include "../fight/battle.h"
+#include "../fight/session.h"
 #include "../recomp-common/i18n.h"
 #include "../recomp-common/launcher/src/online.h"
 #include "../recomp-common/launcher/src/run_program.h"
@@ -163,6 +164,19 @@ namespace {
         // then sent by them; how the court is looked at, each player's own)
         if (category == std::string(kBallBattle) || category == std::string(kTagTeamBattle)) {
             return name == "court_camera" ? Share::Own : Share::Host;
+        }
+        if (session::Described() && (category == "Training mode" || category == "Dummy")) {
+            // (the training session played online, Port::OnlineEvent: what is drawn over the picture is each player's
+            // own; the rest changes the fight (health and gauge refills, fixed damage...): the host's; the dummy is not
+            // there, player 2 being a person; the session itself starts by the host's event, not by being shared)
+            if (category == "Dummy" || (feature.flags & kFeatureSession)) return Share::Off;
+            static const char *const kDrawn[] = {"hit_boxes", "frame_data", "frame_meter", "frame_log", "input_display",
+                                                 "damage_readout", "throw_range", "restart_at"};
+            for (const char *drawn : kDrawn) {
+                if (name == drawn) return Share::Own;
+            }
+            if (name.size() > 8 && name.compare(name.size() - 8, 8, "_readout") == 0) return Share::Own;
+            return Share::Host;
         }
         if (name.size() > 9 && name.compare(name.size() - 9, 9, "_hitboxes") == 0) {
             return Share::Own; // (a shooting game's hit boxes, on its Cheats page: drawn over the picture only)
