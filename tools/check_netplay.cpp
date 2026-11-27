@@ -916,6 +916,46 @@ struct NetplayTest {
         Require(gap.upTo[1] == 3 && gap.events[1][1] == "mode,2", "cumulative input did not repair the missing prefix");
     }
 
+    // A strict network (a symmetric or carrier-grade NAT): the two STUN servers see this socket at two ports; one that
+    // keeps one address shows the same to both, and an answer from neither server, or for another request, is not counted
+    static void StrictNetwork() {
+        const auto answer = [](const std::array<uint8_t, 12> &id, uint32_t ip, int port) {
+            std::vector<uint8_t> p = {0x01, 0x01, 0x00, 0x0C, 0x21, 0x12, 0xA4, 0x42};
+            p.insert(p.end(), id.begin(), id.end());
+            const int xport = port ^ 0x2112;
+            const uint32_t xip = ip ^ 0x2112A442u;
+            for (int b : {0x00, 0x20, 0x00, 0x08, 0x00, 0x01, xport >> 8, xport & 0xFF, static_cast<int>(xip >> 24),
+                          static_cast<int>((xip >> 16) & 0xFF), static_cast<int>((xip >> 8) & 0xFF), static_cast<int>(xip & 0xFF)}) {
+                p.push_back(static_cast<uint8_t>(b));
+            }
+            return p;
+        };
+        for (const bool strict : {true, false}) {
+            Netplay net(Settings(false));
+            NetAddress one, two, other;
+            std::string error;
+            Require(UdpSocket::Resolve("127.0.0.1", 3478, one, error) && UdpSocket::Resolve("127.0.0.2", 19302, two, error) &&
+                        UdpSocket::Resolve("127.0.0.3", 3478, other, error),
+                    "stun addresses: " + error);
+            net.stunServers = {one, two};
+            net.stunId = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+            const uint32_t ip = 0xCB007107; // (203.0.113.7)
+            Require(net.StrictNetwork() < 0, "a network was judged before STUN answered");
+            auto first = answer(net.stunId, ip, 40000);
+            Require(net.TakeStun(first.data(), static_cast<int>(first.size()), one) && net.seenAs == "203.0.113.7:40000",
+                    "the first STUN answer was not read");
+            auto stray = answer(net.stunId, ip, 50000);
+            net.TakeStun(stray.data(), static_cast<int>(stray.size()), other);
+            auto stale = answer({}, ip, 50000);
+            net.TakeStun(stale.data(), static_cast<int>(stale.size()), two);
+            Require(net.StrictNetwork() < 0, "an answer from no server, or for another request, judged the network");
+            auto second = answer(net.stunId, ip, strict ? 40001 : 40000);
+            net.TakeStun(second.data(), static_cast<int>(second.size()), two);
+            Require(net.StrictNetwork() == (strict ? 1 : 0), strict ? "a strict network was not seen" : "a network keeping one address was called strict");
+            Require(net.seenAs == "203.0.113.7:40000", "the address told the others changed with the second answer");
+        }
+    }
+
     // Issue #448: the host moves the people between the sides in a match of four, as an event on its own stream, and
     // every machine plays the frames from the event's on with the new seats; nobody else can, and a malformed change is
     // nothing
@@ -1173,7 +1213,8 @@ struct NetplayTest {
                  {"reliable mode events and four-human mode guard", ModeEvents},
                  {"fighter picks before same-frame mode commands under rollback", ModePickOrder},
                  {"four-stream confirmed spectators and read-only controls", SpectatorControls},
-                 {"host seat changes in a match of four, three or two, frame-exact and rolled back to", SeatChanges}}) {
+                 {"host seat changes in a match of four, three or two, frame-exact and rolled back to", SeatChanges},
+                 {"a strict network from two STUN servers' answers", StrictNetwork}}) {
             run();
             std::cout << "PASS: " << name << '\n';
         }

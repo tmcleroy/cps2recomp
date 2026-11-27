@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Online: a strict network said so.** When a player can't reach the host, the message now says whether
+  their own network is the likely cause: a router that gives each place it sends to a port of its own (a
+  symmetric or carrier-grade NAT, common on phone networks, some home internet and school or work wifi) stops most
+  direct connections, and the message says to try another network, such as a phone's hotspot; a network that looks
+  fine points at the host's instead. The host's waiting line says "strict network" too. The game asks two STUN
+  servers where they see it and compares their answers (at most half a second more before the code shows).
 - **Street Fighter II, Champion Edition and Hyper Fighting: M. Bison's faster stage tune** has its own file name,
   `bison_later` (tune 84, from the games' own table of low-health tunes by stage), in the soundtrack folder's `songs.txt`
   and [docs/SONGS.md](docs/SONGS.md). Before, it was the one faster stage tune left out of the list (a file named
