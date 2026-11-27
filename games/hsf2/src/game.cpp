@@ -34,6 +34,8 @@ void ChoosingState(Archive &ar);
 void RegisterComputer(); // computer.cpp
 void RegisterLiveTag();  // livetag.cpp
 void RegisterDifficulty(); // difficulty.cpp
+void RegisterOsc(); // osc.cpp
+void OscFrame(Machine &machine);
 void LiveTagBeforeFrame(Machine &machine);
 void RegisterWidescreen(); // widescreen.cpp
 void WidescreenBeforeFrame(Machine &machine);
@@ -50,6 +52,7 @@ void RegisterGame() {
     RegisterComputer();
     RegisterLiveTag();
     RegisterDifficulty();
+    RegisterOsc();
     RegisterWidescreen();
     RegisterCoins();
     RegisterCheats();
@@ -74,6 +77,7 @@ void RegisterGame() {
         ModelFrame(machine);
         TitleFrame(machine);
         CoinsFrame(machine);
+        OscFrame(machine);
     };
     // (run-ahead: not in the modes, whose workings a save state does not wholly hold)
     TheGame().noRunAhead = [] { return modes::AttractMode() || modes::StageViewer() || BattleMode() || ModelViewer(); };
