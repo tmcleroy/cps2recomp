@@ -6,11 +6,15 @@
   `bison_later` (tune 84, from the games' own table of low-health tunes by stage), in the soundtrack folder's `songs.txt`
   and [docs/SONGS.md](docs/SONGS.md). Before, it was the one faster stage tune left out of the list (a file named
   `84` still replaced it).
-- **Online, two players: Swap sides** (every game). In a 1 vs 1 match the host was always player 1. The host's
-  in-game menu (Online page) now has **Swap sides**, as matches of four have (#448): both players change sides on the
-  same frame without leaving, each keeps their own controller, and the set's score and win streaks start again. Only
-  the host can do it: the other player asks in the chat. The ball battle's and tag team's fighter picks go with the
-  side. Both players need this version (protocol 20).
+- **Online: the host changes the teams in 2 vs 1, 1 vs 2 and 1 vs 1 too** (Swap sides came only to matches of four,
+  #448). The host's in-game menu (Online page) now has, in Marvel vs. Capcom's 2 vs 1 and 1 vs 2,
+  **Change teams** (who plays alone) and **Swap partners** (which of the two goes first),
+  and in 1 vs 1 **Swap sides** (the host was always player 1). Each names the teams it makes; everyone moves on the
+  same frame without leaving, keeps their own controller, and the set's score and win streaks start again. Only the
+  host can do it: the others ask in the chat. In 1 vs 1 the ball battle's and tag team's fighter picks go with the side.
+  Also: in 2 vs 2 with the Four-player team order on P1/P2 vs P3/P4, Swap sides and Change partners moved the wrong
+  people (they took P1/P3 vs P2/P4), and the teams they named were wrong. Both players of a 1 vs 1 need this version
+  (protocol 20).
 - **Stage page: another game's stage without its ROM set** is now the game's own choice. Before, every round was
   fought on the game's first stage with nothing drawn over it (Apocalypse's lair in X-Men vs. Street Fighter, and
   the same in every fighting game). Online it is as before: both sides fight on the first stage, each drawing the

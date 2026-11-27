@@ -1008,6 +1008,25 @@ struct NetplayTest {
         guest.Command("seats=1.0");
         Require(guest.commanded.empty(), "the other player of two sent a seat change");
 
+        // A match of three (2 vs 1, 1 vs 2) at two machines, a pair at the host's: the host moves who plays alone
+        Netplay trio(Settings(true));
+        trio.needed = 3;
+        trio.people = 2;
+        trio.links.resize(1);
+        trio.links[0].people = 1;
+        trio.Assign();
+        Require(trio.CanSeat(), "a host of three cannot change the seats");
+        Netplay::Layout moved = trio.SeatLayout();
+        std::swap(moved[0][0], moved[1][0]); // (the host's first person and the other machine's change places)
+        trio.Seat(moved);
+        Require(trio.commanded.size() == 1 && trio.SeatEvent(trio.commanded[0], parsed) && parsed == moved,
+                "the host's change of three was not one seat event");
+        Require(!trio.SeatEvent("seats=03.1", parsed) && !trio.SeatEvent("seats=0.1.2", parsed),
+                "a malformed seat change of three was taken");
+        trio.seatBase = trio.SeatLayout();
+        trio.NoteSeats(0, 4, trio.commanded[0]);
+        Require(trio.SeatsAt(3) == trio.SeatLayout() && trio.SeatsAt(4) == moved, "a change of three was not played from its frame");
+
         // The set's score starts again, keeping its format
         FirstTo set;
         set.Begin(1);
@@ -1154,7 +1173,7 @@ struct NetplayTest {
                  {"reliable mode events and four-human mode guard", ModeEvents},
                  {"fighter picks before same-frame mode commands under rollback", ModePickOrder},
                  {"four-stream confirmed spectators and read-only controls", SpectatorControls},
-                 {"host seat changes in a match of four or two, frame-exact and rolled back to", SeatChanges}}) {
+                 {"host seat changes in a match of four, three or two, frame-exact and rolled back to", SeatChanges}}) {
             run();
             std::cout << "PASS: " << name << '\n';
         }

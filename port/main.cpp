@@ -87,6 +87,15 @@ namespace {
     bool ModesOnline() {
         return OnlineModeHere(1) || OnlineModeHere(2);
     }
+    // The board's player at a side's first or second place in a match of `players` (-1: none; a side of one has no
+    // second): the game's own teams (TheGame().matchOwner: 2 vs 2 in either team order, 2 vs 1, 1 vs 2), or players 1
+    // and 3 against 2 and 4; in a match of two, player 1 against player 2
+    int SidePlayer(int side, int place, int players) {
+        const auto owner = TheGame().matchOwner;
+        const int player = players == 2 ? (place == 0 ? side : -1) : owner ? owner(side, place) : side + 2 * place;
+        if (player < 0 || player >= players || (place == 1 && player == SidePlayer(side, 0, players))) return -1;
+        return player;
+    }
     // (the Ready row's place in Port::onlineRows: not one of the game's features)
     constexpr const char *kReadyRow = "#ready";
 } // namespace
@@ -3980,19 +3989,44 @@ void Port::OpenOnlineMenu() {
     }
     onlineSeats.clear();
     if (net->CanSeat()) {
-        // (the host's, in a match of four: the people moved between the sides and partners, issue #448; in a match of
-        // two, the sides only). Each is where the people now at players 1-4 go: the sides swapped, or the person at
-        // player 1 with each other partner
+        // (the host's: the people moved between the sides and partners, issue #448). Each move swaps the people at two
+        // places, or two pairs of places, of the game's teams (SidePlayer): in a match of four the sides swapped, or the
+        // left's first with each of the right's; in 2 vs 1 or 1 vs 2, who plays alone (the side of two stays the side
+        // of two: that is the Tag team setting) or which partner goes first; in a match of two, the sides
+        const int players = net->Players();
+        const int left = SidePlayer(0, 0, players), leftTwo = SidePlayer(0, 1, players);
+        const int right = SidePlayer(1, 0, players), rightTwo = SidePlayer(1, 1, players);
+        struct Move {
+            const char *what;
+            std::vector<std::pair<int, int>> swaps;
+        };
+        std::vector<Move> moves;
+        if (players == 2) {
+            moves = {{"Swap sides", {{left, right}}}};
+        } else if (players == 4) {
+            moves = {{"Swap sides", {{left, right}, {leftTwo, rightTwo}}},
+                     {"Change partners", {{leftTwo, right}}},
+                     {"Change partners", {{leftTwo, rightTwo}}}};
+        } else if (players == 3) {
+            const bool soloLeft = leftTwo < 0;
+            const int solo = soloLeft ? left : right, first = soloLeft ? right : left, second = soloLeft ? rightTwo : leftTwo;
+            moves = {{"Change teams", {{solo, first}}}, {"Change teams", {{solo, second}}}, {"Swap partners", {{first, second}}}};
+        }
         const Netplay::Layout now = net->SeatLayout();
-        static const int kMoves[3][4] = {{1, 0, 3, 2}, {0, 2, 1, 3}, {0, 1, 3, 2}};
-        static const char *const kWhat[3] = {"Swap sides", "Change partners", "Change partners"};
-        const bool two = net->Players() == 2;
-        for (int n = 0; n < (two ? 1 : 3); ++n) {
+        const bool two = players == 2;
+        for (const Move &move : moves) {
+            int to[Machine::kMaxPlayers] = {0, 1, 2, 3};
+            bool valid = true;
+            for (const auto &[a, b] : move.swaps) {
+                valid = valid && a >= 0 && b >= 0;
+                if (valid) std::swap(to[a], to[b]);
+            }
+            if (!valid) continue;
             Netplay::Layout moved{};
             for (int m = 0; m < net->Machines(); ++m)
-                for (int person = 0; person < net->People(m); ++person) moved[m][person] = kMoves[n][now[m][person]];
+                for (int person = 0; person < net->People(m); ++person) moved[m][person] = to[now[m][person]];
             onlineSeats.push_back(moved);
-            online.commands.push_back({Menu::kOnlinePage, std::string(kWhat[n]) + ": " + TeamsSaid(moved),
+            online.commands.push_back({Menu::kOnlinePage, std::string(move.what) + ": " + TeamsSaid(moved),
                                        two ? "Swaps who plays player 1 and player 2 now, without leaving the match: player 1 "
                                              "first. Each player keeps their own controller, and their fighters' picks "
                                              "are the side's. The set's score starts again from 0-0."
@@ -4109,8 +4143,8 @@ void Port::OpenOnlineMenu() {
     menu.OpenOnline(std::move(online));
 }
 
-// The teams of a layout, as the menu and the chat say them: the left's two (players 1 and 3), then the right's (2 and 4);
-// in a match of two, player 1 then player 2
+// The teams of a layout, as the menu and the chat say them: the left's (its first, then its second), then the right's
+// (SidePlayer: the game's teams); in a match of two, player 1 then player 2
 std::string Port::TeamsSaid(const Netplay::Layout &layout) const {
     std::string who[Machine::kMaxPlayers];
     for (int m = 0; net && m < net->Machines(); ++m) {
@@ -4123,8 +4157,16 @@ std::string Port::TeamsSaid(const Netplay::Layout &layout) const {
             if (net->People(m) > 1) who[player] += " (" + std::to_string(person + 1) + ")";
         }
     }
-    if (net && net->Players() == 2) return who[0] + " vs " + who[1];
-    return who[0] + " + " + who[2] + " vs " + who[1] + " + " + who[3];
+    const int players = net ? net->Players() : 2;
+    std::string said;
+    for (int side = 0; side < 2; ++side) {
+        if (side) said += " vs ";
+        for (int place = 0; place < 2; ++place) {
+            const int player = SidePlayer(side, place, players);
+            if (player >= 0) said += (place ? " + " : "") + who[player];
+        }
+    }
+    return said;
 }
 
 void Port::OnlineCommand(size_t index) {
