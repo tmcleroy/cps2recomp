@@ -9,6 +9,9 @@
   over (and lasts two hours at most). `logs/game.log` says whether the router made it, or why not (no UPnP, the port
   taken, another router in front); a router that makes the forward but won't say its own address gets the one the STUN servers saw. `--net-forward off` doesn't ask. Also in the log: the build's commit, and the
   STUN check's end when it has no verdict (how many servers answered, or that no UDP answer came back: a firewall), the game's socket, the first send the system refuses (with why), and every feature on at the match's start (two logs side by side show a setting that differs, for a desync).
+- **Street Fighter Alpha 3: Infinite guard gauge** (Training mode page). Both players' guard gauge stays full, so no
+  guard is crushed, and stays the size the round began with (a guard crush or an Alpha counter makes it smaller). It's
+  the only game in the collection with a guard gauge.
 - **Online: a relay for networks that stop direct connections**. A player
   behind a strict router (a symmetric or carrier-grade NAT) couldn't reach anyone, or be reached. Each copy now also
   takes an address on Cloudflare's TURN relay, said with its others; a match that can be made directly is made
