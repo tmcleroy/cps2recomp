@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 1.6.0-beta.7
+
+**Online play that connects where it couldn't, training online, and the Alphas' training in the Street Fighter IIs.**
+A player behind a strict router, or a firewall that stops direct connections, now reaches the others through a relay
+(RELAY by the ping), and the game asks the home router to open a port by itself, as Fightcade does, so more matches
+are made directly. The host can start a training session for both players online. The Street Fighter II games get the
+Alphas' training aids and the Ball battle; Marvel vs. Capcom gets throw techs, a computer-played dummy and a ring out
+the computer plays; the dummy's guard has new choices in every fighting game; and Alpha 3 gets air recovery and an
+infinite guard gauge. Pre-release, as 1.6.0-beta.6 was.
+
+**Known issue:** online, the Ball battle can go out of sync as a round begins with some fighters and stages (Hyper
+Street Fighter II every time, Champion Edition sometimes; Alpha 3's on 1.6.0-beta.6 too). Offline it plays as it should.
+
 - **Ball battle in the Street Fighter IIs**: Super Turbo, Super Street Fighter II, The World Warrior, Champion Edition,
   Hyper Fighting (and its CSL editions) and Hyper Street Fighter II get the ball game on the Alternative modes page:
   each fighter on a half, attacks sending the big ball past the other for a point, first to 3, 5 or 10, the whole
