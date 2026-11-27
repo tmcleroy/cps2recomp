@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Marvel vs. Capcom: more training, and a ring out the CPU plays.** The dummy techs throws (off, always, at
+  random), guards high or low by the game's own rule for each attack, and can be played by the game's own computer
+  player. New aids: a stun readout and fixed damage (no random part in a hit's damage). In the ring out the CPU now
+  plays for the ring out: it walks you towards an end, throws or sweeps you over it, and gets out of its own corner,
+  more or less often by its difficulty. (The game has no air recovery input, no rolls after a knock-down and no
+  dizzy to mash out of, so those dummy choices aren't offered.)
 - **The dummy's guard: First hit only, Standing only, Crouching only** (every fighting game). Dummy → Guards gains three
   choices. **First hit only** guards an attack, then lets what follows it through until a second has gone by with nothing
   and a new attack begins, to show whether a string or a frame trap leaves a gap. (Hits that land while it still
