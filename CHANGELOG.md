@@ -8,6 +8,15 @@
   plays for the ring out: it walks you towards an end, throws or sweeps you over it, and gets out of its own corner,
   more or less often by its difficulty. (The game has no air recovery input, no rolls after a knock-down and no
   dizzy to mash out of, so those dummy choices aren't offered.)
+- **Training online** (every fighting game). In a two-person match the host's Esc menu has **Start Training**: the
+  board starts again, each player chooses their own character, and the fight has no clock and no knock-outs. The host's
+  Training mode settings apply to both (health and gauge refills, fixed damage). Hit boxes, frame data, the frame meter,
+  the input display and the readouts are each player's own, on their Online match page. Either player starts the round
+  over for both (Backspace or a gamepad's left shoulder, the stick choosing the place). There's no dummy online. Both
+  players need this version (protocol 21).
+- **Hit boxes no longer change the game's timing.** Drawing them, the readouts and what the dummy looks at read the
+  game's memory through the processor's bus, which counted wait states and moved the program's clock a little. These
+  reads now count none.
 - **Street Fighter Alpha 3: Infinite guard gauge** (Training mode page). Both players' guard gauge stays full, so no
   guard is crushed, and stays the size the round began with (a guard crush or an Alpha counter makes it smaller). It's
   the only game in the collection with a guard gauge.

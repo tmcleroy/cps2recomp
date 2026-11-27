@@ -112,6 +112,21 @@ public:
         }
     }
     uint64_t waitsCounted = 0; // (CPS2RECOMP_BUS_LOG: the waits since the last frame)
+    // While one lives: reads with no waits counted, for the reads the game's sources make outside the program's own run
+    // (the training session's boxes, readouts and dummy: fight/session.cpp). Counted, they would move the game's
+    // timing by what is shown, and online two machines showing different things would come apart.
+    struct NoWaits {
+        explicit NoWaits(M68K &cpu) : c(cpu), was(cpu.busWait) {
+            c.busWait = 0;
+        }
+        ~NoWaits() {
+            c.busWait = was;
+        }
+        NoWaits(const NoWaits &) = delete;
+        NoWaits &operator=(const NoWaits &) = delete;
+        M68K &c;
+        unsigned was;
+    };
     // A one-word instruction that went somewhere else (a short branch taken, RTS, JMP (An), TRAP, RTE): the
     // 68000 fetches two words there in place of the one it had fetched ahead, a word more than the instruction
     // has (translated code adds the same where it jumps; tools/recomp.py). One that always goes (JMP and JSR (An),
