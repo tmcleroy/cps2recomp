@@ -11,15 +11,15 @@ Marvel Super Heroes, a dummy that Alpha counters in Alpha 3...); each game's own
 | Aid | What it does |
 | --- | --- |
 | Hit boxes | The boxes the game itself tests: where a player can be hit (blue), attacks (red; orange for things thrown), pushing boxes (green) |
-| Throw range | (Alpha 2 and 3) The zone in front of each player that the other's push box has to reach for a throw |
+| Throw range | (Alpha 2 and 3, the Street Fighter II games) The zone in front of each player that the other has to reach for a throw (its push box in the Alphas, its place to be thrown by in Street Fighter II) |
 | Frame data and frame meter | Startup, active and recovery of each move, and the advantage after a hit or a guarded hit, counted in the game's own frames; a row of cells for each player, one a frame; optionally every move written to `frame_data.csv` beside the settings |
 | Input display | What each player presses and for how long, in numpad notation from the player's side |
 | Combo readout | Hits and damage of a combo, and the round's best |
 | Stun readout | (the Street Fighter games, Pocket Fighter and Marvel vs. Capcom) How much stun each player has taken, against how much stuns them |
-| Fixed damage | (Alpha 2 and 3, Marvel vs. Capcom) No random part in a hit's damage, so a combo always does the same |
+| Fixed damage | (Alpha 2 and 3, the Street Fighter II games, Marvel vs. Capcom) No random part in a hit's damage, so a combo always does the same |
 | Health and meter refills | Health comes back when a player hasn't been hit for a moment; the super gauge can be kept full |
 | Online | The host starts a session for both players (Esc, Start Training): each picks their own character, the host's refills and fixed damage, each player's own boxes, frame data and readouts, Start over for both from either. No dummy. [docs/ONLINE.md](ONLINE.md#training-online) |
-| The dummy | Stands, crouches or jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only; high or low by the game's own rule for each attack); reverses; techs throws (Alpha 2 and 3, the Vampire Savior games, Marvel vs. Capcom) and gets up quickly after a knock-down (Alpha 2 and 3, the Vampire Savior games); recovers in the air after a juggle, neutral, forward or back (Alpha 3); or is played by the game's own computer player (Alpha 2 and 3, Marvel vs. Capcom). It **records and replays** what you show it in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
+| The dummy | Stands, crouches or jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only; high or low by the game's own rule for each attack); reverses; techs throws (Alpha 2 and 3, the Vampire Savior games, Super Turbo and Hyper Street Fighter II, Marvel vs. Capcom) and gets up quickly after a knock-down (Alpha 2 and 3, the Vampire Savior games); recovers in the air after a juggle, neutral, forward or back (Alpha 3); mashes out of stun (Alpha 2 and 3, the Street Fighter II games); or is played by the game's own computer player (Alpha 2 and 3, the Street Fighter II games, Marvel vs. Capcom). It **records and replays** what you show it in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
 | Start over | The round as it began, in the middle or a corner, sides swapped or not (Backspace, or a gamepad's left shoulder) |
 | Stage | Any of the game's stages, or the game's own choice: the menu's **Stage** page, which every way of playing goes by |
 | Stop, step, slow | Stop the game, go on a frame at a time, or play at a half, a quarter or an eighth of the speed |

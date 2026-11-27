@@ -116,6 +116,16 @@ All in `src/hsf2.h` with the routine or the experiment each came from. A5 is FF8
   region at 0012A0, which 00126A reads from the ROM as data: they run on this translation as they are, and online the
   host sends that word. `hsf2j1` (Japan 031222) is an earlier revision: not taken.
 
+- **The Alphas' training aids**, as Super Turbo's (`games/ssf2t/PROGRESS.md`), with this game's places, all hooked at
+  places that already began blocks of translated code: the random part of a hit's damage (0C2FD4 on: 0C2FEE, 0C2FF0)
+  and a throw's (004C82, 004C84); the throw test's boxes (00478C on, Super Turbo's offsets); the stun (+124, 068EC2);
+  softening (004870: only when the one thrown and the thrower are both of Super Turbo's version, +2BC and +2BD); the
+  guard decision (0C3044 on), which goes by the attacker's version: Super Turbo's way for Super Turbo's and Super's
+  (a jump table by the attack's +0F at 0C307E, its routines 0C310C most, 0C3124 standing only, 0C312A and 0C3132
+  crouching only, 0C3130 either), the classic games' for the World Warrior's, Champion Edition's and Hyper Fighting's
+  (0C3138: the attack's +0B through a row of four bytes for each pose, the rows at 0C31B4). An attack box here keeps
+  those two at +0F and +0B (Super Turbo's +0B and +07).
+
 ## Checks
 
 Run on 2026-11-03, macOS (Apple silicon), each alone:
@@ -158,6 +168,12 @@ Run on 2026-11-03, macOS (Apple silicon), each alone:
   (no damage, one-hit knock-outs up the whole ladder, the clock held); training's hit boxes on the fighters; attract
   mode's three shows; Akuma with the switch (and without it, none); the camera zoom on one fighter and on both.
 - **Launcher**: its three pages drawn with no window.
+
+- **The training aids above** (2026-11-27): with them off, the ladder, the versus movie and two training sessions give a
+  build of main's hash logs byte for byte. Seen working in headless sessions, Super Turbo's version and (player 1) Hyper
+  Fighting's: fixed damage, the guard (standing only lets a crouching kick through, crouching only a jump kick, in both
+  ways of deciding), softening (Super Turbo's versions only, as the game has it), the stun mash, the computer, the answer
+  with a recording.
 
 ## Not yet
 

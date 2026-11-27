@@ -100,6 +100,39 @@ this set (peon2/fbneo-training-mode, `games/ssf2t`) named some of them first; ea
   this way or 0x70 going away, or the other attacking (+18B) within 0xE0 (+182, how far apart): the coach's "attack
   coming".
 
+- **The Alphas' training aids** (the throw range, fixed damage, a dummy that guards high or low by the game's rule,
+  softens throws, mashes out of stun or is played by the computer), all with hooks at places that already began blocks
+  of translated code (a hook elsewhere splits a block, which moves where an interrupt is taken, and with it the game):
+  - *Fixed damage*: a hit's damage gets a random byte of a row of 32 (0BEE40: the table at 0E7996, the row by the
+    attack's +0A, or +09 above 0x3C health, the pick the random number's low five bits), and a throw's alike (004B86;
+    the classic games' throws have none). Hooked where the sum is next used (0BEE74, 004BDC) and where it is made 1
+    (0BEE72, 004BDA): the row's average put in the byte's place. 19 every time for Ryu's medium punch (19, 21, 20 at
+    random) until the health is low enough for the game's own reduction (0BEE80).
+  - *Throw range*: the throw test (00461E, 004604, 00460C; 0046E4) takes the thrower's box from its record (+64 across,
+    +66 up, +68 and +6A half sizes: put there for the throw tried, by the character's table at 0B8650, and written by
+    nothing else) and the other's place to be thrown by (+6C half width, +6E height, a table by character as a round
+    is set up; +2AA across while +2A7 is set, Super Turbo's alone). Drawn from the records, no hook.
+  - *Guarding high or low*: the guard decision (0BEEA4) takes the guarding pose (the frame's +11: 1 standing, 2
+    crouching) and, through a jump table by the attack's +0B (0BEED8, 38 kinds), one of five routines: most attacks
+    (crouching guards them, standing only on the head or body: lows reach the legs), standing only (kind 0C, a jump
+    attack, 24, 26, 34, 4A), crouching only (0E, 28), either way. The classic games decide by the attack's +07 through
+    a row of four bytes for each pose (Champion Edition's 095608; family.h's kGuardRows). `src/guard.cpp` asks the same
+    of the attack coming, for both poses and all three hurt boxes, and the game's guard test (07AF3A) for when.
+  - *Softening*: 0047D4, each step of being thrown, Super Turbo's alone: the stick to a side and a medium or heavy
+    button new within 0x0E steps (+2BC) sets +2BD, and the throw does half its damage (32 to 16, Ryu's). The one
+    thrown stays in its own state meanwhile, +63 FF (1 for the thrower), and its own step does not run: the dummy is
+    told it is held by that byte.
+  - *Stun*: +124 is 1 while stunned (07A7B2, cleared at 07A7D2); a person shortens it (07A80E: 2 for the stick from
+    the middle, 1 for a button new, 2 in Hyper Fighting, and at 3 the step's time off +60). Mashing every other frame:
+    130 frames stunned became 43.
+  - *The box tables of the other games*: Super Street Fighter II's attack boxes are twelve bytes (Super Turbo's
+    sixteen), and the classic games keep an attack's table at +8 and the pushing box's at +A (Super Turbo's +6 and
+    +8; +6 there is a fourth box the hit test looks at only after a hit), twelve bytes an attack box: family.h's
+    kTableAttack, kTablePush, kAttackBoxSize, read in each game's hit test. Until now the hit boxes drew those games'
+    attack and pushing boxes from Super Turbo's places (in Champion Edition no attack box showed at all).
+  - *The computer*: +38E to 0 and back when the game lets the player change hands (battle.cpp's HandOver), the
+    computer set up by `src/computer.cpp` as for the fighting modes.
+
 ## Checks
 
 Run on 2026-10-25, macOS (Apple silicon), each alone:
@@ -144,6 +177,15 @@ Run on 2026-10-25, macOS (Apple silicon), each alone:
   free select, arcade timing nor a processor twice as fast changes that. It is not a fault of the translation (`check`
   and `check-blocks`, which take interrupts as translated code does, agree exactly); in most other games the frames are
   not full enough for it to show (Alpha and Alpha 2's ladders part too).
+
+- **The training aids above** (2026-11-27): with them off, the ladder (40,000 frames), the versus movie and two
+  training sessions (widescreen, and the aids) give the hash logs of a build of main, byte for byte, in all seven games
+  that build these sources (and in Hyper Street Fighter II); the fleet worker's queue was stuck (11 jobs queued
+  since 2026-11-18), so every check ran on this Mac. Each was seen working in headless sessions: fixed damage
+  (one damage every time), the guard (always: nothing hits; standing only: a crouching kick hits; crouching only: a
+  jump kick hits), softening (half the damage), the stun mash (stunned for a third as long), the computer (playing,
+  then a person again when switched off), the answer with a recording (on the first frame it can act), the throw
+  range's boxes in pictures.
 
 ## Not yet
 

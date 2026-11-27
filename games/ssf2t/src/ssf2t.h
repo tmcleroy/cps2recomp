@@ -131,8 +131,9 @@ constexpr uint32_t kFacesRight = 0x12; // byte: not zero when facing right (play
 // its width and half its height. An attack whose byte +5 has its top bit set reaches that far across instead (0BF5AE).
 constexpr uint32_t kFrame = 0x1A, kBoxTables = 0x34;
 constexpr uint32_t kFrameHead = 0x08, kFrameBody = 0x09, kFrameLegs = 0x0A, kFrameAttack = 0x0C, kFramePush = 0x0D;
-constexpr uint32_t kTableHead = 0x0, kTableBody = 0x2, kTableLegs = 0x4, kTableAttack = 0x6, kTablePush = 0x8;
-constexpr uint32_t kBoxSize = 4, kAttackBoxSize = 0x10;
+// (an attack's and the pushing box's table, and the size of an attack box, differ in the other games: family.h)
+constexpr uint32_t kTableHead = 0x0, kTableBody = 0x2, kTableLegs = 0x4, kTableAttack = family::kTableAttack, kTablePush = family::kTablePush;
+constexpr uint32_t kBoxSize = 4, kAttackBoxSize = family::kAttackBoxSize;
 constexpr uint32_t kHitStop = 0x47; // byte: frames the player stands frozen for while a hit lands (14 a light one)
 constexpr uint32_t kGuarded = 0x49; // byte: set when the hit landing on the player is guarded (0BEF32, 0BEF48, 0BEF58)
 constexpr uint32_t kInAir = 0x181;  // byte: not zero while in the air
@@ -197,6 +198,42 @@ constexpr uint32_t kPlayerStep = At(0x0782D4), kComputerPlayerStep = At(0x07BC12
 // A hit has been decided and taken (A6 the attacker, A2 the victim; kGuarded says whether guarded): where a player's
 // attack's two ways meet (0BE678), and a thrown thing's (0BEBDA)
 constexpr uint32_t kHitTaken = At(0x0BE678), kThrownHitTaken = At(0x0BEBDA);
+// A hit's damage has a random part (0BEE40): a byte of a row of 32 of the table at 0E7996 (the row by the attack's +0A,
+// or +09 when the attacker's health is 0x3C or more), picked by the game's random number (002E96, its low five bits),
+// added to the damage (D6) at 0BEE6A, D0 the byte, A1 the table, D2 the row's start plus the pick; the sum is made 1
+// where it comes to nothing or less (0BEE72), and both ways go on at 0BEE74. A throw's alike (004B86: D4 the damage,
+// 004BDA and 004BDC); the classic games' throws have none (0 there). Read in the listing.
+constexpr uint32_t kHitMadeOne = At(0x0BEE72), kHitSummed = At(0x0BEE74), kThrowMadeOne = At(0x004BDA), kThrowSummed = At(0x004BDC);
+// The throw test (00461E, 004604, 00460C: every throw a player tries, a person's or the computer's) compares (0046E4)
+// the thrower's (A6) box with the other's (A3) place to be thrown by: words of the thrower's record, its box's middle
+// across (+64, turned about with the facing as an attack box is) and up (+66) from where it stands, half its width
+// (+68) and height (+6A), put there for the throw being tried (from the character's table by the throw, 0B8650; each
+// character's own code in the World Warrior), and nothing else writes them; and words of the other's, half the width of
+// its place (+6C) and its height (+6E) up from where it stands (a table by character, as a round is set up: 0050CE), in
+// Super Turbo +2AA across from there while +2A7 is set. A throw is in range when the two overlap across and that height
+// is inside the box. Read in the listing; the test is the same in every game of the family (Super Turbo's alone has +2A7).
+constexpr uint32_t kThrowX = 0x64, kThrowY = 0x66, kThrowHalfWidth = 0x68, kThrowHalfHeight = 0x6A;
+constexpr uint32_t kThrowableHalfWidth = 0x6C, kThrowableY = 0x6E, kThrowableMoved = 0x2A7, kThrowableX = 0x2AA;
+// Stunned: a byte, 1 while the player is (07A7B2 sets it, 07A7D2 clears it as the stun's time, the word +60, runs out).
+// A person shortens it (07A80E): each step the stick goes from the middle to a side adds 2 to the byte +125 and a button
+// newly pressed 1 (2 in Hyper Fighting), and at 3 or more the step's time comes off +60 at once. The same in every game.
+constexpr uint32_t kStunned = 0x124;
+// Softening a throw (Super Turbo's: 0047D4, each step of being thrown): a person holding the stick to either side and
+// pressing a medium or heavy button new (0x660 of the controls' word) within 0x0E steps of the throw's start (+2BC
+// counts them) sets +2BD, and the throw does half its damage (004C88). Not in the other games of the family.
+constexpr uint32_t kSoftened = 0x2BD;
+// A throw going on: a byte, 1 in the thrower's record and FF in the one thrown (004766, cleared as the throw ends at
+// 004E3E); the one thrown stays in its own state meanwhile (+03 standing, say). The same in every game of the family.
+constexpr uint32_t kHeldBy = 0x63;
+// The guard decision as a hit lands (0BEEA4, src/guard.cpp): the victim's guarding pose is its frame's byte +11 (0 not
+// guarding, 1 standing, 2 crouching), the hurt box hit (0 head, 2 body, 4 legs) is put at A5-56EA by the hit test, and a
+// jump table by the attack's +0B (0BEED8) goes to one of five routines: most attacks (0BEF66: crouching guards it, standing
+// only on the head or the body), guarded only standing (0BEF7C), only crouching (0BEF82, 0BEF8A), either way (0BEF88).
+// The classic games have a table of rows instead (family.h). Read in the listing.
+constexpr uint32_t kGuardTypes = At(0x0BEED8), kGuardMost = At(0x0BEF66), kGuardStanding = At(0x0BEF7C), kGuardCrouching = At(0x0BEF82),
+                   kGuardEither = At(0x0BEF88), kGuardCrouching2 = At(0x0BEF8A);
+constexpr uint32_t kFrameGuardPose = 0x11;
+constexpr uint32_t kAttackLevel = 0x07, kAttackType = 0x0B; // bytes of an attack box: its height (the classic games) and kind
 // The match's first step: the characters are chosen (00D714, the step word under the game's going to 2)
 constexpr uint32_t kMatchBegins = At(0x00D714);
 
