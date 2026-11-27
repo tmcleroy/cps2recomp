@@ -15,6 +15,11 @@ infinite guard gauge. Pre-release, as 1.6.0-beta.6 was.
 **Known issue:** online, the Ball battle can go out of sync as a round begins with some fighters and stages (Hyper
 Street Fighter II every time, Champion Edition sometimes; Alpha 3's on 1.6.0-beta.6 too). Offline it plays as it should.
 
+**Known issue:** in Vampire Savior 2 and Vampire Hunter 2, widescreen shows a blank strip at one end of ten of the other
+games' stages, as in earlier releases: Darkstalkers' and Night Warriors' Demitri's, Night Warriors' Donovan's, Alpha 2's
+Dan's, Alpha 3's Ken's, Sodom's, Guy's and Dhalsim's, Super Turbo's Dee Jay's, and Cyberbots' space stage (#436). Their
+own stages, and every other game, are not affected.
+
 - **Ball battle in the Street Fighter IIs**: Super Turbo, Super Street Fighter II, The World Warrior, Champion Edition,
   Hyper Fighting (and its CSL editions) and Hyper Street Fighter II get the ball game on the Alternative modes page:
   each fighter on a half, attacks sending the big ball past the other for a point, first to 3, 5 or 10, the whole
