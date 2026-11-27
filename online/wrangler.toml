@@ -34,3 +34,10 @@ new_sqlite_classes = ["Room"]
 [[migrations]]
 tag = "v4"
 new_sqlite_classes = ["Stats"]
+
+# The relay's credentials (GET /v1/relay): at most 10 a minute from one IP. Its TURN key is two secrets, TURN_KEY_ID
+# and TURN_KEY_API_TOKEN (online/README.md)
+[[ratelimits]]
+name = "RELAY_LIMIT"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }

@@ -218,14 +218,31 @@ namespace {
         return text;
     }
 
-    // The game's own aid: the super combo gauge kept full (in a fight, and not while a V-ism custom combo goes on: its
-    // time runs down with the gauge, and it is filled again once the combo is over)
+    // The largest guard gauge seen for each character and ism: the size a round starts with, before a crush or an Alpha
+    // counter made it smaller (02BE1A sets it by the character; the ism changes it)
+    uint8_t g_guardSize[kCharacters][4] = {};
+
+    // The game's own aids: the super combo gauge kept full (in a fight, and not while a V-ism custom combo goes on: its
+    // time runs down with the gauge, and it is filled again once the combo is over); the guard gauge kept full, at the
+    // size the round began with
     void Hud(Machine &, std::vector<HudLine> &, std::vector<HudBox> &) {
         for (int n = 0; n < 2; n++) {
             const uint32_t player = Player(n);
             if (FeatureOn("gauge_refill") && Ram8(player + kState) == 2 && !Ram8(player + kCustomCombo) &&
                 Ram16(player + kSpecialGauge) < kSpecialGaugeFull) {
                 SetRam16(player + kSpecialGauge, kSpecialGaugeFull);
+            }
+            const uint8_t who = Ram8(player + kCharacter), ism = Ram8(player + kIsm) & 3;
+            if (Ram8(player + kState) != 2 || who >= kCharacters) {
+                continue;
+            }
+            uint8_t &size = g_guardSize[who][ism];
+            size = std::max(size, Ram8(player + kGuardSize));
+            if (FeatureOn("guard_refill")) {
+                SetRam8(player + kGuardTaken, 0);
+                if (Ram8(player + kGuardSize) < size) {
+                    SetRam8(player + kGuardSize, size);
+                }
             }
         }
     }
@@ -385,7 +402,10 @@ void RegisterTraining() {
     // (after the session's own, so it follows "Health refills"; a training aid, as the session's are)
     game.features.push_back({"gauge_refill", modes::kTraining, "Gauge refills",
                              "Both players' super combo gauge kept full (every ism's), filled again after a custom combo."});
-    TrainingAids({"gauge_refill"});
+    game.features.push_back({"guard_refill", modes::kTraining, "Infinite guard gauge",
+                             "Both players' guard gauge kept full, so nobody's guard is crushed; and at the size the round "
+                             "began with (a guard crush or an Alpha counter makes it smaller)."});
+    TrainingAids({"gauge_refill", "guard_refill"});
     game.features.push_back({"dummy_stun_mash", "Dummy", "Mashes out of stun",
                              "Stunned, the dummy works the stick and the buttons as fast as it can, as a player does to get out sooner."});
     game.features.push_back({"dummy_computer", "Dummy", "Played by the game",
