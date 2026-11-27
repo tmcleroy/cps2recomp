@@ -941,6 +941,9 @@ bool Netplay::Begin(Port &port, std::string &error) {
             return found;
         });
         stunBegan = NowMs();
+        if (settings.forward && settings.relay != 1) {
+            forwardLookup = std::async(std::launch::async, [port = socket.LocalPort()] { return portmap::Open(port, 2800); });
+        }
     }
     fprintf(stderr, "online: %s\n", waiting.c_str());
     return true;
@@ -1005,6 +1008,9 @@ std::string Netplay::Addresses() const {
     }
     if (!seenAs.empty()) {
         list.push_back(seenAs);
+    }
+    if (forward.ok && forward.external != seenAs) {
+        list.push_back(forward.external); // (the router's forward: reached directly, whatever the router lets in)
     }
     if (!relayed.empty()) {
         list.push_back(relayed); // (the relay's: the other side's packets to it come here through the relay)
@@ -1167,6 +1173,24 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
                     fprintf(stderr, "online: network check: no UDP answer came back: a firewall (Windows: \"Allow an app through "
                                     "firewall\") or the network may be stopping this game's UDP\n");
                 }
+            }
+        }
+        // (the router's forward: as long as it takes, up to 3 seconds from the start (portmap::Open's own time))
+        if (forwardLookup.valid() && !forwardTold) {
+            if (forwardLookup.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                forwardTold = true;
+                forward = forwardLookup.get();
+                if (forward.ok) {
+                    fprintf(stderr, "online: the router forwards a port: %s at %s, %s to this machine's UDP port %d\n", forward.how.c_str(),
+                            forward.router.c_str(), forward.external.c_str(), forward.localPort);
+                } else {
+                    fprintf(stderr, "online: no forward from the router: %s\n", forward.why.c_str());
+                }
+            } else if (now - stunBegan < 3000) {
+                return true;
+            } else {
+                forwardTold = true; // (taken when it comes, by ~Netplay, to take the forward away)
+                fprintf(stderr, "online: no forward from the router: no answer in time\n");
             }
         }
         // (the relay: its server, then an address there, for a moment (3 seconds from the start for the server, 4 more
@@ -2941,6 +2965,11 @@ Netplay::~Netplay() {
         socket.Send(late.front().to, late.front().data.data(), late.front().data.size());
         late.pop_front();
     }
+    // (the router's forward taken away: the match is over. One still being made is waited for, to be taken away too)
+    if (forwardLookup.valid()) {
+        forward = forwardLookup.get();
+    }
+    portmap::Close(forward);
 }
 
 void Netplay::Leave(bool reopening) {
