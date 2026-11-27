@@ -170,8 +170,10 @@ void RegisterDummy(const DummyOptions &options) {
                              {"1", "2", "3"}});
     game.features.push_back({"dummy_guard", "Dummy", "Guards",
                              "Player 2 guards player 1's attacks, standing or crouching as each needs: always; only for a moment "
-                             "after being hit (to see whether a combo really is one); or one attack in two, at random.",
-                             0, {"Off", "Always", "After a hit", "At random"}});
+                             "after being hit (to see whether a combo really is one); one attack in two, at random; only the "
+                             "first attack and not the ones that follow it (to see whether a string or a frame trap leaves a "
+                             "gap); or always, but only standing or only crouching (so that lows, or overheads and jump-ins, hit).",
+                             0, {"Off", "Always", "After a hit", "At random", "First hit only", "Standing only", "Crouching only"}});
     if (!options.guardActions.empty()) {
         std::vector<const char *> names = {"Nothing"};
         for (const auto &action : options.guardActions) {
@@ -357,14 +359,22 @@ void Dummy::BeforeFrame(uint16_t &one, uint16_t &two, const DummyView &view) {
 
     // Guarding: when the game's own test says something is near enough to guard: away from player 1, standing or
     // crouching as the attack needs. (Holding away all the time would walk it into the corner.)
-    const int guard = FeatureValue("dummy_guard"); // 1 always, 2 after the first hit, 3 at random
+    // 1 always, 2 after the first hit, 3 at random, 4 the first hit only, 5 always standing, 6 always crouching
+    const int guard = FeatureValue("dummy_guard");
     const bool inRange = guard && !busy && view.attackInRange;
+    m_g.sinceGuarded = doing == Doing::GuardStun ? 0 : std::min(m_g.sinceGuarded + 1, 1 << 20);
     if (inRange && !m_g.inRange) {
-        m_g.guardThis = guard == 1 || (guard == 2 && view.sinceHit < kGuardAfterHit) || (guard == 3 && (Random() & 0x100));
+        m_g.guardThis = guard == 1 || guard >= 5 || (guard == 2 && view.sinceHit < kGuardAfterHit) ||
+                        (guard == 3 && (Random() & 0x100)) ||
+                        (guard == 4 && m_g.sinceGuarded > kGuardAfterHit && view.sinceHit > kGuardAfterHit);
     }
     m_g.inRange = inRange;
-    if (inRange && (m_g.guardThis || doing == Doing::GuardStun)) {
-        held = static_cast<uint16_t>(away | (view.guardStanding ? 0 : kStickDown));
+    if (guard == 4 && doing == Doing::GuardStun) {
+        m_g.guardThis = false; // (the first one guarded: what follows it is let through, until a quiet moment)
+    }
+    if (inRange && (m_g.guardThis || (doing == Doing::GuardStun && guard != 4))) {
+        const bool standing = guard == 5 || (guard != 6 && view.guardStanding);
+        held = static_cast<uint16_t>(away | (standing ? 0 : kStickDown));
     }
     // While guarding a hit
     if (doing == Doing::GuardStun) {

@@ -104,7 +104,7 @@ the page holds the aids below.
 | Combo readout | Hits and damage of a combo, the round's best |
 | Stun readout | How much stun each player has built up, against how much stuns them (more each time they have been stunned) |
 | Health and gauge refills | Health comes back when a player has not been hit for a moment; both super combo gauges kept full |
-| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random); records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
+| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only); records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
 | Start over | The round as it began, in the middle or a corner, sides swapped or not (Backspace, or a gamepad's left shoulder) |
 | Stage | Any of the sixteen stages, or the game's own choice |
 | Stop, step, slow | Stop the game, go on a frame at a time, or play at a half, a quarter or an eighth of the speed |
