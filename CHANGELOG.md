@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Ball battle in Marvel vs. Capcom** (Alternative modes > Ball battle): the ball game, one character a side (no tags,
+  special partners or Duo Team Attacks while it is played; the partner rests off the picture). The ball's hits are the
+  game's own (its reels, knock-downs and guards); the court is as wide as each stage is drawn, up to 768 columns.
 - **Ball battle in the Street Fighter IIs**: Super Turbo, Super Street Fighter II, The World Warrior, Champion Edition,
   Hyper Fighting (and its CSL editions) and Hyper Street Fighter II get the ball game on the Alternative modes page:
   each fighter on a half, attacks sending the big ball past the other for a point, first to 3, 5 or 10, the whole

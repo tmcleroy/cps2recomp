@@ -118,6 +118,10 @@ struct Engine {
     uint32_t cameraWayDown = 0;
     // The round's clock (a BCD byte)
     uint32_t clock = 0;
+    // A game with the ball game (fight/court.h): while it is played, the wide picture forced and played in, as wide each
+    // side of the board's picture as the stage that is on is drawn (up to Video::kMaxSide), the camera held in the
+    // middle (none: no ball game, widescreen's 64)
+    int (*courtSide)() = nullptr;
 
     // --- the game ---
     // A game is being played; a round is being fought (the picture is a fight's)

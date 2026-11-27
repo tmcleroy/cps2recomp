@@ -68,6 +68,11 @@ struct Description {
     // ... and the lines at the picture's top that the ball stays under (the game's panel: health bars and clock)
     int pictureTop = 0;
     int (*wideStage)() = nullptr;
+    // The picture's left edge less the camera's place across (the battle's camera: battle::Description::pictureLeft), and
+    // for a game whose heights grow downwards, the camera's place down (the picture's top, as the battle has it) as a
+    // height of the court's (y upwards, as `pictureFloor` counts it; nullptr: the battle's as it is)
+    int pictureLeft = 0;
+    int (*cameraHeight)(int cameraY) = nullptr;
     // A fighter's attack that has hit the ball: frozen for so many of the game's steps, as a hit freezes the attacker
     void (*freeze)(int side, int steps) = nullptr;
     // A fighter's special gauge filled by so much (the game's own units: `gaugeFull` a gauge)

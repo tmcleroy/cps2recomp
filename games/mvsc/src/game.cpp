@@ -28,6 +28,8 @@ void ModesState(Archive &ar);
 void RegisterTraining(); // training.cpp
 void RegisterChoosing(); // choosing.cpp
 void RegisterColours(); // colours.cpp
+void RegisterCourt();  // court.cpp (before the battle's: its page is among theirs)
+void CourtBeforeFrame(Machine &machine);
 void RegisterBattle(); // battle.cpp
 void ChoosingBeforeFrame(Machine &machine);
 void RegisterTag(); // tag.cpp
@@ -56,6 +58,7 @@ void RegisterGame() {
     // as the Alpha games')
     marvel::RegisterModel(HookAt(0x0CB2B2), 80, HookAt(0x0CB4F8));
     RegisterColours();
+    RegisterCourt();
     RegisterBattle();
     // (widescreen: the camera kept between its ends at 0CDBB6, a character kept inside the picture at 013AD6)
     marvel::RegisterWidescreen(HookAt(0x0CDBB6), HookAt(0x013AD6));
@@ -79,6 +82,7 @@ void RegisterGame() {
         session::BeforeFrame(machine);
         modes::BeforeFrame(machine);
         BattleBeforeFrame(machine);
+        CourtBeforeFrame(machine);
         colours::BeforeFrame(machine);
         marvel::ModelBeforeFrame(machine);
     };

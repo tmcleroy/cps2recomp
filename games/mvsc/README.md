@@ -11,7 +11,7 @@ call in.
 
 It has everything the other fighting games here have: a full **training mode** (hit boxes, frame data and a frame
 meter, input display, combo readout, a dummy that records, replays and guards), the **alternative modes** (attract
-mode, the stage and model viewers, survival, endless battle, ring out), **tag-team co-op and versus** for two to four
+mode, the stage and model viewers, survival, endless battle, ring out, the ball battle), **tag-team co-op and versus** for two to four
 players (online too, each on their own machine or two at one), the Dreamcast's **Cross Fever**, **widescreen**, **custom colours** with a colour editor, the **hidden characters** with no code, and the features every game shares: free play, straight to the
 title, the board's operator settings, cheats, save states, run-ahead, the board's speed, a custom soundtrack.
 
@@ -124,6 +124,7 @@ have. Each has a page with a Start row and its own choices, and runs until anoth
 | Survival | One computer team after another on the health you have left. How many can you beat? |
 | Endless battle | Two teams the game plays, for as long as you like, with no bars and no clock, on one stage, on stages that fade one into another, or on a floor that scrolls through them all. Touch the controls to take a side over |
 | Ring out | No health. Knock your opponent over the end of the stage (it is flung into the air and falls through the floor), then jump down after it and land on the next stage. The CPU plays it as a ring out, not for damage: it walks you towards an end, throws or sweeps you when your back is to it, and keeps off its own end, getting out of a corner with a throw, a jump over you or a walk out, more or less often by its difficulty |
+| Ball battle | A ball game, one character a side (no partners, assists or Duo Team Attacks). A line splits the stage and each fighter keeps to a half; hit the big ball with your attacks (harder attacks send it faster, and where you strike it decides the angle: under it for a lob, over it for a spike) past the other fighter and off their end for a point. Three hits in a row make a power shot; the ball makes whoever it hits reel or fall unless they block, and the fighters can hit each other too (nobody loses health). First to 3, 5 or 10, against the CPU (easy, medium or hard) or player 2; the whole court in a 16:9 frame, or a camera that follows the play ([more](../../docs/COURT.md)) |
 
 ## Tag team and player assignments
 
