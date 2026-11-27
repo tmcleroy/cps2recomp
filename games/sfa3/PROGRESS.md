@@ -125,6 +125,12 @@ The toolkit's session (`fight/session.h`) and its aids, with this game's facts i
   02000E) and hits player 1 nine times where it was hit twice; teched throws took 5 where they took 20; quick rise: 3
   rises from the 3 knock-downs that allow one, in 20,000 frames of made-up attacks; mashing: a stun of 136 frames took
   55. "Played by the game" sets +125.
+- Air recovery (02B330, called in reels 6 and 8 while flying): two punches, kept at +27A once pressed, taken when the
+  attacker's move is over (02BB5A clears the victim's +26A/+26B) and the player is high enough (0x30 neutral, 0x10
+  with the stick held); a juggle (reel 6) only while still going up. The stick (+37D, 02B4BC) sets the flight: neutral
+  keeps the hit's speed across, forward 1.0 across and 4.0 up, back 3.0 across and 6.0 up. Checked from a savestate
+  before a standing medium punch hit a jumping dummy: off, no recovery; neutral lands 47 px on; forward is hit again
+  by the next punch; back lands 98 px on.
 
 ## Alternative modes and the tag team battle
 

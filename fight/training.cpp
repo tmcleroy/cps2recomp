@@ -198,6 +198,14 @@ void RegisterDummy(const DummyOptions &options) {
         names.push_back("At random");
         game.features.push_back({"dummy_getup", "Dummy", "Gets up", options.getUpWords, 0, names});
     }
+    if (!options.airRecovery.empty()) {
+        std::vector<const char *> names = {"Off"};
+        for (const auto &action : options.airRecovery) {
+            names.push_back(action.name);
+        }
+        names.push_back("At random");
+        game.features.push_back({"dummy_air_recovery", "Dummy", "Air recovery", options.airRecoveryWords, 0, names});
+    }
     // (all of them training aids: the dummy is player 2 only in a training session)
     for (size_t n = first; n < TheGame().features.size(); n++) {
         TheGame().features[n].flags |= kFeatureTraining;
@@ -398,6 +406,24 @@ void Dummy::BeforeFrame(uint16_t &one, uint16_t &two, const DummyView &view) {
         if (getUp >= 1 && getUp <= ways) {
             held = g_options.getUp[getUp - 1].held(m_g.stunFrames, towards, away);
         }
+    }
+    // Hit into the air: recovering there (added to a quick rise's buttons, when both are chosen: the game takes
+    // whichever comes first)
+    const int airWays = static_cast<int>(g_options.airRecovery.size());
+    if (airWays && view.juggled) {
+        if (m_g.juggledFrames++ == 0) {
+            m_g.airPick = static_cast<int32_t>(Random() % static_cast<uint32_t>(airWays + 1)); // (at random: per juggle)
+        }
+        int air = FeatureValue("dummy_air_recovery");
+        if (air == airWays + 1) {
+            air = m_g.airPick;
+        }
+        if (air >= 1 && air <= airWays) {
+            const uint16_t does = g_options.airRecovery[air - 1].held(m_g.juggledFrames - 1, towards, away);
+            held = static_cast<uint16_t>((down ? held : 0) | does);
+        }
+    } else {
+        m_g.juggledFrames = 0;
     }
     two = static_cast<uint16_t>(keep | held);
 }

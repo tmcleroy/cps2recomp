@@ -231,7 +231,7 @@ private:
 // The features a dummy is worked by, with the names every port gives them (Register puts them in the game's
 // list, under the category "Dummy"): what it does left alone (one of stand, crouch, jump, record, replay,
 // replay any), the recording slot, guarding, what it does while guarding, answering with the recording, and the
-// game's own choices (`guardActions`, `heldAction`, `getUp`).
+// game's own choices (`guardActions`, `heldAction`, `getUp`, `airRecovery`).
 struct DummyOptions {
     // What it can do while guarding a hit (beyond nothing): a name, its description's words, and what it holds at
     // each frame of guarding (from 0), given the stick's "towards the attacker" and "away" bits
@@ -248,6 +248,10 @@ struct DummyOptions {
     // Ways to get up after a knock-down (beyond where it fell): a name, and what is held at each frame of lying
     std::vector<Action> getUp;
     const char *getUpWords = "How player 2 gets up after being knocked down.";
+    // Ways to recover in the air after being hit there (beyond not recovering), if the game has it: a name, and what
+    // is held at each frame of the juggle (DummyView::juggled). "At random" picks one of them, or none, per juggle.
+    std::vector<Action> airRecovery;
+    const char *airRecoveryWords = "How player 2 recovers in the air after being hit there.";
     int downAfter = 34; // frames of reeling after which the dummy is taken to be knocked down
 };
 void RegisterDummy(const DummyOptions &options);
@@ -263,6 +267,8 @@ struct DummyView {
     // Knocked down: when the game's sources can tell (knowsDown), from the game's own state; otherwise taken to be
     // reeling for longer than DummyOptions::downAfter
     bool knowsDown = false, down = false;
+    // Hit into the air, in a reaction the game lets a player recover from in the air (DummyOptions::airRecovery)
+    bool juggled = false;
 };
 
 class Dummy {
@@ -295,7 +301,7 @@ private:
         bool inRange = false, guardThis = false;
         uint32_t random = 0x2545F491;
         // (what "at random" chose: the action while this guarding lasts, the escape from this throw, the way up)
-        int32_t guardPick = 0, getUpPick = 0;
+        int32_t guardPick = 0, getUpPick = 0, airPick = 0, juggledFrames = 0;
         bool techPick = false, down = false;
     } m_g;
     std::vector<uint16_t> m_recordings[kSlots];
