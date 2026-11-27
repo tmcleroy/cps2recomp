@@ -123,6 +123,13 @@ void Register(const Description &description);
 void StartSession(Machine &machine);
 // A session is on
 bool InSession();
+// This game has a training session (Register was called): online, the host can start one for both (port/main.cpp)
+bool Described();
+// "Start over" at a place (0 the middle, 1 the left corner, 2 the right; +3 the sides swapped), and the place the
+// menu's "Start over at" and a stick held as it is asked for choose (left, right: a corner; down: sides swapped; up:
+// the middle). Online, the player who asks sends the place and both machines start over at it on the same frame.
+int RestartPlace(uint16_t stick);
+bool StartOverAt(Machine &machine, int place); // (false: no session, or no round kept yet)
 // The stage the machine that is running is to fight on, for the game's choice of stage (0: the game's choice):
 // what a mode wants (alternative.h), else the player's choice on the menu's Stage page (kStageFeature), in a session or
 // out of one

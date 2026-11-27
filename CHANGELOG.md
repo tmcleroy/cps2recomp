@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Training online** (every fighting game). In a two-person match the host's Esc menu has **Start Training**: the
+  board starts again, each player chooses their own character, and the fight has no clock and no knock-outs. The host's
+  Training mode settings apply to both (health and gauge refills, fixed damage). Hit boxes, frame data, the frame meter,
+  the input display and the readouts are each player's own, on their Online match page. Either player starts the round
+  over for both (Backspace or a gamepad's left shoulder, the stick choosing the place). There's no dummy online. Both
+  players need this version (protocol 21).
+- **Hit boxes no longer change the game's timing.** Drawing them, the readouts and what the dummy looks at read the
+  game's memory through the processor's bus, which counted wait states and moved the program's clock a little. These
+  reads now count none.
 - **The dummy's guard: First hit only, Standing only, Crouching only** (every fighting game). Dummy → Guards gains three
   choices. **First hit only** guards an attack, then lets what follows it through until a second has gone by with nothing
   and a new attack begins, to show whether a string or a frame trap leaves a gap. (Hits that land while it still

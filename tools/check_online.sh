@@ -34,6 +34,11 @@
 # MVC_CUSTOM=1 exercises the alternative Cross Fever rules on the host and in the offline replay.
 # FIRST_TO=0|3|5|10 checks the host's Casual/FT3/FT5/FT10 choice against different choices on all joining machines.
 # WATCH=1 adds a viewer after play starts and compares its confirmed frame hashes with the host's.
+# TRAINING=FRAME:RESTART (a match of two, a fighting game): the host starts the training session for both at FRAME
+# (--net-command FRAME:mode=3), with its refills and fixed damage on, and the joining side asks to start over at
+# RESTART (restart=1, the left corner); each side has its own training display (the host hit boxes, the other the
+# frame meter and the input display). Every machine must start the session and start over on the same frames, and
+# the logs and the replay still be the same.
 # SEATS=FRAME:LAYOUT (a match of four, or of two): the host changes the seats at FRAME (issue #448: --net-command
 # FRAME:seats=LAYOUT, e.g. 1200:1.0.3.2 swaps the sides at four machines, 1200:1.0 at two); every machine must make it, the same frame, and the logs and the
 # replay of the host's record still be the same.
@@ -133,6 +138,12 @@ if "build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$1=="stage" && $2=="St
     play="$play,stage=2"
 fi
 if [ -n "$first_to" ]; then play="$play,online_first_to=$first_to"; fi
+training=${TRAINING:-}
+if [ -n "$training" ]; then
+    aids=$("build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$1 ~ /^(health_refill|gauge_refill|fixed_damage)$/ {print $1}' | paste -sd, -)
+    play="$play,${aids:+$aids,}hit_boxes"
+    guest_set="${guest_set:+$guest_set,}frame_meter,input_display"
+fi
 # (the people at each machine, and the made-up play's players)
 if [ -n "$tag_mode" ]; then
     # (the on-or-off features marked for matches: kFeatureMatch, 512 in --list-features's flags)
@@ -190,7 +201,7 @@ said() { # FILE PATTERN: once a line of FILE has it (10 seconds at most)
 }
 side host --net-delay "$host_delay" --auto "11:0:$hostPeople" --features "$play" --host "$port" --record "$work/online-host.mov" ${arcade:+--net-arcade} \
     --net-people "$hostPeople" --net-name "Host P1" --net-say "hello from the host" ${watch_args[@]+"${watch_args[@]}"} \
-    ${SEATS:+--net-command "${SEATS%%:*}:seats=${SEATS#*:}"} &
+    ${SEATS:+--net-command "${SEATS%%:*}:seats=${SEATS#*:}"} ${training:+--net-command "${training%%:*}:mode=3:1"} &
 pids=$!
 # (the joining side once the host waits: its socket is open by then, however long the game took to start)
 said "$work/online-host.err" '^online: Waiting for' || { echo "FAILED: host not waiting after 10 seconds"; exit 1; }
@@ -201,7 +212,8 @@ for name in $joiners; do
     n=$((n + 1))
     joinPeople=${counts[$n]}
     side "$name" --net-delay "$(( (host_delay + n) % 9 ))" --auto "$((11 + n)):0:$joinPeople" --join "127.0.0.1:$port" --net-people "$joinPeople" --net-name "$(named "$name")" \
-        --features "$guest_set" --net-say "$((90 + 30 * n)):good luck from $(named "$name")!" &
+        --features "$guest_set" --net-say "$((90 + 30 * n)):good luck from $(named "$name")!" \
+        ${training:+--net-command "${training#*:}:restart=1"} &
     pids="$pids $!"
     # (each once the one before has come, their players going by it)
     if [ "$machines" -gt 2 ]; then
@@ -364,6 +376,20 @@ if [ -n "${SEATS:-}" ]; then
     done
     [ "$seated" = 1 ] && echo "ok: every machine changed the seats ($SEATS) on the same frame"
 fi
+if [ -n "$training" ]; then
+    trained=1
+    started=$(sed -n 's/^online: training session started at frame \([0-9]*\)$/\1/p' "$work/online-host.err" | head -1)
+    over=$(sed -n 's/^online: training started over at frame \([0-9]*\) .*/\1/p' "$work/online-host.err" | head -1)
+    [ -n "$started" ] || { echo "FAILED: the host didn't start the training session"; trained=0; status=1; }
+    [ -n "$over" ] || { echo "FAILED: the host didn't start the round over (no round fought by then?)"; trained=0; status=1; }
+    for name in $joiners; do
+        grep -qx "online: training session started at frame $started" "$work/online-$name.err" || {
+            echo "FAILED: the $name didn't start the training session at frame $started"; trained=0; status=1; }
+        grep -q "^online: training started over at frame $over " "$work/online-$name.err" || {
+            echo "FAILED: the $name didn't start over at frame $over"; trained=0; status=1; }
+    done
+    [ "$trained" = 1 ] && echo "ok: every machine started training at frame $started and started over at frame $over"
+fi
 heard=1
 for name in host $joiners; do
     for other in host $joiners; do
@@ -382,6 +408,14 @@ if [ -n "$arcade" ]; then
     else
         echo "ok: the match began after $played frames of the host's own play"
     fi
+    for name in host $joiners; do
+        echo "$name: $(grep '^online: frame' "$work/online-$name.err" | tail -1 | sed 's/^online: //')"
+    done
+    exit $status
+fi
+if [ -n "$training" ]; then
+    # (a record has the controls only, not the online events that start a mode, so it replays as Versus)
+    echo "(the replay of the record is not tried: the training session began by an online event)"
     for name in host $joiners; do
         echo "$name: $(grep '^online: frame' "$work/online-$name.err" | tail -1 | sed 's/^online: //')"
     done

@@ -156,6 +156,19 @@ who falls too far behind is let go and can choose Watch again. Esc asks **Stop w
 the players. A match that isn't in the lobby can't be watched by code. From a terminal: `--net-spectators` when hosting,
 `--watch CODE` to watch (or `--watch ADDRESS:PORT`, with `--net-service off`, on the same network).
 
+## Training online
+
+In a two-person match of a fighting game, the host can start a **training session** for both players: Esc, then
+**Start Training** on the Online match page (no Ready needed; **Back to Versus** ends it). The board starts again and
+each player chooses their own character, then the fight has no clock and nobody is knocked out. What changes the fight
+is the host's, as the host had it before the match: health and gauge refills, fixed damage and the like (the Training
+mode page). What is drawn over the picture is each player's own, on their Online match page: **Training: Hit boxes**,
+frame data, the frame meter, the input display and the readouts. There is no dummy: player 2 is the other player.
+Either player starts the round over for both with Backspace or a gamepad's left shoulder, at the place their stick
+chooses (left, right: a corner; down: sides swapped; up: the middle; otherwise their own **Start over at**); both
+machines start over on the same frame. Both players need a version with protocol 21. (Spectators, who run the
+players' controls without the match's events, don't follow it.)
+
 ## Ball battle and tag team online
 
 In a two-person match of a fighting game that has them, the host can switch to **Ball battle** or the **Tag team
