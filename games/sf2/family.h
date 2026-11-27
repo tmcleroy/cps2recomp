@@ -24,6 +24,8 @@ inline constexpr Place kPlaceList[] = {
     {0x002EE2, 0x00276E}, // Champion Edition's 0022D8, placed by portmap (an instruction) by hand
     {0x002F50, 0x0027DC}, // Champion Edition's 002346, placed by portmap (an instruction) by hand
     {0x0043F4, 0x002D98}, // Champion Edition's 003224, placed by portmap (an instruction) by hand
+    {0x004634, 0x002EA0}, // the throw test where its ways in meet (tst.b 0x191(a6)) (the court) by hand
+    {0x0047D0, 0x002FCC}, // the throw test's no (moveq #0,d0; rts) (the court) by hand
     {0x00490A, 0x0032D6}, // Champion Edition's 003810, placed by portmap (an instruction) by hand
     {0x0049B0, 0x00304A}, // Champion Edition's 003512, placed by portmap (an instruction) by hand
     {0x004A58, 0x0030E4}, // Champion Edition's 0035AC, placed by portmap (an instruction) by hand
@@ -47,9 +49,12 @@ inline constexpr Place kPlaceList[] = {
     {0x078052, 0x02851E}, // Champion Edition's 037A26, placed by portmap (an instruction) by hand
     {0x078270, 0x02AB98}, // a person's step: 0284E4 calls it for a person (portmap took the computer's, 0287BA) by hand
     {0x0782D4, 0x02AC1A}, // moveq #0,d0 before the person's dispatch on +3 (Champion Edition's 037D14) by hand
+    {0x07AC78, 0x02C9B8}, // the hit looked for at the end of the step (tst.b 0x49(a6); move.w 0x2A(a6),d3) (the court) by hand
     {0x07BB82, 0x000000}, // none: the computer's set-up has no plan round (0287CC) by hand
     {0x07BC12, 0x028864}, // cmpi.b #$E,0x3(a6): the computer's fight step (Champion Edition's 03A612) by hand
     {0x07D6F4, 0x000000}, // none: the computer's set-up has no character tables (0287CC) by hand
+    {0x07E274, 0x000000}, // none: the computer throws through the same test (the court) by hand
+    {0x07E36A, 0x000000}, // none: as above (the court) by hand
     {0x07E36E, 0x02936C}, // the computer's plan (bsr 2936C in its set-up, 0287DA) by hand
     {0x07F1C6, 0x003342}, // the stun's most: the word of cmpi.w #$1E,0x5E(a3) at 003340 (a fixed 1E) by hand
     {0x090F6A, 0x000000}, // none: Vega is not played (the computer's boss), no jump to the wall by hand
@@ -59,6 +64,7 @@ inline constexpr Place kPlaceList[] = {
     {0x0BE678, 0x07D3BA}, // Champion Edition's 095042, placed by portmap (an instruction) by hand
     {0x0BEBA6, 0x07D514}, // Champion Edition's 0951D2, placed by portmap (an instruction) by hand
     {0x0BEBDA, 0x07D528}, // Champion Edition's 0951E6, placed by portmap (an instruction) by hand
+    {0x0BF662, 0x07E516}, // the players pushed apart (its clr.w; lea of player 1) (the court) by hand
     {0x0CC4E4, 0x08365E}, // Champion Edition's 09C77C, placed by portmap (an instruction) by hand
     {0x0CC630, 0x083762}, // Champion Edition's 09C880, placed by portmap (an instruction) by hand
     {0x0CCC5C, 0x083CA4}, // Champion Edition's 09CDC2, placed by portmap (an instruction) by hand
@@ -93,6 +99,7 @@ inline constexpr Place kPlaceList[] = {
     {0xFF8DD2, 0xFF8AD2}, // Champion Edition's FF8AC2, placed by portmap (named so) by hand
     {0xFF8DDC, 0xFF8ADC}, // Champion Edition's FF8ACC, placed by portmap (named so) by hand
     {0xFF8DDE, 0xFF8ADE}, // Champion Edition's FF8ACE, placed by portmap (named so) by hand
+    {0xFF8DEE, 0x000000}, // none: no first attack (the court) by hand
     {0xFF8ECE, 0xFF8BD2}, // Champion Edition's FF8BBE, placed by portmap (named so) by hand
     {0xFF8ED4, 0xFF8BD8}, // Champion Edition's FF8BC4, placed by portmap (named so) by hand
     {0xFF8ED8, 0xFF8BDC}, // Champion Edition's FF8BC8, placed by portmap (named so) by hand
@@ -234,5 +241,16 @@ inline bool IsStagePiece(uint16_t attributes) {
 }
 inline constexpr unsigned kShadowSet = 0x0A, kSparkSet = 0x0E;
 inline constexpr uint32_t kPlayerSets[2] = {1u << 1, 1u << 2};
+
+// The characters a player can choose: the eight world warriors (the four bosses are the computer's alone; battle.cpp)
+#define SSF2T_FAMILY_CHOOSABLE 8
+
+// The Ball battle's court, each stage's side (games/ssf2t/src/widescreen.cpp; by kStage): the classic stages' planes
+// end sooner than Super Turbo's on E. Honda's and M. Bison's (black past 128), the rest as Super Turbo's
+#define SSF2T_FAMILY_COURT_SIDES {128, 128, 144, 192, 128, 128, 192, 192, 128, 160, 96, 192}
+
+// The Ball battle's hit sounds (games/ssf2t/src/court.cpp): light, medium, hard, specials and supers as hard ones
+// (queued as the training's dummy was hit by each button, against the strength the hit leaves at the victim's +4C)
+#define SSF2T_FAMILY_HIT_SOUNDS {0x002B, 0x002C, 0x002A, 0x002A, 0x002A}
 
 } // namespace ssf2t::family

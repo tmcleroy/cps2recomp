@@ -38,6 +38,14 @@ namespace {
     constexpr uint32_t kActive = 0x00;
     // The game's random number, a word (002E96 steps it, a shift register: it must never be 0)
     constexpr uint32_t kRandom = At(0xFF82D0);
+    // The characters a player can be: all of them, but in a game whose bosses a player cannot choose (the World
+    // Warrior: family.h's SSF2T_FAMILY_CHOOSABLE), the first so many (M. Bison and Sagat played by a player there sent
+    // the game off into nothing as their fight began)
+#ifdef SSF2T_FAMILY_CHOOSABLE
+    constexpr int kChoosable = SSF2T_FAMILY_CHOOSABLE;
+#else
+    constexpr int kChoosable = kCharacters;
+#endif
 
     // The panel and the stage's pieces: everything but the fighters
     bool NotTheFighters(uint32_t tile, uint16_t attributes) {
@@ -157,10 +165,10 @@ void RegisterBattle() {
     d.stages = kStages;
     d.stageToRound = 2000; // (about 1,700 from switching on, and a few)
     d.characterSpan = kCharacters;
-    d.choosable = [](int) { return true; };
-    d.rosterNumber = [](int choice) { return choice >= 1 && choice <= kCharacters ? choice - 1 : -1; };
+    d.choosable = [](int n) { return n < kChoosable; };
+    d.rosterNumber = [](int choice) { return choice >= 1 && choice <= kChoosable ? choice - 1 : -1; };
     d.fighterChoices = {"Random"};
-    d.fighterChoices.insert(d.fighterChoices.end(), std::begin(kCharacterNames), std::end(kCharacterNames));
+    d.fighterChoices.insert(d.fighterChoices.end(), std::begin(kCharacterNames), std::begin(kCharacterNames) + kChoosable);
     d.tuneOff = kTuneOff;
     d.inGame = [] { return Ram16(kMode) == kModeGame; };
     d.choosing = modes::Choosing;

@@ -20,15 +20,19 @@
 // where its variables went (lined up with games/ssf2t's), so these are its rewrites with this game's addresses.
 #include "alternative.h"
 #include "battle.h"
+#include "court.h"
 #include "hsf2.h"
 #include "state.h"
 #include "wide_ends.h"
 
 #include <algorithm>
+#include <cstdlib>
+#include <iterator>
 
 namespace cps2recomp {
 
 bool TagIsOff(uint32_t player); // livetag.cpp
+int BattleStage();               // fight/battle.cpp
 
 namespace {
     using namespace hsf2;
@@ -49,8 +53,25 @@ namespace {
     bool g_shown = false; // fights are shown in the wide picture (played in it, or played as on the board)
     int g_side = 0, g_shift = 0, g_cameraBefore = 0;
 
+    // The court's (fight/court.h): the wide picture forced, the camera held in the stage's middle, and as much of the
+    // stage to each side of the board's picture as all its planes are drawn there (each stage's own, by kStage, the same
+    // both ways: judged from the court's picture at Video::kMaxSide), so the court is as wide as the stage is drawn.
+    // (Another game's stage is drawn by that game, to 64 a side.) The stages are Super Turbo's, and so are their sides
+    // (games/ssf2t/src/widescreen.cpp)
+    constexpr int kCourtSides[] = {128, 192, 144, 192, 128, 128, 192, 192, 192, 160, 96, 192, 64, 160, 64, 144};
+    int Side() {
+        if (!court::On()) {
+            return kSide;
+        }
+        if (const char *forced = getenv("HSF2_COURT_SIDE")) { // (for measuring a stage: its court at that side)
+            return std::clamp(atoi(forced), 0, static_cast<int>(Video::kMaxSide));
+        }
+        const int stage = Ram16(kStage);
+        return BattleStage() > kStages || stage < 0 || stage >= static_cast<int>(std::size(kCourtSides)) ? kSide : kCourtSides[stage];
+    }
+
     int Margin() {
-        return g_play ? kSide : 0;
+        return g_play ? Side() : 0;
     }
     // Where the wide picture would show a stage past what the board shows of it (tools/stage_ends.sh): only on Cammy's
     // castle ruins, as in Super Turbo (games/ssf2t/src/widescreen.cpp): its floor's far lines go slower than the camera
@@ -60,14 +81,14 @@ namespace {
     constexpr wide::Ends kCammysEnds = {6, 6};
     constexpr int16_t kCammysPlanes[3][2] = {{324, 571}, {0, 0}, {383, 512}};
     wide::Ends StageEnds() {
-        return Ram16(kStage) == kCammys ? kCammysEnds : wide::Ends{};
+        return Ram16(kStage) == kCammys && !court::On() ? kCammysEnds : wide::Ends{}; // (the court's sides are its own)
     }
     // How far short of the board's ends the camera stops, at each end, in the picture played in
     int LeftMargin() {
-        return g_play ? kSide + StageEnds().left : 0;
+        return g_play ? Side() + StageEnds().left : 0;
     }
     int RightMargin() {
-        return g_play ? kSide + StageEnds().right : 0;
+        return g_play ? Side() + StageEnds().right : 0;
     }
     int16_t S16(uint32_t value) {
         return static_cast<int16_t>(value);
@@ -340,18 +361,18 @@ namespace {
     void SetWide(Machine &machine, int camera, int shown) {
         g_side = g_shift = 0;
         if (g_shown && OnStage(camera) && OnStage(shown)) {
-            g_side = kSide;
+            g_side = Side();
             // (the view's left edge is 64 left of the camera, and no further left than the camera's own end: nearer
             // the end than that, the stage is drawn to the side by what is missing. Played in the wide picture the
             // camera never goes there; with invisible walls it does, and the board's picture is then to one side)
-            g_shift = wide::ViewShift(shown, CameraLeftEnd(), CameraRightEnd(), kSide, StageEnds());
+            g_shift = wide::ViewShift(shown, CameraLeftEnd(), CameraRightEnd(), g_side, StageEnds());
         }
         Video::Wide &wide = machine.video.wide;
         wide.side = g_side;
         wide.scroll[0] = wide.scroll[1] = wide.scroll[2] = g_shift;
         if (g_side && Ram16(kStage) == kCammys) {
             // (Cammy's planes behind, kept inside their painting over the camera's range: fight/wide_ends.h)
-            wide::FarPlanes(wide.scroll, kCammysPlanes, shown, CameraLeftEnd(), CameraRightEnd(), g_play, kSide, kCammysEnds);
+            wide::FarPlanes(wide.scroll, kCammysPlanes, shown, CameraLeftEnd(), CameraRightEnd(), g_play, g_side, StageEnds());
         }
         wide.object = g_side ? MoveObject : nullptr;
         wide.tile = nullptr;
@@ -391,9 +412,11 @@ void WidescreenState(Archive &ar) {
 void WidescreenBeforeFrame(Machine &machine) {
     const int camera = static_cast<int16_t>(Ram16(kCameraX)), shown = g_cameraBefore;
     g_cameraBefore = camera;
-    // (fights only; the stage viewer keeps the board's picture. With invisible walls the rules stay the board's)
-    g_shown = FeatureOn("widescreen") && InFight() && !modes::StageViewer();
-    g_play = g_shown && !FeatureOn("widescreen_walls");
+    // (fights only; the stage viewer keeps the board's picture. With invisible walls the rules stay the board's. The
+    // court, fight/court.h: always the wide picture, played in it, for the room)
+    const bool court = court::On();
+    g_shown = (FeatureOn("widescreen") || court) && InFight() && !modes::StageViewer();
+    g_play = g_shown && (!FeatureOn("widescreen_walls") || court);
     SetWide(machine, camera, shown);
 }
 

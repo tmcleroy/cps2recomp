@@ -17,7 +17,7 @@ graphics ROMs are the same; its title says CSL REMIX EDITION). Its program and m
 
 On top of that, the port adds a full **training mode** (hit boxes, frame data and a frame meter, input display, combo
 and stun readouts, a dummy that records, replays and guards), the **alternative modes** (attract mode, the stage and
-model viewers, survival, endless battle, ring out, a tag team battle), **widescreen**, **online play** with rollback,
+model viewers, survival, endless battle, ring out, a tag team battle, the [Ball battle](../../docs/COURT.md)), **widescreen**, **online play** with rollback,
 **custom colours** with a colour editor, save states, run-ahead, arcade timing, and a custom soundtrack.
 
 > **Beta.** The game plays from start to ending and its code is checked instruction by instruction, but nobody has

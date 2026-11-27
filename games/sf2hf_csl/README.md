@@ -16,7 +16,7 @@ own translated 68000 code.
 
 On top of CSL Edition's own features, the port adds a full **training mode** (hit boxes, frame data and a frame meter,
 input display, combo and stun readouts, a dummy that records, replays and guards), the **alternative modes** (attract
-mode, the stage and model viewers, survival, endless battle, ring out, a tag team battle), **widescreen**, **online
+mode, the stage and model viewers, survival, endless battle, ring out, a tag team battle, the [Ball battle](../../docs/COURT.md)), **widescreen**, **online
 play** with rollback, **custom colours** with a colour editor, save states, run-ahead, arcade timing, and a custom
 soundtrack.
 

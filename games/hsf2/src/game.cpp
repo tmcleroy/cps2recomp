@@ -21,6 +21,7 @@ void BoardState(Archive &ar);
 void RegisterMusic();    // music.cpp
 void RegisterModes();    // modes.cpp
 void RegisterTraining(); // training.cpp
+void RegisterCourt();    // court.cpp (before the battle's: its page is among theirs)
 void RegisterBattle();   // battle.cpp
 void RegisterModel();    // model.cpp
 void ModelBeforeFrame(Machine &machine);
@@ -43,6 +44,7 @@ bool WidePlay();
 void RegisterGame() {
     RegisterModes();
     RegisterTraining();
+    RegisterCourt();
     RegisterBattle();
     RegisterModel();
     RegisterColours();

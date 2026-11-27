@@ -15,7 +15,7 @@ one has but what Super Turbo added to the game (super combos, the hidden charact
 
 It has a full **training mode** (hit boxes, frame data and a frame meter, input display, combo and stun readouts, a
 dummy that records, replays and guards), the **alternative modes** (attract mode, the stage and model viewers,
-survival, endless battle, ring out, a tag team battle), **widescreen**, **custom colours** with a colour editor, and
+survival, endless battle, ring out, a tag team battle, the [Ball battle](../../docs/COURT.md)), **widescreen**, **custom colours** with a colour editor, and
 the features every game shares: free play, straight to the title, the board's DIP switches, cheats, save states,
 run-ahead, the board's speed, a custom soundtrack.
 
