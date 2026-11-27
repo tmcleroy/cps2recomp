@@ -68,10 +68,14 @@ public:
     void Send(const NetAddress &to, const uint8_t *data, size_t size);
     // A packet that has come (its size), or -1 for none yet
     int Receive(uint8_t *data, size_t size, NetAddress &from);
+    bool Six() const { return six; }
+    // (a name for the log: the first send the system refused is said, with why)
+    const char *name = "the game's";
 
 private:
     intptr_t handle = -1;
     bool six = false; // (IPv6, and IPv4 through it)
+    bool sendRefusedSaid = false;
 };
 
 // The match's socket: a UdpSocket, and the relay when there is one (port/turn.h). Packets to a peer go to it directly,
@@ -82,6 +86,7 @@ class RelaySocket {
 public:
     bool Open(int port, std::string &error) { return raw.Open(port, error); }
     int LocalPort() const { return raw.LocalPort(); }
+    bool Six() const { return raw.Six(); }
     void Send(const NetAddress &to, const uint8_t *data, size_t size);
     int Receive(uint8_t *data, size_t size, NetAddress &from);
     // (the servers, as UdpSocket::Resolve gave them: the next tried when one says nothing for a moment (its port blocked,

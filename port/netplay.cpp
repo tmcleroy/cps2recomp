@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cerrno>
 #include <cmath>
 #include <cstring>
 #include <filesystem>
@@ -430,9 +431,20 @@ int UdpSocket::LocalPort() const {
 
 void UdpSocket::Send(const NetAddress &to, const uint8_t *data, size_t size) {
     const bool asFour = !six && to.hasFour;
-    sendto(static_cast<SocketHandle>(handle), reinterpret_cast<const char *>(data), static_cast<int>(size), 0,
-           reinterpret_cast<const sockaddr *>(asFour ? to.four.data() : to.storage.data()),
-           static_cast<socklen_t>(asFour ? sizeof(sockaddr_in) : to.length));
+    const int sent = static_cast<int>(sendto(static_cast<SocketHandle>(handle), reinterpret_cast<const char *>(data), static_cast<int>(size), 0,
+                                             reinterpret_cast<const sockaddr *>(asFour ? to.four.data() : to.storage.data()),
+                                             static_cast<socklen_t>(asFour ? sizeof(sockaddr_in) : to.length)));
+    if (sent < 0 && !sendRefusedSaid) {
+        // (once: the system refusing to send is what a firewall or a broken network looks like from here)
+        sendRefusedSaid = true;
+#ifdef _WIN32
+        const int why = WSAGetLastError();
+        fprintf(stderr, "online: %s socket could not send (Windows sockets error %d)\n", name, why);
+#else
+        const int why = errno;
+        fprintf(stderr, "online: %s socket could not send (%s)\n", name, strerror(why));
+#endif
+    }
 }
 
 int UdpSocket::Receive(uint8_t *data, size_t size, NetAddress &from) {
@@ -496,6 +508,7 @@ void RelaySocket::StartRelay(const std::vector<NetAddress> &list, const std::str
     user = name, password = secret;
     only = onlyRelay;
     std::string error;
+    toServer.name = "the relay's";
     if (!toServer.Open(0, error)) {
         fprintf(stderr, "online: no relay: %s\n", error.c_str());
         return;
@@ -890,6 +903,7 @@ bool Netplay::Begin(Port &port, std::string &error) {
 #endif
     fprintf(stderr, "online: %s %s (commit %s), protocol %d, game signature %08x\n", GAME_ID, RECOMP_VERSION, RECOMP_COMMIT, kProtocol,
             build);
+    fprintf(stderr, "online: the game's UDP socket: port %d, %s\n", socket.LocalPort(), socket.Six() ? "IPv6 with IPv4" : "IPv4");
     began = NowMs();
     if (settings.hosting) {
         StartAt(settings.delay);
@@ -1180,6 +1194,16 @@ bool Netplay::Introduce(uint64_t now, std::string &error) {
             if (forwardLookup.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
                 forwardTold = true;
                 forward = forwardLookup.get();
+                if (!forward.ok && forward.made && forward.external.empty() && !seenAs.empty()) {
+                    // (a router that made the forward but doesn't say its own address: the one the STUN servers saw,
+                    // which is the router's, as long as it is the internet's)
+                    const std::string ip = seenAs.substr(0, seenAs.rfind(':'));
+                    if (!portmap::Private(portmap::ParseIp(ip))) {
+                        forward.external = ip + ":" + std::to_string(forward.externalPort);
+                        forward.ok = true;
+                        forward.how += " (its address outside as the STUN servers saw it)";
+                    }
+                }
                 if (forward.ok) {
                     fprintf(stderr, "online: the router forwards a port: %s at %s, %s to this machine's UDP port %d\n", forward.how.c_str(),
                             forward.router.c_str(), forward.external.c_str(), forward.localPort);
@@ -2738,6 +2762,14 @@ void Netplay::BeginSet() {
         }
     }
     if (!rules.empty()) fprintf(stderr, "online: settled match rules %s\n", rules.c_str());
+    {
+        // (every feature that is on here, as the match begins: two machines' logs side by side show any that differ)
+        std::string on;
+        for (const Feature &feature : TheGame().features) {
+            if (const int value = FeatureValue(feature.name)) on += (on.empty() ? "" : ",") + std::string(feature.name) + "=" + std::to_string(value);
+        }
+        fprintf(stderr, "online: features on here: %s\n", on.empty() ? "none" : on.c_str());
+    }
     if (settings.watching) { // (a viewer has the host's set as of where it came in: Waiting)
         fprintf(stderr, "online: set format %s, %d-%d\n", set.Format().c_str(),
                 set.Score(0), set.Score(1));
