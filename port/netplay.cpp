@@ -166,16 +166,11 @@ namespace {
             return name == "court_camera" ? Share::Own : Share::Host;
         }
         if (session::Described() && (category == "Training mode" || category == "Dummy")) {
-            // (the training session played online, Port::OnlineEvent: what is drawn over the picture is each player's
-            // own; the rest changes the fight (health and gauge refills, fixed damage...): the host's; the dummy is not
-            // there, player 2 being a person; the session itself starts by the host's event, not by being shared)
+            // (the training session played online, Port::OnlineEvent: the host drives it, every option of its page the
+            // host's for both, what is drawn over the picture too (hit boxes, frame data, readouts), and changed by the
+            // host's "set" events while it runs; the dummy is not there, player 2 being a person; the session itself
+            // starts by the host's event, not by being shared)
             if (category == "Dummy" || (feature.flags & kFeatureSession)) return Share::Off;
-            static const char *const kDrawn[] = {"hit_boxes", "frame_data", "frame_meter", "frame_log", "input_display",
-                                                 "damage_readout", "throw_range", "restart_at"};
-            for (const char *drawn : kDrawn) {
-                if (name == drawn) return Share::Own;
-            }
-            if (name.size() > 8 && name.compare(name.size() - 8, 8, "_readout") == 0) return Share::Own;
             return Share::Host;
         }
         if (name.size() > 9 && name.compare(name.size() - 9, 9, "_hitboxes") == 0) {
@@ -2499,13 +2494,15 @@ void Netplay::Run(Port &port, uint64_t at, bool drawing) {
             players[seats[machine][person]] = k.used[machine][person];
         }
     }
+    // (the host's options of the modes' pages as they were before this frame's events: a rollback runs it with them)
+    if (needed == 2) port.OnlineOptionsBefore(at);
     for (int machine = 0; needed == 2 && machine < machines; ++machine) {
         const auto event = events[machine].find(at);
         // (with the board's player the machine plays this frame: its own fighters' rows are that side's, Swap sides)
         if (event != events[machine].end()) port.OnlineEvent(machine, seats[machine][0], event->second, at);
     }
     const bool versus = set.Counting() && battle::TwoPeopleNow();
-    // (the host's pause for choosing, Port::onlineSetupLog: the game stands still for both)
+    // (a player's pause for changing things in the menu, Port::onlineSetupLog: the game stands still for both)
     const bool runs = !port.OnlinePausedAt(at);
     if (runs) {
         port.machine->drawing = drawing;
@@ -2693,7 +2690,8 @@ void Netplay::PruneEvents() {
 void Netplay::Command(const std::string &text) {
     size_t length = text.size();
     for (const auto &pending : commanded) length += pending.size() + 1;
-    // (a match of two: the modes, the picks, Ready and the host's Swap sides; a match of more: the host's seat changes only)
+    // (a match of two: the modes, the picks, the pauses, the host's options and Swap sides; a match of more: the host's seat
+    // changes only)
     const bool seats = text.rfind("seats=", 0) == 0;
     if (!text.empty() && length <= 512 && !settings.watching && (seats ? CanSeat() : needed == 2)) {
         commanded.push_back(text);

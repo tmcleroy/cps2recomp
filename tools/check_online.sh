@@ -35,14 +35,20 @@
 # FIRST_TO=0|3|5|10 checks the host's Casual/FT3/FT5/FT10 choice against different choices on all joining machines.
 # WATCH=1 adds a viewer after play starts and compares its confirmed frame hashes with the host's.
 # TRAINING=FRAME:RESTART (a match of two, a fighting game): the host starts the training session for both at FRAME
-# (--net-command FRAME:mode=3), with its refills and fixed damage on, and the joining side asks to start over at
-# RESTART (restart=1, the left corner); each side has its own training display (the host hit boxes, the other the
-# frame meter and the input display). Every machine must start the session and start over on the same frames, and
-# the logs and the replay still be the same.
+# (--net-command FRAME:mode=3, at once: nobody says Ready), with its refills and fixed damage on and its hit boxes,
+# and the joining side asks to start over at RESTART (restart=1, the left corner). The host drives the session: the
+# joining side, which had the frame meter and the input display on, must have the host's training options in their
+# place; halfway to RESTART the host turns a refill off (set=ROW:0, as its Training mode page does), and a little
+# after, the joining side opens its menu for two seconds (setup=1, then setup=0: the game paused for both). Every
+# machine must start the session, take the host's option, pause and start over on the same frames, and the logs still
+# be the same.
 # BALL=FRAME[:SEED] (a match of two, a game with the Ball battle, fight/court.h): the host starts the Ball battle for both
-# at FRAME (--net-command FRAME:mode=1:SEED, as its match menu's Start does; the joining side says it is ready a second
-# before), each side's made-up play its fighter's on the court. Every machine must play the court (CPS2RECOMP_COURT_LOG's
-# lines), and the logs still be the same; the replay of the record is not tried (the mode began by an online event).
+# at FRAME (--net-command FRAME:mode=1:SEED, as its match menu's Start does, at once: nobody says Ready), each side's
+# made-up play its fighter's on the court. Five seconds in, the joining side opens its match menu (--menu: the game
+# paused for both), goes to its Ball battle page and changes its own fighter, then closes the menu ten seconds later
+# (--menu-close, as Esc): the Ball battle starts again for both, with the new fighter. Every machine must play the court
+# (CPS2RECOMP_COURT_LOG's lines) and start it again on the same frame, and the logs still be the same; the replay of
+# the record is not tried (the mode began by an online event). BALL_KEYS: the menu's presses (u d l r, a), to that row.
 # SEATS=FRAME:LAYOUT (a match of four, or of two): the host changes the seats at FRAME (issue #448: --net-command
 # FRAME:seats=LAYOUT, e.g. 1200:1.0.3.2 swaps the sides at four machines, 1200:1.0 at two); every machine must make it, the same frame, and the logs and the
 # replay of the host's record still be the same.
@@ -158,6 +164,19 @@ if [ -n "$training" ]; then
     aids=$("build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$1 ~ /^(health_refill|gauge_refill|fixed_damage)$/ {print $1}' | paste -sd, -)
     play="$play,${aids:+$aids,}hit_boxes"
     guest_set="${guest_set:+$guest_set,}frame_meter,input_display"
+    train_at=${training%%:*}
+    restart_at=${training#*:}
+    [ "$restart_at" -gt $((train_at + 600)) ] || { echo "TRAINING: RESTART at least 600 frames after FRAME"; exit 1; }
+    option_at=$(( (train_at + restart_at) / 2 ))
+    pause_at=$(( option_at + (restart_at - option_at) / 3 ))
+    option=${aids%%,*}
+    host_training=(--net-command "$train_at:mode=3:1")
+    [ -n "$option" ] && host_training+=(--net-command "$option_at:set=$option:0")
+    join_training=(--net-command "$restart_at:restart=1" --net-command "$pause_at:setup=1" --net-command "$((pause_at + 120)):setup=0")
+fi
+if [ -n "$ball" ]; then
+    ball_menu=$((ball_at + 300))
+    join_ball=(--menu "$ball_menu:${BALL_KEYS:-daddddr}:$work/online-join-menu.png" --menu-close "$((ball_menu + 600))")
 fi
 # (the people at each machine, and the made-up play's players)
 if [ -n "$tag_mode" ]; then
@@ -216,7 +235,7 @@ said() { # FILE PATTERN: once a line of FILE has it (10 seconds at most)
 }
 side host --net-delay "$host_delay" --auto "11:0:$hostPeople" --features "$play" --host "$port" --record "$work/online-host.mov" ${arcade:+--net-arcade} \
     --net-people "$hostPeople" --net-name "Host P1" --net-say "hello from the host" ${watch_args[@]+"${watch_args[@]}"} \
-    ${SEATS:+--net-command "${SEATS%%:*}:seats=${SEATS#*:}"} ${training:+--net-command "${training%%:*}:mode=3:1"} ${ball:+--net-command "$ball_at:mode=1:$ball_seed"} &
+    ${SEATS:+--net-command "${SEATS%%:*}:seats=${SEATS#*:}"} ${host_training[@]+"${host_training[@]}"} ${ball:+--net-command "$ball_at:mode=1:$ball_seed"} &
 pids=$!
 # (the joining side once the host waits: its socket is open by then, however long the game took to start)
 said "$work/online-host.err" '^online: Waiting for' || { echo "FAILED: host not waiting after 10 seconds"; exit 1; }
@@ -228,7 +247,7 @@ for name in $joiners; do
     joinPeople=${counts[$n]}
     side "$name" --net-delay "$(( (host_delay + n) % 9 ))" --auto "$((11 + n)):0:$joinPeople" --join "127.0.0.1:$port" --net-people "$joinPeople" --net-name "$(named "$name")" \
         --features "$guest_set" --net-say "$((90 + 30 * n)):good luck from $(named "$name")!" \
-        ${training:+--net-command "${training#*:}:restart=1"} ${ball:+--net-command "$((ball_at - 60)):ready=1"} &
+        ${join_training[@]+"${join_training[@]}"} ${join_ball[@]+"${join_ball[@]}"} &
     pids="$pids $!"
     # (each once the one before has come, their players going by it)
     if [ "$machines" -gt 2 ]; then
@@ -404,6 +423,30 @@ if [ -n "$training" ]; then
             echo "FAILED: the $name didn't start over at frame $over"; trained=0; status=1; }
     done
     [ "$trained" = 1 ] && echo "ok: every machine started training at frame $started and started over at frame $over"
+    # (the host's training options in place of the joining side's own: its hit boxes, not the frame meter)
+    for name in $joiners; do
+        on=$(sed -n 's/^online: training options here: //p' "$work/online-$name.err" | head -1)
+        case ",$on," in *",hit_boxes=1,"*) ;; *) echo "FAILED: the $name didn't take the host's hit boxes"; trained=0; status=1 ;; esac
+        case ",$on," in *",frame_meter="*) echo "FAILED: the $name kept its own frame meter"; trained=0; status=1 ;; esac
+    done
+    if [ -n "$option" ]; then
+        set_at=$(sed -n "s/^online: the host set $option=0 at frame \([0-9]*\)$/\1/p" "$work/online-host.err" | head -1)
+        [ -n "$set_at" ] || { echo "FAILED: the host didn't set $option"; trained=0; status=1; }
+        for name in $joiners; do
+            grep -qx "online: the host set $option=0 at frame $set_at" "$work/online-$name.err" || {
+                echo "FAILED: the $name didn't take the host's $option at frame $set_at"; trained=0; status=1; }
+        done
+        [ "$trained" = 1 ] && echo "ok: every machine took the host's $option=0 at frame $set_at"
+    fi
+    for what in opened closed; do
+        paused=$(sed -n "s/^online: player 2's menu $what at frame \([0-9]*\)$/\1/p" "$work/online-host.err" | head -1)
+        [ -n "$paused" ] || { echo "FAILED: the host didn't see player 2's menu $what"; trained=0; status=1; continue; }
+        for name in $joiners; do
+            grep -qx "online: player 2's menu $what at frame $paused" "$work/online-$name.err" || {
+                echo "FAILED: the $name didn't have player 2's menu $what at frame $paused"; trained=0; status=1; }
+        done
+    done
+    [ "$trained" = 1 ] && echo "ok: the joining side's menu paused both machines on the same frames"
 fi
 heard=1
 for name in host $joiners; do
@@ -438,6 +481,18 @@ if [ -n "$ball" ]; then
     done
     if [ "$played" = 1 ]; then
         echo "ok: every machine played the Ball battle (from frame $ball_at, seed $ball_seed; host: $(grep '^court t' "$work/online-host.err" | tail -1 | grep -o 'score [0-9-]*'))"
+    fi
+    # (the joining side's fighter changed in its menu: the Ball battle again for both, on the same frame)
+    again=$(sed -n 's/^online: mode 1 started again at frame \([0-9]*\)$/\1/p' "$work/online-host.err" | head -1)
+    if [ -z "$again" ]; then
+        echo "FAILED: the Ball battle didn't start again after the joining side's change (menu: $work/online-join-menu.png)"; status=1
+    else
+        for name in $joiners; do
+            grep -qx "online: mode 1 started again at frame $again" "$work/online-$name.err" || {
+                echo "FAILED: the $name didn't start the Ball battle again at frame $again"; status=1; }
+        done
+        grep -q "^online: player 2's menu opened at frame" "$work/online-host.err" || { echo "FAILED: the joining side's menu didn't pause the host"; status=1; }
+        [ "$status" = 0 ] && echo "ok: the joining side changed its fighter in its menu, and the Ball battle started again at frame $again on every machine"
     fi
     echo "(the replay of the record is not tried: the Ball battle began by an online event)"
     for name in host $joiners; do
