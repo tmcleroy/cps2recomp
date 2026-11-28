@@ -345,6 +345,7 @@ launcher::Description describe_game(const GameInfo& game) {
     d.board_category = "Board";
     d.controller_features = {"keyboard_only"};
     d.features_name = "Settings";
+    d.layout = launcher::Description::Layout::Tabs;  // (the in-game menu's look: tabs along the top, the games as a grid)
     // (a game that names its own buttons is not a fighting game, and has no training mode; the collection's controls,
     // which its first game's description gives, are for every game, the fighting games among them)
     const bool fighting = !*game.buttons;

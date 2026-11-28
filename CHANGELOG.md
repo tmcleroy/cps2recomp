@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A new launcher, in the in-game menu's look**: tabs along the top (Library, Online, Settings, Controllers, Multi game;
+  LB/RB go through them) and your games as a grid of pictures, each game's last screen when you quit it, with the one
+  chosen beside them: Play, Host online, Full screen, Widescreen, and its own page. Finding your ROM sets, updates and
+  the language are on the Settings tab.
 - **The launcher shows only what is set before a game starts**: the window, how the picture is drawn, the arcade
   monitor's mode and what a host sets before hosting, on its Settings page (once Features); the board's own settings in
   a card on each game's page; Keyboard only on the Controllers page. Training, the modes, cheats, shaders, the online

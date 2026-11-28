@@ -165,15 +165,16 @@ Linux, the Steam Deck and Windows can play each other.
 - **A custom soundtrack**: your own music files in place of the board's music ([how](docs/SOUNDTRACK.md)).
 - **Multi game**: play several games one after another, such as an endless battle through every stage of each
   ([more](docs/MODES.md#multi-game)).
-- **Updates** in the launcher, and a **portable mode** that keeps everything on a drive you carry
-  ([the launcher](docs/LAUNCHER.md)).
+- **A launcher in the in-game menu's look**: your games as a grid of their last screens, Play and the few things set
+  before a game starts; LB/RB through its tabs. **Updates** in the launcher, and a **portable mode** that keeps
+  everything on a drive you carry ([the launcher](docs/LAUNCHER.md)).
 
 
 ## Getting started
 
 1. Download the build for your system from the [releases page](https://github.com/tmcleroy/cps2recomp/releases) and
    unpack it.
-2. Open the launcher (`CPS-2 Recomp.app`, `cps2recomp-launcher`). On its Games page, **Choose folder…** and pick the
+2. Open the launcher (`CPS-2 Recomp.app`, `cps2recomp-launcher`). On its Settings tab, **Choose folder…** and pick the
    folder you keep your ROM sets in: it finds each game's set by name (`sfa2u.zip` or a folder of the set's files).
    Your ROM sets are only ever read.
 3. Press **Play** beside a game.

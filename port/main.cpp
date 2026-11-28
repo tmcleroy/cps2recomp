@@ -1413,6 +1413,7 @@ void Port::MenuAct(Menu::Action action) {
         menu.Close();
         return;
     case Menu::Action::Quit:
+        KeepPicture(); // (before the menu goes: the game's picture, not the menu's)
         quit = true;
         menu.Close();
         return;
@@ -2492,6 +2493,24 @@ std::string Port::PlayerFolder() const {
 
 std::string Port::StatePath(int slot) const {
     return PlayerFolder() + "state" + std::to_string(slot) + ".bin";
+}
+
+void Port::KeepPicture() {
+    // (a run of a few seconds at least, in a window: not a test's, nor a start that went straight back out)
+    if (opt.headless || frame < 600) {
+        return;
+    }
+    const int ticks = shotTicks;
+    shotTicks = 0;
+    shooting = true;
+    std::vector<uint32_t> shown;
+    Shown(shown);
+    shooting = false;
+    shotTicks = ticks;
+    const std::string path = PlayerFolder() + "picture.png";
+    if (!WritePng(path.c_str(), shown.data(), static_cast<uint32_t>(ShownWidth()), Video::kHeight)) {
+        fprintf(stderr, "picture: could not write %s\n", path.c_str());
+    }
 }
 
 bool Port::Screenshot() {
