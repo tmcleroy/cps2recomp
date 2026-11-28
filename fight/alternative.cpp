@@ -557,6 +557,15 @@ void State(Archive &ar) {
     ar.Mark(0x4D4F4445);
     ar.Pod(g);
     ar.Vec(g_other);
+    // What the modes want of the machine (the camera held where the Ball battle and the ring out put it, the match to
+    // make): the game's camera and match-making routines read them during the frame, so a frame run again (online
+    // rollback) must find them as they were. Kept outside the state, a rollback over the Ball battle's start ran the
+    // frames before it with the court's camera already held, and the two players' games came apart.
+    const bool kept = ar.version == 0 || ar.version >= 16; // (a save state from before has none)
+    if (kept) {
+        ar.Pod(g_wanted);
+        ar.Pod(g_camera);
+    }
     if (!ar.Saving() && !RunningAhead()) { // (not when run-ahead puts the frame back: runtime/game.h)
         if (g_sweep.phase == Sweep::Settling || g_sweep.phase == Sweep::Across) {
             g_sweep = {Sweep::Refused, 0}; // (a state loaded: the whole stage is not saved)
@@ -565,7 +574,9 @@ void State(Archive &ar) {
         g_otherSound.assign(kSoundAhead * 2, 0);
         g_carry.clear();
         g_chosenStage = -1;
-        g_wanted.stage = g.stage;
+        if (!kept) {
+            g_wanted.stage = g.stage;
+        }
     }
 }
 

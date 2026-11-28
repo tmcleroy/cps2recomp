@@ -39,11 +39,15 @@
 # RESTART (restart=1, the left corner); each side has its own training display (the host hit boxes, the other the
 # frame meter and the input display). Every machine must start the session and start over on the same frames, and
 # the logs and the replay still be the same.
+# BALL=FRAME[:SEED] (a match of two, a game with the Ball battle, fight/court.h): the host starts the Ball battle for both
+# at FRAME (--net-command FRAME:mode=1:SEED, as its match menu's Start does; the joining side says it is ready a second
+# before), each side's made-up play its fighter's on the court. Every machine must play the court (CPS2RECOMP_COURT_LOG's
+# lines), and the logs still be the same; the replay of the record is not tried (the mode began by an online event).
 # SEATS=FRAME:LAYOUT (a match of four, or of two): the host changes the seats at FRAME (issue #448: --net-command
 # FRAME:seats=LAYOUT, e.g. 1200:1.0.3.2 swaps the sides at four machines, 1200:1.0 at two); every machine must make it, the same frame, and the logs and the
 # replay of the host's record still be the same.
 #
-#   [ARCADE=1] [FOUR=1 | MACHINES=3|4 | PEOPLE=1,2,1] [FIRST_TO=0|3|5|10] [WATCH=1] [SEATS=FRAME:LAYOUT] [JOIN_ROM=<set>]
+#   [ARCADE=1] [FOUR=1 | MACHINES=3|4 | PEOPLE=1,2,1] [FIRST_TO=0|3|5|10] [WATCH=1] [SEATS=FRAME:LAYOUT] [BALL=FRAME[:SEED]] [JOIN_ROM=<set>]
 #     GAME=<id> check_online.sh [FRAMES]
 set -eu
 GAME=${GAME:?which game: GAME=<id>}
@@ -139,6 +143,17 @@ if "build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$1=="stage" && $2=="St
 fi
 if [ -n "$first_to" ]; then play="$play,online_first_to=$first_to"; fi
 training=${TRAINING:-}
+ball=${BALL:-}
+if [ -n "$ball" ]; then
+    if [ "$machines" != 2 ] || [ -n "$four" ]; then echo "BALL: a match of two"; exit 1; fi
+    if ! "build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$1=="court_points" {found=1} END {exit !found}'; then
+        echo "BALL: $GAME has no Ball battle"; exit 1
+    fi
+    ball_at=${ball%%:*}
+    ball_seed=${ball#*:}; [ "$ball_seed" = "$ball" ] && ball_seed=1
+    [ "$ball_at" -gt 60 ] || { echo "BALL: a frame after 60"; exit 1; }
+    export CPS2RECOMP_COURT_LOG=1
+fi
 if [ -n "$training" ]; then
     aids=$("build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$1 ~ /^(health_refill|gauge_refill|fixed_damage)$/ {print $1}' | paste -sd, -)
     play="$play,${aids:+$aids,}hit_boxes"
@@ -201,7 +216,7 @@ said() { # FILE PATTERN: once a line of FILE has it (10 seconds at most)
 }
 side host --net-delay "$host_delay" --auto "11:0:$hostPeople" --features "$play" --host "$port" --record "$work/online-host.mov" ${arcade:+--net-arcade} \
     --net-people "$hostPeople" --net-name "Host P1" --net-say "hello from the host" ${watch_args[@]+"${watch_args[@]}"} \
-    ${SEATS:+--net-command "${SEATS%%:*}:seats=${SEATS#*:}"} ${training:+--net-command "${training%%:*}:mode=3:1"} &
+    ${SEATS:+--net-command "${SEATS%%:*}:seats=${SEATS#*:}"} ${training:+--net-command "${training%%:*}:mode=3:1"} ${ball:+--net-command "$ball_at:mode=1:$ball_seed"} &
 pids=$!
 # (the joining side once the host waits: its socket is open by then, however long the game took to start)
 said "$work/online-host.err" '^online: Waiting for' || { echo "FAILED: host not waiting after 10 seconds"; exit 1; }
@@ -213,7 +228,7 @@ for name in $joiners; do
     joinPeople=${counts[$n]}
     side "$name" --net-delay "$(( (host_delay + n) % 9 ))" --auto "$((11 + n)):0:$joinPeople" --join "127.0.0.1:$port" --net-people "$joinPeople" --net-name "$(named "$name")" \
         --features "$guest_set" --net-say "$((90 + 30 * n)):good luck from $(named "$name")!" \
-        ${training:+--net-command "${training#*:}:restart=1"} &
+        ${training:+--net-command "${training#*:}:restart=1"} ${ball:+--net-command "$((ball_at - 60)):ready=1"} &
     pids="$pids $!"
     # (each once the one before has come, their players going by it)
     if [ "$machines" -gt 2 ]; then
@@ -408,6 +423,23 @@ if [ -n "$arcade" ]; then
     else
         echo "ok: the match began after $played frames of the host's own play"
     fi
+    for name in host $joiners; do
+        echo "$name: $(grep '^online: frame' "$work/online-$name.err" | tail -1 | sed 's/^online: //')"
+    done
+    exit $status
+fi
+if [ -n "$ball" ]; then
+    played=1
+    for name in host $joiners; do
+        courts=$(grep -c '^court t' "$work/online-$name.err" || true)
+        if [ "${courts:-0}" -lt 20 ]; then
+            echo "FAILED: the $name did not play the Ball battle (${courts:-0} court lines)"; played=0; status=1
+        fi
+    done
+    if [ "$played" = 1 ]; then
+        echo "ok: every machine played the Ball battle (from frame $ball_at, seed $ball_seed; host: $(grep '^court t' "$work/online-host.err" | tail -1 | grep -o 'score [0-9-]*'))"
+    fi
+    echo "(the replay of the record is not tried: the Ball battle began by an online event)"
     for name in host $joiners; do
         echo "$name: $(grep '^online: frame' "$work/online-$name.err" | tail -1 | sed 's/^online: //')"
     done
