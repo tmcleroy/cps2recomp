@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Full screen and Widescreen are set once, for every game.** They were on each game's own page, so a player set them
+  again for every game. They are now a Display card on the launcher's Games page, kept for all the games; a game that
+  has no widescreen ignores that switch. Each game starts as the Games page says, and `--fullscreen` / `--window` on the
+  command line still decide for a run. Widescreen switched in a game's own menu is kept there too. The first time, the
+  launcher takes the values of the game you played last that had them set, so what you had carries over. (A change to
+  recomp-common, which other launchers share: `Toggle::global`.)
+- **A chime when someone invites you.** The launcher plays a short two-tone chime when a player in the waiting room
+  invites you to a match, once for each invitation, and not while Muted is on.
+
 ## 1.6.0-beta.7
 
 **Online play that connects where it couldn't, training online, and the Alphas' training in the Street Fighter IIs.**

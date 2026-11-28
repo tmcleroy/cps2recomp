@@ -228,6 +228,10 @@ private:
     // Display switches (launcher.ini, [video]).
     bool toggle_on(const Slot& slot, const launcher::Toggle& toggle) const;
     void set_toggle(Slot& slot, const launcher::Toggle& toggle, bool on);
+    // (a collection's: Toggle::global)
+    std::vector<std::pair<size_t, const launcher::Toggle*>> global_toggles() const;  // (each by the first game that has it)
+    void global_display_card(float width);
+    void migrate_global_display();
 
     // Features (settings.h: the rules the game follows too).
     void load_features(Slot& slot);
@@ -466,6 +470,7 @@ private:
     bool room_in_ = false;
     bool room_lists_ = true; // (the check-in brings the Online page's lobby list too: until a service answers without it)
     std::vector<std::string> room_answered_;
+    std::vector<std::string> room_chimed_;  // (the invitations that have been chimed for)
 #ifdef LAUNCHER_UPDATE_REPO
     std::unique_ptr<launcher::Updater> updater_;
     bool relaunched_ = false;  // (the new version has been started: this one quits)
