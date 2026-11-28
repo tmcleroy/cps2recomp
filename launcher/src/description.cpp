@@ -8,6 +8,7 @@
 // that tools/gamecfg.py --collection writes from them all.
 
 #include "launcher.h"
+#include "../../assets/icon/icon_png.h"
 
 #include "romcheck.h"
 #include "../../games/mvsc/gauge_settings.h"
@@ -342,6 +343,8 @@ launcher::Description describe_game(const GameInfo& game) {
     // board's own settings are a card on each game's page, Keyboard only is on the Controllers page, everything else
     // is the in-game menu's)
     d.launcher_features_only = true;
+    d.icon_png = kIconPng; // (assets/icon: the window's, and beside the name in the top bar)
+    d.icon_png_size = kIconPngSize;
     d.board_category = "Board";
     d.controller_features = {"keyboard_only"};
     d.features_name = "Settings";

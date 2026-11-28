@@ -41,6 +41,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Frameworks" "$APP/Contents/Resources"
 # (the launcher's Tools: the scene diorama, tools/diorama)
 cp "$(dirname "$0")/diorama/diorama.html" "$APP/Contents/Resources/"
+cp "$(dirname "$0")/../assets/icon/icon.icns" "$APP/Contents/Resources/" # (Info.plist's CFBundleIconFile)
 for exe in $LAUNCHER $PROGRAMS; do
     cp "$B/$exe" "$APP/Contents/MacOS/"
 done
@@ -76,6 +77,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleDisplayName</key><string>$NAME</string>
     <key>CFBundleIdentifier</key><string>$APP_ID</string>
     <key>CFBundleExecutable</key><string>$LAUNCHER</string>
+    <key>CFBundleIconFile</key><string>icon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1</string>
     <key>CFBundleVersion</key><string>1</string>

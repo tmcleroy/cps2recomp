@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The icon's tile colour, under its foreground (assets/icon: recomp-common tools/make_icons.sh) -->
+<resources>
+    <color name="ic_launcher_background">#0D1016</color>
+</resources>

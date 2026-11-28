@@ -27,6 +27,7 @@
 #include "folders.h"
 #include "gamepads.h"
 #include "i18n.h"
+#include "icon.h"
 #include "layout.h"
 #include "menu_buttons.h"
 #include "online.h"
@@ -675,6 +676,7 @@ App::App(SDL_Window* window)
       prefs_(folder_ / "launcher.ini"),
       program_folder_(base_path()),
       about_(the_description()) {
+    recomp::sdl::SetWindowIcon(window_, about_.icon_png, about_.icon_png_size);
     if (tabbed()) {
         ui::set_menu_look(true);
         ui::apply_style(ui::scale());
@@ -6044,6 +6046,17 @@ int App::tab_count() const {
 }
 
 // Along the top: the launcher's name, the tabs (LB and RB between them, a game's page being the Library tab's)
+SDL_Texture* App::icon_texture() {
+    if (!icon_tried_) {
+        icon_tried_ = true;
+        if (SDL_Surface* surface = recomp::sdl::LoadIcon(about_.icon_png, about_.icon_png_size)) {
+            icon_ = SDL_CreateTextureFromSurface(SDL_GetRenderer(window_), surface);
+            SDL_DestroySurface(surface);
+        }
+    }
+    return icon_;
+}
+
 void App::top_bar(float width) {
     const ui::Palette& p = ui::palette();
     ImVec2 origin = ImGui::GetMainViewport()->Pos;
@@ -6053,11 +6066,22 @@ void App::top_bar(float width) {
     list->AddRectFilled(origin + ImVec2(0, height - std::max(1.0f, px(1))), origin + ImVec2(width, height), p.separator);
     // (a narrow window, a phone's: the tabs alone)
     const bool named = width >= px(760);
-    ImGui::SetCursorScreenPos(origin + ImVec2(px(22), px(13)));
+    // (the port's icon, then its name)
+    float left = px(22);
+    if (SDL_Texture* icon = named ? icon_texture() : nullptr) {
+        const float side = px(40);
+        float tw = 1, th = 1;
+        SDL_GetTextureSize(icon, &tw, &th);
+        const float w = tw >= th ? side : side * tw / th, h = th >= tw ? side : side * th / tw;  // (its own shape kept)
+        const ImVec2 at = origin + ImVec2(px(18) + (side - w) / 2, (height - h) / 2);
+        list->AddImage(ImTextureRef(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(icon))), at, at + ImVec2(w, h));
+        left = px(18) + side + px(12);
+    }
+    ImGui::SetCursorScreenPos(origin + ImVec2(left, px(13)));
     if (named) {
         ui::text(LAUNCHER_GAME_NAME, Font::Semibold, 16.0f, p.text);
     }
-    ImGui::SetCursorScreenPos(origin + ImVec2(px(22), px(34)));
+    ImGui::SetCursorScreenPos(origin + ImVec2(left, px(34)));
     int titled_count = 0;
     for (size_t which = 0; which < slots_.size(); which++) {
         titled_count += collection_ && slots_[which]->has_program() && shown(which) ? 1 : 0;
@@ -6071,7 +6095,7 @@ void App::top_bar(float width) {
         ui::text(under.c_str(), Font::Regular, ui::size::kSmall, p.secondary);
     }
     const char* own[] = {"Game", about_.features_name, "Controllers", "Library", "", "Multi game", "Online", "", ""};
-    float x = origin.x + (named ? std::max(px(220), ui::text_size(LAUNCHER_GAME_NAME, Font::Semibold, 16.0f).x + px(56)) : px(8));
+    float x = origin.x + (named ? std::max(left + px(198), left + ui::text_size(LAUNCHER_GAME_NAME, Font::Semibold, 16.0f).x + px(34)) : px(8));
     // (a chip naming the shoulder button, where a gamepad is in use)
     const bool pad = ui::gamepad_in_use();
     const auto chip = [&](const char* label) {

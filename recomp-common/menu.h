@@ -113,6 +113,13 @@ struct MenuTab {
     std::vector<MenuRow> rows = {};
 };
 
+// The port's icon (tools/make_icons.sh; icon.h reads it from the PNG in the program): 0xAABBGGRR pixels, as the
+// menu's, any size (the menu scales it down). Shown at the left of the tabbed menu's command row.
+struct MenuIcon {
+    std::vector<uint32_t> pixels;
+    int width = 0, height = 0;
+};
+
 struct MenuConfig {
     // The first page, in groups; a line is drawn between groups.
     std::vector<std::vector<MenuRow>> groups;
@@ -161,6 +168,8 @@ struct MenuConfig {
     // feature with Menu::Step. hotkeyName: the hint line's name for the Hotkey buttons.
     std::function<std::string(size_t feature)> hotkey;
     std::string hotkeyName = "Y";
+    // Optional: the port's icon, at the command row's left (tabbed menu)
+    MenuIcon icon;
 };
 
 // Text in a font of the host's (a smooth one) in place of the menu's dot font, for the window look of the tabbed menu.
