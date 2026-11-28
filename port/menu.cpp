@@ -54,9 +54,9 @@ void Menu::Open(bool withStates) {
     m_onlineMenu.Close();
     const cps2recomp::Game &game = cps2recomp::TheGame();
     recomp::MenuConfig config;
-    // The standard layout (recomp-common/menu_layout.h, taken from this toolkit's, issue #196): Online, Display, Game
-    // and Stage first; Alternative modes; the save states; the other pages and the board's own rows; leaving. Under
-    // Game: the speed, Mute, and the Board, Cheats and Sound pages.
+    // The standard layout (recomp-common/menu_layout.h, taken from this toolkit's, issue #196), as tabs: the command
+    // row (Back, Save state, Load state, Slot, Reset game, Quit game, Resume) and the tabs Game, Display, Sound, Online,
+    // Training, Modes, Stage, Cheats and Capture. Under Game: the speed, Mute, the Board page and the board's own rows.
     // (Game, Board, Cheats and Sound first, in that order, as the Game page lists them: the game's own page, with its
     // description, where it has one; their rows count the features that are on)
     const auto own = [&game](const char *name) -> const cps2recomp::Page * {
@@ -103,7 +103,8 @@ void Menu::Open(bool withStates) {
     rows.resetOptionsDescription = "Puts every option back as it first was (the launcher's Enhanced preset), and the speed to full. "
                                    "The game's own settings (its Test menu) and the controls stay as they are.";
     rows.resetDescription = "Starts the board again, as if switched off and on.";
-    recomp::layout::Standard(config, rows);
+    // (as tabs: layout::Tabbed, which lays out the pages as Standard does as well; issue: the tabbed menu)
+    recomp::layout::Tabbed(config, rows);
     // (during an online match, the features the match decides for both players are left as it has them: a change on
     // one side alone would leave the two games apart; the host sets them before hosting)
     const std::function<bool(size_t)> decided = matchDecides;
@@ -201,8 +202,19 @@ void Menu::Open(bool withStates) {
                               "the speed.";
     config.muted = [this] { return muted; };
     config.setMuted = [this](bool to) { muted = to; };
+    // (an option's default, which X puts back and against which a row shows as changed: as the launcher's Enhanced
+    // preset has it, as Reset all options puts it)
+    {
+        const std::vector<recomp::FeatureInfo> list = cps2recomp::FeatureList();
+        recomp::Ini preset("");
+        recomp::SetPreset(preset, list, "enhanced");
+        std::vector<int> defaults = recomp::FeatureValues(preset, list);
+        config.defaultValue = [defaults = std::move(defaults)](size_t feature) { return feature < defaults.size() ? defaults[feature] : 0; };
+    }
     config.confirmName = recomp::sdl::kConfirmName;
     config.closeName = recomp::sdl::kCloseName;
+    config.tabsName = recomp::sdl::kTabsName;
+    config.backName = recomp::sdl::kBackName;
     m_menu.Configure(std::move(config));
     m_menu.Open();
 }
