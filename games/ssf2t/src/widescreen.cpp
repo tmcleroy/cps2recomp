@@ -65,6 +65,16 @@ namespace {
 #else
     constexpr int kCourtSides[] = {128, 192, 144, 192, 128, 128, 192, 192, 192, 160, 96, 192, 64, 160, 64, 144};
 #endif
+    // The most the court's side can be however far a stage is drawn: as far as the board can place an object across.
+    // A CPS-2's objects go to 1024 columns, more than the widest court; a CPS-1's (the classic games, family.h's
+    // SSF2T_FAMILY_COURT_MOST) only to 512, and the game's own object writer leaves out any outside them (051226 on in
+    // Hyper Fighting: only places across under 0x200 are written), so a fighter in a wider court's outer columns was
+    // not drawn, or drawn 512 away on the other side (Video::DrawObjectsCps1's x is nine bits)
+#ifdef SSF2T_FAMILY_COURT_MOST
+    constexpr int kCourtMost = SSF2T_FAMILY_COURT_MOST;
+#else
+    constexpr int kCourtMost = Video::kMaxSide;
+#endif
     int Side() {
         if (!court::On()) {
             return kSide;
@@ -73,7 +83,9 @@ namespace {
             return std::clamp(atoi(forced), 0, static_cast<int>(Video::kMaxSide));
         }
         const int stage = Ram16(kStage);
-        return BattleStage() > kStages || stage < 0 || stage >= static_cast<int>(std::size(kCourtSides)) ? kSide : kCourtSides[stage];
+        return BattleStage() > kStages || stage < 0 || stage >= static_cast<int>(std::size(kCourtSides))
+                   ? kSide
+                   : std::min(kCourtSides[stage], kCourtMost);
     }
 
     int Margin() {

@@ -242,7 +242,12 @@ has a copy with its own places (`games/hsf2/src/court.cpp`). Hooks only, as in A
   144, 192, 128, 128, 192, 192, 192, 160, 96, 192, 64, 160, 64, 144 (Ryu's roofs end, Ken's boats and Chun-Li's street
   come round again, Balrog's casino is 576 wide, Cammy's and Fei Long's planes behind come round again past 64). The
   classic games' twelve stages end sooner on E. Honda's and M. Bison's (black past 128): their `family.h` has
-  `SSF2T_FAMILY_COURT_SIDES`. `SSF2T_COURT_SIDE=N` (`HSF2_COURT_SIDE`) forces a side, for measuring.
+  `SSF2T_FAMILY_COURT_SIDES`. But the classic games are CPS-1s, whose objects are placed across in nine bits (512
+  columns: `Video::DrawObjectsCps1`), and the game's own object writer leaves out any outside them (Hyper Fighting's
+  `051226` on): a court wider than 512 had its fighters undrawn in its outer columns, or drawn 512 away on the other
+  half. So their `family.h` has `SSF2T_FAMILY_COURT_MOST` 64 too, and their court is the widescreen picture on every
+  stage (`kCourtMost`; tools/check_online.sh's `BALL` fails a court wider than its board's objects go).
+  `SSF2T_COURT_SIDE=N` (`HSF2_COURT_SIDE`) forces a side, for measuring.
 - The World Warrior's battle modes offer its eight world warriors only (`SSF2T_FAMILY_CHOOSABLE`): M. Bison or Sagat
   played by a person sent the game off into nothing as the fight began (every battle mode, before the court too).
 

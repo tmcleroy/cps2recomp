@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The fighters stay drawn all over the Ball battle's court in The World Warrior, Champion Edition and Hyper
+  Fighting (and its CSL editions).** These games run on the older CPS-1 board, which places its sprites across only 512
+  columns, but their courts were made as wide as the stages are drawn (up to 768). A fighter who walked out towards a
+  court's ends disappeared, or was drawn on the other player's side, and on some stages player 1 was hardly seen at
+  all, online and off. Their courts are now the widescreen picture, 512 columns, on every stage, where the board draws
+  everything.
+
 ## 1.6.0-beta.7
 
 **Online play that connects where it couldn't, training online, and the Alphas' training in the Street Fighter IIs.**
