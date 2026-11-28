@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The in-game menu in tabs.** Back, Save state, Load state, Slot, Reset game, Quit game and Resume stay in a row at
+  the top; every option is under one of nine tabs, the same in every game: Game, Display, Sound, Online, Training,
+  Modes, Stage, Cheats and Capture. LB/RB (or Q/E) change tab, X (or Delete) puts an option back as the Enhanced preset
+  has it, Left/Right set a switch, and the mouse reaches everything. An option changed from that preset is marked, and
+  each tab says how many it has. Beside the options: what the one chosen does, and its choices. Reset game and Quit
+  game ask for a second press.
+- **A CRT look for the menu**: on an arcade monitor (or with Compact menu on), the menu is drawn at the board's own
+  resolution in capitals, with a solid bar for the row chosen and one tab at a time, sharp on a 15 kHz screen.
+
 ## 1.6.0-beta.7
 
 **Online play that connects where it couldn't, training online, and the Alphas' training in the Street Fighter IIs.**

@@ -86,7 +86,7 @@ Every fighting game has a full training mode, from the in-game menu (not yet the
 Two players on two machines, or four on up to four in the tag-team games, with **rollback** netcode. Any mix of macOS,
 Linux, the Steam Deck and Windows can play each other.
 
-- **Host** a match from the launcher, or from the game you're playing (its menu's **Online** page: you play on until
+- **Host** a match from the launcher, or from the game you're playing (its menu's **Online** tab: you play on until
   someone joins), and give the other player its **code**: they type it on the launcher's **Online** page. If you've
   set your name, the match is also listed in the **lobby**, where anyone can pick it from **Online matches**. Nothing
   needs setting up on either router.
@@ -105,7 +105,7 @@ Linux, the Steam Deck and Windows can play each other.
   (Esc, **Start Training**): no clock, no knock-outs, the host's refills, and each player's own hit boxes, frame data and
   input display. Either player can start the round over for both.
 - **Your own input delay and run-ahead**: each player chooses their own, as on Fightcade (the launcher's Online page,
-  or the game's menu); the match is the same for everyone. The **input lag readout** (Display page) shows what a
+  or the game's menu); the match is the same for everyone. The **input lag readout** (Display tab) shows what a
   press takes to show, online too.
 - **On screen:** the players' **names** and the **score** at the top, the **win streak** of a player who keeps winning,
   and, if you like, **network stats** at the top right as on Fightcade: ping, jitter, each player's delay and
@@ -128,7 +128,7 @@ Linux, the Steam Deck and Windows can play each other.
   every other fighting game's stages in the collection, as those games show them, their music too. Each needs that game's ROM set.
   <img width="6144" height="4064" alt="vsav-all-stages" src="https://github.com/user-attachments/assets/71327539-0b51-499f-af01-8c0c55448471" />
 
-- **Stage select**: the in-game menu's **Stage** page puts the fights on the stage you choose, the game's own or
+- **Stage select**: the in-game menu's **Stage** tab puts the fights on the stage you choose, the game's own or
   another game's, whatever is played: arcade, versus, training, survival, the team and endless battles, and online
   (the host's choice) ([more](docs/MODES.md#the-stage)).
 - **Alternative modes** in the fighting games: survival, ring out, an endless battle the game plays itself, and in
@@ -137,7 +137,7 @@ Linux, the Steam Deck and Windows can play each other.
   the objects, and each sprite by itself), for a frame or a few seconds of them; and in the fighting games' stage viewer, a whole stage from end to
   end, each layer in full with its parallax pace ([more](docs/FEATURES.md#scene-export)).
 - **Video recording**: what you play and hear saved as an MP4 that plays anywhere, the pixels sharp at 3 times the
-  board's size or more, the custom soundtrack too (Alt+F12, or the menu's **Video** page); and **instant replay**, the
+  board's size or more, the custom soundtrack too (Alt+F12, or the menu's **Capture** tab); and **instant replay**, the
   last 30 seconds saved after they happen (Alt+Shift+F12) ([more](docs/FEATURES.md#video-recording)).
 - **Ball battle**, a ball game in the Vampire Savior games, the Street Fighter Alphas, the Street Fighter IIs and Marvel vs. Capcom: each fighter on a half of the stage, hitting a big ball past the other with
   their attacks, first to 3, 5 or 10 ([more](docs/COURT.md)).
@@ -151,7 +151,10 @@ Linux, the Steam Deck and Windows can play each other.
   super resolution such as 2560 x 224, on the screen you choose, synced to the screen with a frame delay, and on Windows
   made at the board's exact 59.637 Hz with Switchres, as GroovyMAME does: set up on the launcher's Features page.
 - **Controls**: keyboard, gamepad or arcade stick, every button changeable per player and per game.
-- **An in-game menu**: save states, rewind and a practice point (every game), speed and pause, frame advance, cheats and every option.
+- **An in-game menu**: save states, reset and quit always in its top row, every option under the same tabs in every
+  game (Game, Display, Sound, Online, Training, Modes, Stage, Cheats, Capture), rewind and a practice point, speed and
+  pause, frame advance; for a keyboard, a gamepad (LB/RB change tab, X puts an option back) or the mouse. On an arcade
+  monitor it is drawn at the board's own resolution, sharp on a 15 kHz CRT.
 - **English, Brazilian Portuguese or Spanish** in the launcher and every game's menu: chosen once in the launcher (or
   the system's language). The games' own words are left as they are.
 - **The board's speed**: the processor runs as on the real board, so every game plays at the board's speed and

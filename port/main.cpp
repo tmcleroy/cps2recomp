@@ -4540,8 +4540,17 @@ void Port::RunFrame() {
         memcpy(lastRecorded, pad, sizeof(pad));
     }
     // (tests: --menu FRAME:KEYS[:shot.png]: the menu opened at that frame and those buttons pressed in it:
-    // u d l r, a for a button)
+    // u d l r, a for a button, b for Back, q and e for the tab before and after, x for an option's default)
     if (!opt.menuTest.empty() && strtoull(opt.menuTest.c_str(), nullptr, 10) == frame) {
+        const auto MenuTestKey = [this](char key) {
+            switch (key) {
+            case 'b': return menu.Press(recomp::kMenuBack);
+            case 'q': return menu.Press(recomp::kMenuTabPrev);
+            case 'e': return menu.Press(recomp::kMenuTabNext);
+            case 'x': return menu.Press(recomp::kMenuDefault);
+            default: return menu.Buttons(key == 'u' ? kUp : key == 'd' ? kDown : key == 'l' ? kLeft : key == 'r' ? kRight : key == 'a' ? kPunch1 : 0);
+            }
+        };
         const size_t first = opt.menuTest.find(':'), second = opt.menuTest.find(':', first + 1);
         const std::string keys =
             opt.menuTest.substr(first + 1, second == std::string::npos ? std::string::npos : second - first - 1);
@@ -4549,7 +4558,7 @@ void Port::RunFrame() {
             // (online: the match's menu, over the game, which goes on; it is left open, as the player would leave it)
             OpenOnlineMenu();
             for (const char key : keys) {
-                MenuAct(menu.Buttons(key == 'u' ? kUp : key == 'd' ? kDown : key == 'l' ? kLeft : key == 'r' ? kRight : key == 'a' ? kPunch1 : 0));
+                MenuAct(MenuTestKey(key));
             }
             if (second != std::string::npos) {
                 std::vector<uint32_t> pixels;
@@ -4561,7 +4570,7 @@ void Port::RunFrame() {
         if (!opt.menuTest.empty()) {
             menu.Open(true);
             for (const char key : keys) {
-                MenuAct(menu.Buttons(key == 'u' ? kUp : key == 'd' ? kDown : key == 'l' ? kLeft : key == 'r' ? kRight : key == 'a' ? kPunch1 : 0));
+                MenuAct(MenuTestKey(key));
             }
             if (second != std::string::npos && menu.IsOpen()) {
                 std::vector<uint32_t> pixels;
