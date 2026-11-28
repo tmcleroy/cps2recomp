@@ -10,7 +10,7 @@ Zero 3* in Japan) for macOS, Linux (Steam Deck included) and Windows, made by st
 
 It has everything the other fighting games here have: a full **training mode** (hit boxes and throw range, frame data
 and a frame meter, input display, combo, stun and custom combo readouts, fixed damage, a dummy that guards high or low
-as each attack needs, Alpha counters, techs throws, recovers in the air, rises quickly, mashes out of stun, records and replays), the
+as each attack needs, Alpha counters, techs throws, recovers in the air, rises quickly, mashes out of stun, takes every hit as a counter hit, records and replays), the
 **alternative modes** (attract mode, the stage and model viewers, survival, endless battle, ring out, and the tag team
 battle with its Marvel-style tag style), **widescreen**, **custom colours** with a colour editor, the **hidden
 characters** with no code (Balrog, Juni and Juli), and the features every game shares: free play, straight to the
@@ -106,7 +106,7 @@ loses, and the page holds the aids below.
 | Health refills | Health comes back when a player has not been hit for a moment |
 | Gauge refills | Both players' super combo gauge kept full, for supers and combos into supers (filled again after a V-ism custom combo) |
 | Infinite guard gauge | Both players' guard gauge kept full, so no guard is crushed, and at the size the round began with (a crush or an Alpha counter makes it smaller) |
-| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only; high or low by the game's own rule for each attack); Alpha counters while guarding; techs throws; recovers in the air after a juggle (neutral, forward, back, or at random); rises quickly after a knock-down; mashes out of stun; or is played by the game's own computer player; records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
+| The dummy | Stands, crouches, jumps; guards (always, after a hit, at random, the first hit only, standing only or crouching only; high or low by the game's own rule for each attack); Alpha counters while guarding; techs throws; recovers in the air after a juggle (neutral, forward, back, or at random); rises quickly after a knock-down; mashes out of stun; takes every hit as a counter hit; or is played by the game's own computer player; records and replays in three slots (one, or any at random), and can answer with a recording after guarding or being hit |
 | Start over | The round as it began, in the middle or a corner, sides swapped or not (Backspace, or a gamepad's left shoulder) |
 | Stage | Any of the 26 stages, or the game's own choice |
 | Stop, step, slow | Stop the game, go on a frame at a time, or play at a half, a quarter or an eighth of the speed |
