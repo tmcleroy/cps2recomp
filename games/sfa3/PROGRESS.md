@@ -80,7 +80,11 @@ script and hit box script for `sfa3` (peon2/fbneo-training-mode) named some firs
   buttons).
 - **Quick rise** 029884 (a person's player, 027CAE): two kicks newly pressed while the knock-down's flight (02020202) is
   under 0x50 above the floor, not in the X-ism, not stunned, and not after a hit that forbids it (+258: sweeps and the
-  like). **Tech** 029D08: within 8 steps of being thrown, back or forward with two punches or two kicks (+29B). Throws are
+  like). **Counter hits** 023DD2 (from the hit, 023330): the one hit caught in an attack (+A9 set, +C7 not negative)
+  gets +26C, read for an eighth more damage (0240C6), a quarter more stun (023C40) and its reeling, and the word A5-5CBE
+  (the hit spark, 024612; no combo scaling, 0243C8); 0244A8 then takes the attacker's damage modifier (+294, by the
+  table at 0244E2: twice, a quarter more, a half more) in place of the one hit's. The dummy's "Counter hits" takes that
+  way for every hit on player 2 (in the training movie, hits of 16 take 18). **Tech** 029D08: within 8 steps of being thrown, back or forward with two punches or two kicks (+29B). Throws are
   forward or back with two punches; **the throw test** 02E3FE takes a box of the thrower's attack table (each
   character's own code gives its number: Ryu's 4D) and tests it against the other's push box.
 - **Camera**: record FF8280 (+20/+24 where it is to be, +50/+54 its shake, +40-+46 its ends, 256 to 640 across), copies
