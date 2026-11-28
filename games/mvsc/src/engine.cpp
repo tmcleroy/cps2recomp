@@ -29,6 +29,8 @@ static constexpr cps2recomp::wide::Stage kWideStages[] = {
 };
 namespace cps2recomp {
 
+int CourtSide(); // court.cpp
+
 using namespace mvsc;
 
 void DescribeEngine() {
@@ -98,6 +100,7 @@ void DescribeEngine() {
     e.followsOne = kCameraFollowsOne;
     e.cameraWayTwice = true; // (0CB2B2 goes by the byte two after it when a point character's +267 says)
     e.clock = kRoundClock;
+    e.courtSide = CourtSide; // (Ball battle: court.cpp)
     e.playing = [] { return Ram8(kPlaying) != 0; };
     e.inFight = [] { return Ram8(kPlaying) != 0 && Ram16(kGameStep) == kGameMatch && Ram8(kFight) != 0; };
     e.notTheStage = NotTheStage;

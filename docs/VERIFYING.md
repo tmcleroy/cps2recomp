@@ -72,7 +72,9 @@ back comes out exactly as the first time. `--rollback-test SEED` does that to a 
 they do, and the frames guessed wrong are run again. `--hash-log` writes a frame once its controls are the real
 ones, and must be the same as a run without it. `tools/check_rollback.sh` compares the two three ways: with the
 game's own features, with every feature that changes play on (cheats, free play, widescreen, the arcade timing),
-and with the frames run again not drawn (`--hash-no-picture`), as online play runs them. A difference is
+and with the frames run again not drawn (`--hash-no-picture`), as online play runs them. A game with the Ball
+battle (`fight/court.h`) is run a fourth way, in a Ball battle for two people begun from the menu's Start, so that
+the frames put back cross the court's start (`CPS2RECOMP_BATTLE_SEED` 4 drawn, 7 not drawn). A difference is
 something the game's sources keep outside the save state (`TheGame().state`), or do twice for a frame run twice.
 
 It also says what a rollback costs: a frame, keeping and putting back the state (about 330 KB), and a frame with
@@ -90,6 +92,8 @@ a frame's hash once it has both players' real controls (`--hash-log`), and the t
 side may stop on a desync (exit 5). The two agreeing is not enough (each could be playing the wrong player), so the
 host also records both players' controls as the match had them (`--record`), and they are replayed without the
 network (`--hash-no-picture --hash-no-sound`): the hashes must be the match's. It runs at the board's pace, so 3000 frames take 50 seconds. Every game passes.
+`BALL=FRAME[:SEED]` plays the Ball battle instead, started by the host at that frame as its match menu's Start does:
+both must play the court and stay the same (the replay is not tried, as the mode begins by an online event).
 
 ## Input
 

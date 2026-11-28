@@ -6,7 +6,7 @@ A ball game for the fighting games, on the in-game menu's **Alternative modes** 
 Vampire Savior, Vampire Savior Definitive, Vampire Savior 2 and Vampire Hunter 2, which share its sources; Street
 Fighter Alpha, Alpha 2 (with Zero 2 Alpha, which shares its sources) and Alpha 3; and the Street Fighter IIs: Super
 Turbo with the games that build its sources (Super Street Fighter II, The World Warrior, Champion Edition, Hyper
-Fighting and its CSL editions), and Hyper Street Fighter II). The stage is a court cut in two by a line down the middle of the picture. Each fighter keeps
+Fighting and its CSL editions), and Hyper Street Fighter II; and Marvel vs. Capcom). The stage is a court cut in two by a line down the middle of the picture. Each fighter keeps
 to its own half, and the two of them hit a big ball that flies over the whole court. Get the ball past the other
 fighter and off their end of the court for a point. First to 3, 5 or 10 wins.
 
@@ -246,6 +246,42 @@ has a copy with its own places (`games/hsf2/src/court.cpp`). Hooks only, as in A
 - The World Warrior's battle modes offer its eight world warriors only (`SSF2T_FAMILY_CHOOSABLE`): M. Bison or Sagat
   played by a person sent the game off into nothing as the fight began (every battle mode, before the court too).
 
+### Marvel vs. Capcom
+
+Hooks only (`games/mvsc/src/court.cpp`), as in Alpha 3, with three things of its own: a side is a team of two, its heights
+grow downwards, and a hit has no simple state to write.
+
+- **One character a side.** The chord matcher (`01A0C2`) never matches a punch and a kick of the same strength (HP + HK:
+  the tags at `019456` and `019526` and the team moves; MP + MK: the special partner at `0195CE`), so the partner rests
+  off the picture all game. **The push**: `013758` (the four pairs of records pushed apart) keeps each character on
+  point on its half and goes on at `01378C`. **The throw test** `0186E6` sent to its "no" (`01870E`); its kept-apart
+  distance (`halfWidth` 32 a side of the line) is past the throws' reach. **First attack**: `01D12A` passed over (the
+  game says FIRST ATTACK as it sets `FF4011`). **No damage**: the hits' `sub.w d5,0x270(a6)` (`01B74E`, `01BEA0`) take
+  nothing.
+- **What the ball does** is a hit of the game's own. The hit test leaves each record's hit found in it (`+87` the box
+  hit, `+88` who hit it: `0D7270`), and `0D6ED2` deals with them (`01A8C6` each, the attacker's attack entry chosen at
+  `01A934`). The court's reaction is put in at `0D6EDA` as a hit by the other side's character, and its entry swapped at
+  `01A952` for one of Ryu's (`0F1544` on: his standing light, medium and hard punches, his sweep for a knock-down); the
+  entry is the hit's data, so it reels any character as Ryu's own would. A ball guarded goes to the game's guard
+  (`01AA08`) at once (`01A9F4`), since the game guards only what its attack lists said was coming. The attacker, far away,
+  gets back the hitstop the entry gave it (`0D6E9E`).
+- **Power**: the attack's entry (`0E68AE` by the character, `+80` its number, 0x20 bytes) has the button's strength in
+  `+0D`'s low two bits; a special move is the character's `+B0` not 28 (2A specials, 2C what they throw); a super is a
+  gauge level spent (`+274` going down). **Sounds** 0104, 0105, 0106 and 010A (the game's own, as the ball's hits of
+  Ryu's entries queued them).
+- **Heights**: the court's are the height over the floor (`Ground()` less `+10`), and the camera's place down is turned
+  into one by `Description::cameraHeight` (the camera record's lowest place less its place); the picture's left edge
+  is the camera's word + 0x40 (`Description::pictureLeft`). Both are new in the description for this game.
+- **The court's width** (`Engine::courtSide` in `fight/marvel.h`, the shared widescreen with the court's side in place
+  of 64): the game draws a stage's scroll screens only as far past the board's picture as its camera needs, so as a
+  court game begins (under the fade from black) the camera is put at the stage's right end for two frames, then its
+  left, then back in the middle, and the game draws the rest (the fighters put back after). Then judged by eye at each
+  side: 64, 80, 192, 192, 192, 192, 16, 32, 32, 64 (the bathhouse's camera has 368 columns of room; the haunted hall's
+  back wall, the wreckage's far plane, the city street's and the canyon's planes end, Onslaught's city's lights end). The
+  wreckage's left 16 and the city street's left 30 columns show past their art in the game's own widescreen too, with
+  the camera in the middle. `MVSC_COURT_SIDE=N` forces a side, `MVSC_COURT_NO_SWEEP=1` leaves the camera where it is,
+  `MVSC_COURT_LOG=1` logs each attack's entry, the sounds queued and the ball's hits.
+
 ### Test switches
 
 | Variable | What it does |
@@ -272,4 +308,5 @@ CPS2RECOMP_COURT_CPU=1 CPS2RECOMP_BATTLE_SEED=7 build/vampire_savior/vampire_sav
   property of its own), a tip-off or face-off serve.
 - **The CPU**: smarter positioning (a lob over a fighter near the line, waiting for a ball to drop), specials of each
   character's own.
-- More games: the Marvel games.
+- More games: the other Marvel games (Marvel Super Heroes, X-Men vs. Street Fighter, Marvel Super Heroes vs. Street
+  Fighter), which share Marvel vs. Capcom's engine code (`fight/marvel.h`).
