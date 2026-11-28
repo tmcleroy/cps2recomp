@@ -43,6 +43,9 @@
 # at FRAME (--net-command FRAME:mode=1:SEED, as its match menu's Start does; the joining side says it is ready a second
 # before), each side's made-up play its fighter's on the court. Every machine must play the court (CPS2RECOMP_COURT_LOG's
 # lines), and the logs still be the same; the replay of the record is not tried (the mode began by an online event).
+# The court (in the host's widescreen) must be the same on every machine and no wider than the board places its objects
+# in (a CPS-1's 512 columns). STAGE=N plays on the menu's stage N (2 unless said); SHOTS=N and PRESENTS=N write each
+# machine's picture (--shot-every) and window's frame (--present-every) every N frames into work/<id>/check, to look at.
 # SEATS=FRAME:LAYOUT (a match of four, or of two): the host changes the seats at FRAME (issue #448: --net-command
 # FRAME:seats=LAYOUT, e.g. 1200:1.0.3.2 swaps the sides at four machines, 1200:1.0 at two); every machine must make it, the same frame, and the logs and the
 # replay of the host's record still be the same.
@@ -139,7 +142,7 @@ if [ -n "${SLOWDOWN:-}" ]; then
 fi
 # (the host's stage choice is the match's on games with the top-level Stage page)
 if "build/$GAME/$GAME" --list-features 2>&1 | awk -F'\t' '$1=="stage" && $2=="Stage" {found=1} END {exit !found}'; then
-    play="$play,stage=2"
+    play="$play,stage=${STAGE:-2}"
 fi
 if [ -n "$first_to" ]; then play="$play,online_first_to=$first_to"; fi
 training=${TRAINING:-}
@@ -202,7 +205,7 @@ side() { # host | join..., then the program's arguments
     echo "$name sending with $profile ms:jitter:loss" >&2
     exec "build/$GAME/$GAME" --rom "$rom" --headless --frames "$frames" --settings "$work/online-$name.ini" \
         --eeprom "$work/online-$name.eeprom" --hash-log "$work/online-$name.txt" --net-service off \
-        --net-fake "$profile" "$@" 2> "$work/online-$name.err"
+        --net-fake "$profile" ${SHOTS:+--shot-every "$SHOTS:$work/shot-$name-"} ${PRESENTS:+--present-every "$PRESENTS:$work/present-$name-"} "$@" 2> "$work/online-$name.err"
 }
 named() { # host | join... -> its name
     case "$1" in host) echo "Host P1" ;; join) echo "Joiner" ;; *) echo "Joiner ${1#join}" ;; esac
@@ -436,7 +439,22 @@ if [ -n "$ball" ]; then
             echo "FAILED: the $name did not play the Ball battle (${courts:-0} court lines)"; played=0; status=1
         fi
     done
+    # (the court the same on every machine, and no wider than the board places its objects across: a CPS-1's 512
+    # columns, or the fighters in its outer columns go undrawn or are drawn 512 away, games/ssf2t/src/widescreen.cpp)
+    most=1024; case "$(python3 "$(dirname "$0")/gamecfg.py" board "$GAME" 2>/dev/null)" in cps1*) most=512 ;; esac
+    widths=$(grep -o ' court [0-9]*-[0-9]*' "$work/online-host.err" | sort -u | awk -F'[ -]' '{print $4 - $3}' | sort -un | paste -sd, -)
+    for name in $joiners; do
+        if [ "$(grep -o ' court [0-9]*-[0-9]*' "$work/online-$name.err" | sort -u)" != "$(grep -o ' court [0-9]*-[0-9]*' "$work/online-host.err" | sort -u)" ]; then
+            echo "FAILED: the $name's court is not the host's"; played=0; status=1
+        fi
+    done
+    for width in ${widths//,/ }; do
+        if [ "$width" -gt "$most" ]; then
+            echo "FAILED: a court $width columns wide, more than this board places its objects in ($most)"; played=0; status=1
+        fi
+    done
     if [ "$played" = 1 ]; then
+        echo "ok: the court ${widths:-?} columns wide on every machine (the board's objects: $most)"
         echo "ok: every machine played the Ball battle (from frame $ball_at, seed $ball_seed; host: $(grep '^court t' "$work/online-host.err" | tail -1 | grep -o 'score [0-9-]*'))"
     fi
     echo "(the replay of the record is not tried: the Ball battle began by an online event)"

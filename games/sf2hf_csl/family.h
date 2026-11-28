@@ -279,6 +279,9 @@ void RegisterOwnSources();
 // The Ball battle's court, each stage's side (games/ssf2t/src/widescreen.cpp; by kStage): the classic stages' planes
 // end sooner than Super Turbo's on E. Honda's and M. Bison's (black past 128), the rest as Super Turbo's
 #define SSF2T_FAMILY_COURT_SIDES {128, 128, 144, 192, 128, 128, 192, 192, 128, 160, 96, 192}
+// ... but a CPS-1 places its objects across in 512 columns only (games/ssf2t/src/widescreen.cpp, kCourtMost): the
+// court is the widescreen picture, 64 a side, on every stage, or the fighters went undrawn in its outer columns
+#define SSF2T_FAMILY_COURT_MOST 64
 
 // The Ball battle's hit sounds (games/ssf2t/src/court.cpp): light, medium, hard, specials and supers as hard ones
 // (queued as the training's dummy was hit by each button, against the strength the hit leaves at the victim's +4C)
