@@ -153,7 +153,8 @@ Linux, the Steam Deck and Windows can play each other.
 - **Controls**: keyboard, gamepad or arcade stick, every button changeable per player and per game.
 - **An in-game menu**: save states, reset and quit always in its top row, every option under the same tabs in every
   game (Game, Display, Sound, Online, Training, Modes, Stage, Cheats, Capture), rewind and a practice point, speed and
-  pause, frame advance; for a keyboard, a gamepad (LB/RB change tab, X puts an option back) or the mouse. On an arcade
+  pause, frame advance; for a keyboard, a gamepad (LB/RB change tab, X puts an option back) or the mouse. Any option
+  can get a hotkey (H or Y on its row), which steps it while you play: run-ahead's frames, the shader. On an arcade
   monitor it is drawn at the board's own resolution, sharp on a 15 kHz CRT.
 - **English, Brazilian Portuguese or Spanish** in the launcher and every game's menu: chosen once in the launcher (or
   the system's language). The games' own words are left as they are.
