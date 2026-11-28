@@ -1,5 +1,5 @@
 # A copy of recomp-common's src/ and launcher/, made by tools/sync-common.sh. Do not change it here.
-commit 47ad7d1b976ab514f6f0c1d320b2220345ef3654
+commit cfcfdf5bdf4b2aaa635291c4add566dbf9f9e7b8
 a943b3183c1e835a6fdc0d7b57c291dc53e84f9287eb84ed1e61eb246d05d86f  arcade_screen.cpp
 46d131fe9dd6d60bf673e51a13253f4377c53285ba6bea7dca2f968e3eba3dfa  arcade_screen.h
 66cfa5fc775133092ced0f53373ea1df1a2f914b2a38fff34c6b7ec2105de33a  arcade_sdl.h
@@ -15,7 +15,7 @@ a639c19cd26004a2fdcba3e8bfb6f3417e51c39932333dc770988bc79e3dfb7a  launcher/examp
 8f1195d55a2fd315a07d812328470ca9ba2abb78c8d317ff19619d5125e00cea  launcher/flags-LICENSE.txt
 4d29d84301e0e970e91b8bab6e8dd561f94074446535b99d680caf5ad4215a7c  launcher/flags.png
 24a0ed33db6940596e6c1db493b73873138b25db81f33da44f1357ec108904dc  launcher/launcher.cmake
-1e5f3b8fd54f897530ddb605c50a40c8d343d97f9d12d8711ca6984b28dc6b3f  launcher/src/app.cpp
+a6ac628d8b4e0a0fe1fcbad83f111bab781fcba131624ffe99411d11372879bd  launcher/src/app.cpp
 29e871a9c2d311cd75824252f1beac3cb4a7fa9f8524a416a7837792a105027e  launcher/src/app.h
 6c439b8c48db7008d280c85ed209f65d9730f15576fc71afa401342f2543ec65  launcher/src/bindings.h
 6df1b5a9257d1ba675db45abca0dc1b27d986543f8d8088495a6fa5572f55484  launcher/src/countries.h

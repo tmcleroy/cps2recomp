@@ -6051,8 +6051,12 @@ void App::top_bar(float width) {
     ImDrawList* list = ImGui::GetWindowDrawList();
     list->AddRectFilled(origin, origin + ImVec2(width, height), p.sidebar);
     list->AddRectFilled(origin + ImVec2(0, height - std::max(1.0f, px(1))), origin + ImVec2(width, height), p.separator);
+    // (a narrow window, a phone's: the tabs alone)
+    const bool named = width >= px(760);
     ImGui::SetCursorScreenPos(origin + ImVec2(px(22), px(13)));
-    ui::text(LAUNCHER_GAME_NAME, Font::Semibold, 16.0f, p.text);
+    if (named) {
+        ui::text(LAUNCHER_GAME_NAME, Font::Semibold, 16.0f, p.text);
+    }
     ImGui::SetCursorScreenPos(origin + ImVec2(px(22), px(34)));
     int titled_count = 0;
     for (size_t which = 0; which < slots_.size(); which++) {
@@ -6063,9 +6067,11 @@ void App::top_bar(float width) {
 #else
     const std::string under = collection_ ? TrFormat("{} games", {std::to_string(titled_count)}) : std::string(about_.subtitle);
 #endif
-    ui::text(under.c_str(), Font::Regular, ui::size::kSmall, p.secondary);
+    if (named) {
+        ui::text(under.c_str(), Font::Regular, ui::size::kSmall, p.secondary);
+    }
     const char* own[] = {"Game", about_.features_name, "Controllers", "Library", "", "Multi game", "Online", "", ""};
-    float x = origin.x + std::max(px(220), ui::text_size(LAUNCHER_GAME_NAME, Font::Semibold, 16.0f).x + px(56));
+    float x = origin.x + (named ? std::max(px(220), ui::text_size(LAUNCHER_GAME_NAME, Font::Semibold, 16.0f).x + px(56)) : px(8));
     // (a chip naming the shoulder button, where a gamepad is in use)
     const bool pad = ui::gamepad_in_use();
     const auto chip = [&](const char* label) {
