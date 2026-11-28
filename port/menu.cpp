@@ -33,6 +33,7 @@ void Menu::OpenOnline(Online online) {
                      {{recomp::MenuRow::Mute}, {recomp::MenuRow::Resume}},
                      {{recomp::MenuRow::Action, kLeave, online.leave, online.leaveDescription}}};
     config.pages.push_back({kOnlinePage, "", "The match's modes and your own picks for them.", false});
+    config.pages.insert(config.pages.end(), online.pages.begin(), online.pages.end());
     config.features = std::move(online.features);
     config.commands = std::move(online.commands);
     config.value = std::move(online.value);

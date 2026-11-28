@@ -95,7 +95,6 @@ void RegisterTag() {
     d.otherMode = [] { return session::InSession() || modes::AttractMode() || modes::StageViewer() || BattleMode() || marvel::ModelViewer(); };
     // The native special-partner portrait and counter extend through row 64 (224-line picture).
     d.labelY = 0.305f;
-    TheGame().onlineNamesY = 84;
     TheGame().onlineBottomInset = 34; // TIME, the Hyper gauges and level occupy the bottom 33 board pixels
     tag::Register(d);
 }

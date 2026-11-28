@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Online modes start at once, with no Ready.** The host's Start begins Ball battle, the tag team battle or a training
+  session for both players straight away. To change their fighter, the other player opens their menu: the game pauses
+  for both, the host's screen says "Bob is changing their settings", and when the menu closes with a fighter changed
+  the mode starts again for both with it (closed with nothing changed, the game just goes on).
+- **The modes' own pages in the online menu.** The Online match page has a page for each mode, as on the Alternative
+  modes page offline: Ball battle, Tag team battle and Training mode, each with its Start and its options. The host
+  sets the options for both; the other player sees them, picks their own fighter, and has the page of the mode being
+  played. The host's changes while a mode is played reach both machines on the same frame.
+- **The host drives online training.** Every Training mode option is the host's on both screens, hit boxes, frame data,
+  the frame meter, the input display and the readouts as well as the refills and fixed damage, and the host changes
+  them while playing. Before, each player had their own display aids, so the other player saw no hit boxes unless they
+  had turned them on themselves.
+- **A Network stats page in the online menu**: the network readout, Ping, Show direct link RTT, the input delay readout
+  and Input during network waits, out of the Online match page's way. Keyboard only is no longer on the online menu
+  (it is a Game page setting, kept as set before the match).
+- **Online names always along the top.** The Names shown option is gone: each side's names and win streak are on one
+  line along the top of the picture, where they never cover the life bars. Hide names and Hide online win streak stay.
+  Both players need this version (online protocol 22).
+
 ## 1.6.0-beta.7
 
 **Online play that connects where it couldn't, training online, and the Alphas' training in the Street Fighter IIs.**

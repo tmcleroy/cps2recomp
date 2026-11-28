@@ -153,7 +153,6 @@ struct Game {
     // How many players an online match is for, as the host's features have it now (fight/tag.h sets it to three or four
     // for split-team versus). Not given: two.
     int (*matchPlayers)() = nullptr;
-    int onlineNamesY = 38; // first row of online labels in board pixels, below the native status display
     int onlineBottomInset = 0; // board pixels occupied by native gauges under online notices
     // Owner of the indicated team and fighter (0-based). A local pair can sit together on a split team.
     int (*matchOwner)(int side, int pick) = nullptr;

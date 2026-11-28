@@ -63,6 +63,7 @@ struct Options {
     std::string settingsPath;  // settings.ini with the player's feature choices
     std::string features;      // --features A,B,-C
     std::string menuTest;      // --menu FRAME:KEYS[:shot.png]
+    uint64_t menuClose = 0;    // --menu-close FRAME: online, the match's menu closed at that frame (as Esc does)
     std::string keys;          // --keys TICK:KEY,TICK:KEY...
     std::vector<std::string> dumpRam; // --dump-ram FRAME:file (as many as given)
     std::string poke;                 // --poke ADDR=BYTE,...
@@ -387,39 +388,43 @@ struct Port {
     // Esc's question answered yes: the match left, and the game with it unless it was hosted from the menu
     void LeaveOnline();
     // Online, the modes played in a match (Netplay::Command): an event of `player`'s, run on both sides before the
-    // frame it was given for: "mode=N:SEED" (the host's: battle::StartOnline) and "row=value" (a player's own fighters
-    // on the modes' pages: player 1's rows the host's, player 2's the other's), commas between
+    // frame it was given for: "mode=N:SEED" (the host's: battle::StartOnline, at once for both), "row=value" (a player's
+    // own fighters on the modes' pages: player 1's rows the host's, player 2's the other's), "set=row:value" (the host's
+    // options of a mode's page: OnlineHostRow), "again=SEED" (a player who changed a mode's picks or options in the menu:
+    // the mode running starts again for both), commas between
     // (`at`: the frame it is run before. A mode starts with each row as the events before its command left it.)
     void OnlineEvent(int player, int side, const std::string &text, uint64_t at); // (player: the sender's machine)
     std::map<std::string, OnlinePickHistory> onlinePickLog;
-    // The host's pause for choosing: while the host's match menu is open the game stands still for both ("setup=1",
-    // the host's event; "setup=0" when it closes), and the other player's opens by itself. The other player says
-    // "ready=1" when their fighters are chosen (a pick of theirs after it takes it back); a mode other than Versus starts
-    // only with the other player ready before its frame (the host's Start waits for it: onlinePendingMode). Only the
-    // events themselves are kept, by frame (a rollback runs them again alike); what they make of the pause and Ready is
-    // worked out from them (OnlineSetupScan), a mode's start being the same at its frame on both sides. (Spectators
-    // run the players' controls without the events: a pause, as a mode's start, is not theirs.)
-    std::map<uint64_t, int> onlineSetupLog; // (the host's "setup": frame, value)
-    std::map<uint64_t, int> onlineModeLog;  // (the host's "mode": frame, mode)
-    std::map<uint64_t, int> onlineReadyLog; // (the other player's Ready as their frame's events leave it: a pick, 0)
+    // The host's options of the modes' pages as its "set" events left them, by frame: put back before each frame
+    // that is run (OnlineOptionsBefore, from Netplay::Run), so a rollback runs each frame with the options it had
+    std::map<std::string, OnlinePickHistory> onlineOptionLog;
+    void OnlineOptionsBefore(uint64_t at);
+    // The pause for changing things: while a player's match menu is open the game stands still for both ("setup=1",
+    // that player's event; "setup=0" when it closes): the host's in a game with modes to start, the other player's while
+    // a mode runs (Ball battle, Tag team battle, Training; not in Versus). Only the events themselves are kept, by frame
+    // (a rollback runs them again alike); what they make of the pause is worked out from them (OnlineSetupScan), the
+    // same at each frame on both sides. (Spectators run the players' controls without the events: a pause, as a mode's
+    // start, is not theirs.)
+    std::map<uint64_t, int> onlineSetupLog[2]; // (each player's "setup": frame, value; 0 the host's)
+    std::map<uint64_t, int> onlineModeLog;     // (the host's "mode": frame, mode)
     struct OnlineSetupState {
-        bool paused = false, ready = false;
-        uint64_t pausedFrames = 0; // (how many frames before were paused)
+        bool hostPaused = false, otherPaused = false;
+        int mode = 0; // (the mode the host last started: 0 Versus)
+        bool Paused() const { return hostPaused || otherPaused; }
     };
     OnlineSetupState OnlineSetupScan(uint64_t before) const; // (the events of the frames before `before`)
     bool OnlinePausedAt(uint64_t at) const;
-    bool OnlineOtherReady() const; // (the other player's Ready, as the frames run so far have it)
-    bool onlineSetupSent = false;  // (the host: what it last said)
-    int onlinePendingMode = -1;    // (the host: a Start waiting for the other player's Ready)
-    int onlineReadyMine = -1;      // (the other player: Ready as chosen, before its event has run)
-    void OnlineSetupFrame();       // (each tick of a match: the host's pause and its Start)
-    // Esc in a match: the match's own menu (Menu::OpenOnline), drawn over the game, which goes on: the host's modes to
-    // start (OnlineCommand), this player's own fighters for them (onlinePicks, sent as events), leaving. Watching, or a
-    // host waiting, Esc asks only whether to leave (`leaving`, answered by LeaveQuestion)
+    bool onlineSetupSent = false; // (this player: what it last said)
+    bool onlineChanged = false;   // (this player changed the running mode's picks or options in the menu: again on closing)
+    void OnlineSetupFrame();      // (each tick of a match: this player's pause, and the mode again when it ends)
+    // Esc in a match: the match's own menu (Menu::OpenOnline), drawn over the game: a page for each mode as the
+    // Alternative modes pages have it (the host's Start and its options for both, which the other player sees while the
+    // mode runs; this player's own fighters, onlinePicks, sent as events), the host's Back to Versus and seats, Network
+    // stats, leaving (OnlineCommand: onlineActions). Watching, or a host waiting, Esc asks only whether to leave
+    // (`leaving`, answered by LeaveQuestion)
     void OpenOnlineMenu();
     void OnlineCommand(size_t index);
     void LeaveQuestion(unsigned pressed);
-    std::vector<Netplay::Layout> onlineSeats; // (the host's seat changes on the menu, after the modes: issue #448)
     // Both players back to the character choice (a match of two, a fighting game): each asks ("reselect=1", or 0 to take it
     // back), and at the frame the second ask runs the board starts again and both are put in (OnlineEvent, Step). Kept in
     // the rollback state (KeepState), as the board is: a rollback runs the asks again alike.
@@ -430,8 +435,15 @@ struct Port {
     bool OnlineReselectHere() const;
     void OnlineReselectBoot();
     std::string TeamsSaid(const Netplay::Layout &layout) const; // ("Ann + Bob vs Cy + Di")
-    std::vector<int> onlineModes;           // (the menu's commands' modes, in its order)
-    std::vector<std::string> onlineRows;    // (the menu's features' rows: the game's features they stand for)
+    std::vector<std::function<void()>> onlineActions; // (the menu's commands, in its order)
+    // The menu's features' rows: the game's features they stand for, and what a change of one does
+    enum class OnlineRow { Pick, Host, Own, Fixed };
+    struct OnlineRowOf {
+        std::string feature;
+        OnlineRow kind;
+        int mode; // (the mode whose page it is on: a change while it runs starts it again; 0: none)
+    };
+    std::vector<OnlineRowOf> onlineRows;
     std::map<std::string, int> onlinePicks; // (this player's fighters as chosen, before their events have run)
     void HearEvents();
     void Matched();

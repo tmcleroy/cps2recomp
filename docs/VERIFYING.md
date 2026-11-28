@@ -92,8 +92,12 @@ a frame's hash once it has both players' real controls (`--hash-log`), and the t
 side may stop on a desync (exit 5). The two agreeing is not enough (each could be playing the wrong player), so the
 host also records both players' controls as the match had them (`--record`), and they are replayed without the
 network (`--hash-no-picture --hash-no-sound`): the hashes must be the match's. It runs at the board's pace, so 3000 frames take 50 seconds. Every game passes.
-`BALL=FRAME[:SEED]` plays the Ball battle instead, started by the host at that frame as its match menu's Start does:
-both must play the court and stay the same (the replay is not tried, as the mode begins by an online event).
+`BALL=FRAME[:SEED]` plays the Ball battle instead, started by the host at that frame as its match menu's Start does
+(at once, nobody saying Ready); five seconds in, the joining side opens its menu, changes its fighter on the Ball battle
+page and closes it, and the court starts again for both: both must play the court, start it again on the same frame
+and stay the same (the replay is not tried, as the mode begins by an online event). `TRAINING=FRAME:RESTART` does the
+same for a training session: the host's training options on both sides, one of them changed by the host halfway, the
+joining side's menu pausing both, and a start over, each on the same frame on both.
 
 ## Input
 

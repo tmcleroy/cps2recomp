@@ -28,12 +28,14 @@ public:
     // withStates: show the save state rows
     void Open(bool withStates);
     // During an online match (Port::OpenOnlineMenu): the match's own menu, drawn small over the game, which goes on for
-    // both players. It opens on its Online match page (the host's modes to start, as commands; this player's own picks,
-    // as features), and its first page has that page, Mute, Resume and leaving the match. A command chosen is
+    // both players. It opens on its Online match page (the host's Back to Versus and seats, as commands; a page for each
+    // mode, with its Start and its options, as on the Alternative modes pages; Network stats; this player's own
+    // readouts), and its first page has that page, Mute, Resume and leaving the match. A command chosen is
     // Action::OnlineCommand (Command(): its place in `commands`), leaving Action::Leave.
     struct Online {
         std::vector<recomp::MenuFeature> features;
         std::vector<recomp::MenuCommand> commands;
+        std::vector<recomp::MenuPage> pages; // (the Online match page's own pages: parent kOnlinePage)
         std::function<int(size_t feature)> value;
         std::function<void(size_t feature, int value)> setValue;
         std::string leave, leaveDescription;

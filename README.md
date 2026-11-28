@@ -99,11 +99,12 @@ Linux, the Steam Deck and Windows can play each other.
   timer, rounds); cheats are off.
 - **Four players**: in the tag-team games, with Tag team at 2 vs 2 on the host, a match is four people, each on their
   own machine or two at a machine (**People at this machine** on the Online page), all joining with the one code.
-- **Ball battle and tag team online**: in two-person matches, the host starts either from the in-game menu (Esc), which
-  pauses the match for both players while each picks their own fighters; the host starts once the other says Ready.
+- **Ball battle and tag team online**: in two-person matches, the host starts either from its page in the in-game menu
+  (Esc), at once for both, with the host's options. The other player changes their own fighter from their menu (the
+  game pauses for both meanwhile), and the mode starts again with it.
 - **Training together online**: in every fighting game the host can start a **training session** for both players
-  (Esc, **Start Training**): no clock, no knock-outs, the host's refills, and each player's own hit boxes, frame data and
-  input display. Either player can start the round over for both.
+  (Esc, **Training mode**, **Start**): no clock, no knock-outs, and the host drives it, its Training mode options (refills,
+  hit boxes, frame data, the input display...) the same on both screens. Either player can start the round over for both.
 - **Your own input delay and run-ahead**: each player chooses their own, as on Fightcade (the launcher's Online page,
   or the game's menu); the match is the same for everyone. The **input lag readout** (Display page) shows what a
   press takes to show, online too.
