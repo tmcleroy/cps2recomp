@@ -595,9 +595,9 @@ const launcher::Collection& launcher::describe_collection() {
              {"30 seconds", "1 minute", "2 minutes", "3 minutes", "5 minutes"}, 1, "stages", 0},
             {"speed", "Scroll speed", "Scroll: how fast the stages go by.", {"Slow", "Medium", "Fast"}, 1, "stages", 1},
             {"screen", "Screen", "Every game full screen, or every game in a window, or as the Display card on the Games page has it. For this run only.",
-             {"Full screen", "Window", "As each game is set"}},
+             {"Full screen", "Window", "As the Display card has it"}},
             {"picture", "Picture", "Every game in widescreen, or every game 4:3, or as the Display card on the Games page has it. For this run only.",
-             {"Widescreen", "4:3", "As each game is set"}},
+             {"Widescreen", "4:3", "As the Display card has it"}},
             // (the Display page's own, port/main.cpp: every game has them, and every endless battle invisible walls)
             {"walls", "Invisible walls", "With widescreen: every game played exactly as on the board, behind walls that are not seen, or every game "
              "to the wide picture's edges, or each as its own Display page has it. For this run only.",

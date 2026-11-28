@@ -663,6 +663,7 @@ inline constexpr recomp::i18n::Entry kSpanish[] = {
     {"Every game full screen, or every game in a window, or as the Display card on the Games page has it. For this run only.", "Todos los juegos en pantalla completa, todos en ventana, o según el ajuste de Pantalla de la página Juegos. Solo para esta sesión."},
     {"Window", "Ventana"},
     {"As each game is set", "Como esté cada juego"},
+    {"As the Display card has it", "Como esté la tarjeta Pantalla"},
     {"Picture", "Imagen"},
     {"Every game in widescreen, or every game 4:3, or as the Display card on the Games page has it. For this run only.", "Todos los juegos en pantalla panorámica, todos en 4:3, o según el ajuste de Pantalla de la página Juegos. Solo para esta sesión."},
     {"Widescreen", "Pantalla panorámica"},

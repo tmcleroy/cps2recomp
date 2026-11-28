@@ -25,6 +25,7 @@
 #endif
 
 #include "chime.h"
+#include "video_keys.h"
 #include "folders.h"
 #include "gamepads.h"
 #include "i18n.h"
@@ -1756,6 +1757,7 @@ bool App::toggle_on(const Slot& one, const launcher::Toggle& toggle) const {
 }
 
 void App::set_toggle(Slot& one, const launcher::Toggle& toggle, bool on) {
+    launcher::reread_switches(prefs_, one.about->display, one.video_section);  // (a running game may have changed others)
     prefs_.set(toggle_section(one.video_section, toggle), toggle.key, on ? "1" : "0");
     for (const launcher::Toggle& other : one.about->display) {
         if (on && toggle.needs && std::strcmp(other.key, toggle.needs) == 0) {
@@ -2107,6 +2109,8 @@ void App::frame() {
         Slot& one = *slots_[which];
         if (one.was_running && !one.game.running()) {
             one.settings.load();
+            // (a switch its menu changed, Widescreen: in launcher.ini, which this launcher keeps in memory)
+            launcher::reread_switches(prefs_, one.about->display, one.video_section);
             after_game(one);
             show_focus_ = interactive_ && SDL_HasGamepad();  // (back from the game with a gamepad in hand)
             one.was_running = false;

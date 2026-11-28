@@ -653,6 +653,7 @@ inline constexpr recomp::i18n::Entry kPortuguese[] = {
     {"Every game full screen, or every game in a window, or as the Display card on the Games page has it. For this run only.", "Todos os jogos em tela cheia, ou todos em janela, ou como o cartão Tela da página Jogos estiver. Só nesta sessão."},
     {"Window", "Janela"},
     {"As each game is set", "Como cada jogo está"},
+    {"As the Display card has it", "Como o cartão Tela estiver"},
     {"Picture", "Imagem"},
     {"Every game in widescreen, or every game 4:3, or as the Display card on the Games page has it. For this run only.", "Todos os jogos em widescreen, ou todos em 4:3, ou como o cartão Tela da página Jogos estiver. Só nesta sessão."},
     {"With widescreen: every game played exactly as on the board, behind walls that are not seen, or every game to the wide picture's edges, or each as its own Display page has it. For this run only.", "Com widescreen: todos os jogos exatamente como na placa, com paredes invisíveis, ou todos até as bordas da imagem larga, ou cada um como sua página Tela estiver. Só nesta sessão."},
