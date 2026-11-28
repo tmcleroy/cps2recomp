@@ -165,6 +165,7 @@ enum : uint16_t {
     kStickUp = 1 << 3,
     kSticks = 0x0F,
     kButtons = 0x3F0,
+    kPanelCoin = 1 << 11, // (machine.h's kCoin)
 };
 // What is held as players write it: the stick as a number on a keypad (5 in the middle, 6 forward, 4 back,
 // 2 down...; `facingLeft` turns it so that 6 is always towards the way the player faces), then the buttons
@@ -311,6 +312,16 @@ private:
     std::vector<uint16_t> &Slot();
     bool StartReplay(bool any);
     uint16_t Turned(uint16_t held, bool onRight) const;
+    // Player 1's Coin as the dummy's record and replay keys ("Coin records and replays"): tapped twice, record; once,
+    // replay (or, recording or replaying, stop). Not part of the state: it only switches features, which run-ahead's
+    // frames leave alone (it does nothing in them), as the menu does.
+    void CoinKeys(uint16_t &one, bool fighting);
+    struct Taps {
+        bool held = false;
+        int count = 0, since = 0;
+        const char *before = nullptr; // the dummy's way before the keys switched it (nullptr: none of them)
+    } m_taps;
+    static constexpr int kTapWindow = 15; // frames a second tap may follow the first in
 };
 
 // --- boxes ---

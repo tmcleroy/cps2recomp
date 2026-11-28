@@ -76,7 +76,8 @@ Every fighting game has a full training mode, from the in-game menu (not yet the
 - **Hit boxes** (and throw boxes in Alpha 2 and 3), **frame data** and a **frame meter**, an **input display**, and a
   combo and damage readout (and stun, in the Street Fighter games and Pocket Fighter).
 - **A dummy** that stands, crouches or jumps, guards (high, low or after the first hit), techs, gets up quickly,
-  reverses, and **records and replays** what you show it (each game's page says what its dummy can do).
+  reverses, and **records and replays** what you show it, from the menu or with Coin (twice to record, once to replay)
+  (each game's page says what its dummy can do).
 - Health and meter refilled, a stage of your choice, and **start over** from the round's beginning with one button.
 
 **[More about training mode →](docs/TRAINING.md)**
