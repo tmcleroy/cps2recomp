@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 
 namespace cps2recomp::fight {
 
@@ -166,6 +167,11 @@ void RegisterDummy(const DummyOptions &options) {
                              kFeatureExclusive});
     game.features.push_back({"dummy_replay_any", "Dummy", "Replay any slot",
                              "Player 2 does what was recorded, over and over, each time from a slot picked at random.", kFeatureExclusive});
+    game.features.push_back({"dummy_coin_keys", "Dummy", "Coin records and replays",
+                             "While fighting, player 1's Coin: tapped twice, Record starts (tapped twice again: it stops); tapped "
+                             "once, Replay (while recording: the recording stops and plays at once; while replaying: it stops). "
+                             "Player 2 goes back to what it was doing before.",
+                             kFeatureEnhanced});
     game.features.push_back({"dummy_slot", "Dummy", "Recording slot", "Which of three recordings Record makes and Replay plays.", 0,
                              {"1", "2", "3"}});
     game.features.push_back({"dummy_guard", "Dummy", "Guards",
@@ -262,7 +268,72 @@ void Dummy::Afresh() {
     m_g.down = false;
 }
 
+namespace {
+    // The dummy's ways that are one of a kind (stands, crouches, jumps, records, replays, the game's computer...): the
+    // one on, or nullptr
+    const char *DummyWay() {
+        for (const Feature &feature : TheGame().features) {
+            if ((feature.flags & kFeatureExclusive) && !strcmp(feature.category, "Dummy") && FeatureOn(feature.name)) {
+                return feature.name;
+            }
+        }
+        return nullptr;
+    }
+    bool RecordOrReplay(const char *way) {
+        return way && (!strcmp(way, "dummy_record") || !strcmp(way, "dummy_replay") || !strcmp(way, "dummy_replay_any"));
+    }
+    // For now only (settings.ini keeps the player's own choice): this way on, the others of its kind off
+    void SetDummyWay(const char *name) {
+        for (const Feature &feature : TheGame().features) {
+            if ((feature.flags & kFeatureExclusive) && !strcmp(feature.category, "Dummy")) {
+                SetFeatureForNow(feature.name, name && !strcmp(feature.name, name) ? 1 : 0);
+            }
+        }
+    }
+}
+
+void Dummy::CoinKeys(uint16_t &one, bool fighting) {
+    if (!FeatureOn("dummy_coin_keys")) {
+        return;
+    }
+    const bool held = (one & kPanelCoin) != 0;
+    if (fighting) {
+        one &= static_cast<uint16_t>(~kPanelCoin); // (the game hears nothing of it while fighting)
+    }
+    if (RunningAhead()) {
+        return;
+    }
+    Taps &t = m_taps;
+    const bool pressed = held && !t.held;
+    t.held = held;
+    if (!fighting) {
+        t.count = 0;
+        return;
+    }
+    if (pressed) {
+        t.count++;
+        t.since = 0;
+    } else if (t.count) {
+        t.since++;
+    }
+    const bool recording = FeatureOn("dummy_record");
+    const bool replaying = FeatureOn("dummy_replay") || FeatureOn("dummy_replay_any");
+    if (!recording && !replaying) {
+        t.before = DummyWay(); // (what to go back to)
+    }
+    if (t.count >= 2) {
+        // Twice: record (or, recording, stop: back to what it was doing)
+        t.count = 0;
+        SetDummyWay(recording ? t.before : "dummy_record");
+    } else if (t.count == 1 && t.since > kTapWindow) {
+        // Once: replay (while recording: what was just recorded); replaying, stop
+        t.count = 0;
+        SetDummyWay(replaying ? t.before : "dummy_replay");
+    }
+}
+
 void Dummy::BeforeFrame(uint16_t &one, uint16_t &two, const DummyView &view) {
+    CoinKeys(one, view.fighting);
     const bool record = FeatureOn("dummy_record");
     const bool replayAny = FeatureOn("dummy_replay_any"), replay = FeatureOn("dummy_replay") || replayAny;
     if (record && !m_g.recording) {
