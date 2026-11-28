@@ -4881,6 +4881,19 @@ std::string LauncherFeatureList() {
     std::vector<recomp::FeatureInfo> list = FeatureList();
     // (nor are the ones whose switch is on the launcher's first page: game.h, kFeatureFirstPage)
     list.erase(std::remove_if(list.begin(), list.end(), [](const recomp::FeatureInfo &f) { return f.flags & kFeatureFirstPage; }), list.end());
+    // (what the launcher shows, all else being the in-game menu's alone: what has to be set before the game starts,
+    // recomp-common settings.h's kFeatureLauncher. The board's own settings are its own card on the game's page, and
+    // Keyboard only is on the Controllers page: launcher/src/description.cpp)
+    static const char *const kInLauncher[] = {
+        "window_size", "display_picture", "display_vsync",                             // the window and how it is drawn
+        "crt_resolution", "crt_screen", "crt_monitor", "crt_switchres",                // the arcade monitor's mode
+        "online_first_to", "online_unlisted", "online_host_delay", "online_people",   // set before hosting
+    };
+    for (recomp::FeatureInfo &f : list) {
+        if (std::any_of(std::begin(kInLauncher), std::end(kInLauncher), [&f](const char *name) { return f.name == name; })) {
+            f.flags |= recomp::kFeatureLauncher;
+        }
+    }
     return recomp::FeatureListText(list);
 }
 

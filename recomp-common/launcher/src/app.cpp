@@ -1743,7 +1743,16 @@ void App::set_toggle(Slot& one, const launcher::Toggle& toggle, bool on) {
 
 // ---- features ----------------------------------------------------------------------------
 
+// Whether the launcher shows a feature at all: with Description::launcher_features_only, only those set before a game
+// starts (kFeatureLauncher)
+bool App::in_launcher(const recomp::FeatureInfo& info) const {
+    return !about_.launcher_features_only || (info.flags & recomp::kFeatureLauncher) != 0;
+}
+
 bool App::feature_shown(const Slot& one, size_t feature) {
+    if (!in_launcher(one.features[feature])) {
+        return false;
+    }
     if (!one.about->feature_shown) {
         return true;
     }
@@ -3321,7 +3330,7 @@ void App::online_page(float width) {
     if (collection_->online_features) {
         for (size_t i = 0; i < shared_.size(); i++) {
             const Shared& shared = shared_[i];
-            if (shared.info.category == collection_->online_features && !shared.where.empty()) {
+            if (shared.info.category == collection_->online_features && !shared.where.empty() && in_launcher(shared.info)) {
                 const auto& [which, index] = shared.where[0];
                 FeatureRow feature{&shared.info, recomp::FeatureValues(slots_[which]->settings, slots_[which]->features)[index], "", i};
                 (host_feature(shared.info.name) ? host_rows : match_rows).push_back(feature);
@@ -3960,6 +3969,7 @@ void App::game_page(float width) {
 #endif
     file_card(0, width);
     display_cards(0, width);
+    board_card(0, width);
     play_cards(0, width, ready);
     language_card(width);
     files_card(width);
@@ -4416,6 +4426,85 @@ bool App::update_news() const {
 }
 
 // A collection's page for one game: its file, Display and Sound, Play, and the features that are its alone
+// A game's own board settings (Description::board_category: its difficulty, continue, the round's timer), set for it
+// alone, as the operator would set the board
+void App::board_card(size_t which, float width) {
+    Slot& one = *slots_[which];
+    if (!about_.board_category || !one.features_error.empty()) {
+        return;
+    }
+    std::vector<int> values = recomp::FeatureValues(one.settings, one.features);
+    std::vector<FeatureRow> rows;
+    for (size_t i = 0; i < one.features.size(); i++) {
+        const recomp::FeatureInfo& info = one.features[i];
+        if (info.category == about_.board_category && !(info.flags & recomp::kFeatureSession) &&
+            (!one.about->feature_shown || one.about->feature_shown(info.name, one.file_path))) {
+            rows.push_back({&one.features[i], values[i], "", i, hidden_choices(one, i)});
+        }
+    }
+    if (rows.empty()) {
+        return;
+    }
+    ui::gap(28);
+    own_shader_slots_ = {&one};
+    feature_list(
+        width, rows, "",
+        [&](const FeatureRow& feature, int value) { set_feature(one, feature.index, value); },
+        [&](const FeatureRow& feature) { return recomp::MenuChoices(one.settings, one.features[feature.index]); },
+        [&](const FeatureRow& feature, const std::vector<bool>& offered) { set_menu_choices(one, feature.index, offered); }, false);
+}
+
+// The features the Controllers page has (Description::controller_features: Keyboard only, for a controller-to-keys
+// mapper, which has to be on before a mapped gamepad plays), set for every game that has them
+void App::controller_features_card(float width) {
+    if (about_.controller_features.empty()) {
+        return;
+    }
+    std::vector<FeatureRow> rows;
+    const auto wanted = [&](const std::string& name) {
+        return std::any_of(about_.controller_features.begin(), about_.controller_features.end(), [&](const char* n) { return name == n; });
+    };
+    if (collection_) {
+        for (size_t i = 0; i < shared_.size(); i++) {
+            if (wanted(shared_[i].info.name) && !shared_[i].where.empty()) {
+                const auto& [which, index] = shared_[i].where[0];
+                rows.push_back({&shared_[i].info, recomp::FeatureValues(slots_[which]->settings, slots_[which]->features)[index], "", i});
+            }
+        }
+        if (rows.empty()) {
+            return;
+        }
+        feature_list(
+            width, rows, "", [&](const FeatureRow& feature, int value) { set_shared(feature.index, value); },
+            [&](const FeatureRow& feature) {
+                const auto& [which, index] = shared_[feature.index].where[0];
+                return recomp::MenuChoices(slots_[which]->settings, slots_[which]->features[index]);
+            },
+            [&](const FeatureRow& feature, const std::vector<bool>& offered) {
+                for (const auto& [which, index] : shared_[feature.index].where) {
+                    set_menu_choices(*slots_[which], index, offered);
+                }
+            },
+            false);
+    } else {
+        Slot& one = slot();
+        std::vector<int> values = recomp::FeatureValues(one.settings, one.features);
+        for (size_t i = 0; i < one.features.size(); i++) {
+            if (wanted(one.features[i].name)) {
+                rows.push_back({&one.features[i], values[i], "", i});
+            }
+        }
+        if (rows.empty()) {
+            return;
+        }
+        feature_list(
+            width, rows, "", [&](const FeatureRow& feature, int value) { set_feature(one, feature.index, value); },
+            [&](const FeatureRow& feature) { return recomp::MenuChoices(one.settings, one.features[feature.index]); },
+            [&](const FeatureRow& feature, const std::vector<bool>& offered) { set_menu_choices(one, feature.index, offered); }, false);
+    }
+    ui::gap(24);
+}
+
 void App::title_page(size_t which, float width) {
     const ui::Palette& p = ui::palette();
     Slot& one = *slots_[which];
@@ -4462,6 +4551,35 @@ void App::title_page(size_t which, float width) {
         card.end();
     }
     game_files_card(one, width);  // (above its features, which can be a long list)
+    board_card(which, width);
+    if (about_.launcher_features_only) {
+        // (its own features the launcher shows, if it has any: the rest are its menu's)
+        std::vector<int> values = recomp::FeatureValues(one.settings, one.features);
+        std::vector<FeatureRow> rows;
+        for (size_t i = 0; i < one.features.size(); i++) {
+            bool shared = std::any_of(shared_.begin(), shared_.end(), [&](const Shared& s) {
+                return std::any_of(s.where.begin(), s.where.end(), [&](const auto& at) { return at.first == which && at.second == i; });
+            });
+            if (!shared && feature_shown(one, i)) {
+                rows.push_back({&one.features[i], values[i], "", i, hidden_choices(one, i)});
+            }
+        }
+        ui::gap(28);
+        ui::text("Training, cheats, stages, the modes and every other option are in the game's own menu while playing: Esc, or the "
+                 "menu button on a gamepad.",
+                 Font::Regular, ui::size::kDetail, p.secondary, width);
+        if (rows.empty()) {
+            return;
+        }
+        ui::gap(18);
+        own_shader_slots_ = {&one};
+        feature_list(
+            width, rows, "",
+            [&](const FeatureRow& feature, int value) { set_feature(one, feature.index, value); },
+            [&](const FeatureRow& feature) { return recomp::MenuChoices(one.settings, one.features[feature.index]); },
+            [&](const FeatureRow& feature, const std::vector<bool>& offered) { set_menu_choices(one, feature.index, offered); });
+        return;
+    }
     ui::gap(36);
     ui::text("THIS GAME'S FEATURES", Font::Semibold, ui::size::kDetail, p.secondary);
     ui::gap(6);
@@ -4978,6 +5096,12 @@ void App::features_page(float width) {
                          "pick your own. What only one game has is on that game's page.",
                          {Tr(about_.original)});
     }
+    if (about_.launcher_features_only) {
+        intro = TrFormat("Where every game starts: Pure plays it exactly as it was {}, Enhanced with the improvements. Everything else "
+                         "is in the game's own menu (Esc, or the menu button), where it can be tried on the picture; what you change "
+                         "there stays that way for that game.",
+                         {Tr(about_.original)});
+    }
     layout::heading(about_.features_name, intro.c_str(), width);
 
     if (about_.presets) {
@@ -5041,6 +5165,9 @@ void App::features_page(float width) {
     std::vector<FeatureRow> rows;
     for (size_t i = 0; i < shared_.size(); i++) {
         const Shared& shared = shared_[i];
+        if (!in_launcher(shared.info)) {
+            continue;
+        }
         std::vector<std::pair<size_t, size_t>> where;
         for (const auto& at : shared.where) {
             if (shown(at.first)) {
@@ -5678,6 +5805,7 @@ void App::controllers_page(float width) {
         menu.end();
     }
     ui::gap(24);
+    controller_features_card(width);
 
     if (bind_slot_ >= static_cast<int>(slots_.size()) || (bind_slot_ >= 0 && !slots_[static_cast<size_t>(bind_slot_)]->has_program())) {
         bind_slot_ = -1;

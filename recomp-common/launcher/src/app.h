@@ -142,6 +142,9 @@ private:
     };
 
     // A game's feature on the pages: the port's feature_shown, given the game's file if it was found good
+    bool in_launcher(const recomp::FeatureInfo& info) const;
+    void board_card(size_t which, float width);
+    void controller_features_card(float width);
     bool feature_shown(const Slot& one, size_t feature);
     // ... and which of its choices the port's choice_shown leaves out (empty: none)
     std::vector<bool> hidden_choices(const Slot& one, size_t feature);
