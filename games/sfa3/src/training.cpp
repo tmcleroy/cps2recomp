@@ -298,6 +298,63 @@ namespace {
             machine.players[1] = other ? static_cast<uint16_t>(kLeft | kPunch1) : static_cast<uint16_t>(kRight | kKick1);
         }
     }
+
+    // Counter hits. A hit that catches a player in an attack (its +A9 set, +C7 not negative) is a counter hit: 023DD2
+    // marks it (+26C, which the reeling and the damage go by: an eighth more, 0240C6; and the word at A5-5CBE, the
+    // hit spark's), and 0244A8 then takes the attacker's damage modifier (+294) in place of the one hit's.
+    // With "Counter hits" on, every hit on player 2 (the dummy) takes the counter hit's way, whatever it was doing.
+    constexpr uint32_t kAttacking = 0xA9, kNoCounter = 0xC7, kCounterHit = 0x26C, kDamageModifier = 0x294;
+    constexpr uint32_t kCounterTest = 0x023DD2, kDamageModifiers = 0x0244A8;
+    constexpr int32_t kCounterSpark = -0x5CBE; // from A5
+
+    bool CounterForced(M68K &c) {
+        return FeatureOn("dummy_counter_hit") && PlayerOf(c.a[1]) == 1;
+    }
+
+    // 023DD2: is the hit on A1 a counter hit (D0 1, not zero; marked), or not (D0 0)
+    bool CounterTest(M68K &c) {
+        if (!CounterForced(c)) {
+            return false;
+        }
+        SetRam8((c.a[1] & 0xFFFFFF) + kCounterHit, 1);
+        SetRam16((c.a[5] + kCounterSpark) & 0xFFFFFF, 1);
+        c.d[0] = 1;
+        c.flagZ = false;
+        c.flagN = false;
+        Return(c);
+        return true;
+    }
+
+    // 0244A8: the damage D2 (a byte) by a damage modifier, none for an attack by a thrown object (A6's +8): the
+    // attacker's, A6, on a counter hit when it has one, or else the one hit's, A1. A modifier is 1 (twice the damage),
+    // 2 (a quarter more) or 3 (a half more), by the table at 0244E2.
+    bool DamageModifiers(M68K &c) {
+        if (!CounterForced(c)) {
+            return false;
+        }
+        c.d[0] = 0;
+        uint16_t damage = static_cast<uint16_t>(c.d[2] & 0xFF);
+        if (Mem8(c, (c.a[6] & 0xFFFFFF) + 8) == 0) {
+            uint8_t modifier = Mem8(c, (c.a[6] & 0xFFFFFF) + kDamageModifier);
+            if (modifier == 0) {
+                modifier = Ram8((c.a[1] & 0xFFFFFF) + kDamageModifier);
+            }
+            if (modifier > 3) {
+                return false; // (not one the table has: the game's own way)
+            }
+            if (modifier == 1) {
+                damage = static_cast<uint16_t>(damage << 1);
+                c.d[0] = 0x0A;
+            } else if (modifier >= 2) {
+                const uint16_t part = static_cast<uint16_t>(damage >> (modifier == 2 ? 2 : 1));
+                damage = static_cast<uint16_t>(damage + part);
+                c.d[0] = part;
+            }
+        }
+        SetLow16(c.d[2], damage);
+        Return(c);
+        return true;
+    }
 } // namespace
 
 // "Training mode" on the menu's Alternative modes page (modes.cpp)
@@ -309,6 +366,8 @@ void RegisterTraining() {
     Game &game = TheGame();
     AddHook(HookAt(kPlayerDispatch), "PlayerStep", PlayerStep);
     AddHook(HookAt(0x02E3FE), "ThrowTested", ThrowTested);
+    AddHook(HookAt(kCounterTest), "CounterTest", CounterTest);
+    AddHook(HookAt(kDamageModifiers), "DamageModifiers", DamageModifiers);
     session::Description d;
     d.player1 = kPlayer1;
     d.playerSize = kPlayerSize;
@@ -408,6 +467,9 @@ void RegisterTraining() {
     TrainingAids({"gauge_refill", "guard_refill"});
     game.features.push_back({"dummy_stun_mash", "Dummy", "Mashes out of stun",
                              "Stunned, the dummy works the stick and the buttons as fast as it can, as a player does to get out sooner."});
+    game.features.push_back({"dummy_counter_hit", "Dummy", "Counter hits",
+                             "Every hit on player 2 is a counter hit, as if it had been caught starting an attack: the "
+                             "counter hit's damage, stun, spark and reeling."});
     game.features.push_back({"dummy_computer", "Dummy", "Played by the game",
                              "Player 2 is the game's own computer player, as in a one-player game (at the board's difficulty "
                              "setting).",
