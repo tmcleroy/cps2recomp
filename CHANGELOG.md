@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **An icon**: the A board and B board, stacked. On macOS, Windows, Linux and Android, on each game's window, beside
+  the name in the launcher and at the left of the in-game menu's top row.
 - **Hotkeys for the in-game menu's options**: H (or a gamepad's Y) on an option's row asks for a key or button; while
   playing it then steps that option (run-ahead through its frames, the shader through its list, a switch on and off;
   Shift with a key goes back), and what it is now shows at the bottom. Keys and buttons that play the game, and the

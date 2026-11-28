@@ -7,6 +7,8 @@
 #include <cstring>
 
 #include "../recomp-common/menu_layout.h"
+#include "../recomp-common/icon.h"
+#include "../assets/icon/icon_png.h"
 
 #include "../machine/machine.h"
 #include "../runtime/game.h"
@@ -223,6 +225,9 @@ void Menu::Configure(bool withStates) {
     config.closeName = recomp::sdl::kCloseName;
     config.tabsName = recomp::sdl::kTabsName;
     config.backName = recomp::sdl::kBackName;
+    // (the icon at the command row's left: assets/icon)
+    static const recomp::MenuIcon icon = recomp::sdl::MenuIconOf(kIconPng, kIconPngSize);
+    config.icon = icon;
     // (each option's hotkey, shown on its row: H or Y there gives it one)
     LoadHotkeys();
     config.hotkey = [this](size_t feature) { return feature < m_ids.size() ? m_hotkeys.Of(m_ids[feature]).Name() : std::string(); };

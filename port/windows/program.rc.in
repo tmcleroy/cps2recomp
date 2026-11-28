@@ -6,6 +6,9 @@
 // programs' machine learning takes for malware (Windows Defender's "Program:Win32/Wacapew.A!ml").
 #include <winver.h>
 
+// The icon (assets/icon/icon.ico: recomp-common tools/make_icons.sh), Explorer's and the task bar's
+1 ICON "@RES_ICON@"
+
 1 VERSIONINFO
 FILEVERSION @RES_VERSION_COMMAS@
 PRODUCTVERSION @RES_VERSION_COMMAS@

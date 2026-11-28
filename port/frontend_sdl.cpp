@@ -4,6 +4,8 @@
 // The window: SDL3 picture, sound and controls around Port::RunFrame().
 #include "game_info.h"
 
+#include "../assets/icon/icon_png.h"
+#include "../recomp-common/icon.h"
 #include "../recomp-common/arcade_screen.h"
 #include "bindings.h"
 #include "gamepad_slots.h"
@@ -260,6 +262,7 @@ int RunWindowed(Port &port) {
                                   (opengl ? SDL_WINDOW_OPENGL : 0) | (getenv("CPS2RECOMP_HIDDEN_WINDOW") ? SDL_WINDOW_HIDDEN : 0)); // (hidden: for tests)
         SDL_Window *made = SDL_CreateWindowWithProperties(properties);
         SDL_DestroyProperties(properties);
+        recomp::sdl::SetWindowIcon(made, kIconPng, kIconPngSize); // (assets/icon: the task bar's, a Linux desktop's)
 #ifndef __ANDROID__
         if (made) {
             Arcade().SetFullscreen(made, ArcadeChosen(), fullscreen);

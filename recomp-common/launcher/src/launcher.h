@@ -166,6 +166,11 @@ struct Description {
     // Under the game's name in the sidebar
     const char *subtitle = "native port";
 
+    // The port's icon, a PNG in the program (tools/make_icons.sh's icon_png.h: kIconPng, kIconPngSize): the window's,
+    // and beside the name in the top bar or the sidebar. A collection: its first game's. docs/ICONS.md.
+    const unsigned char *icon_png = nullptr;
+    size_t icon_png_size = 0;
+
     // The port's own pages (none: the launcher's three)
     std::vector<CustomPage> pages;
     // true: the launcher opens on the Game page (not on the first of the port's own, which stay above it in the

@@ -152,6 +152,9 @@ private:
     void library_pane(size_t which, float width, float height);
     void open_details(size_t which);
     SDL_Texture* tile_picture(size_t which, int& w, int& h);
+    SDL_Texture* icon_texture();  // (Description::icon_png, made once; nullptr: none)
+    SDL_Texture* icon_ = nullptr;
+    bool icon_tried_ = false;
     bool in_launcher(const recomp::FeatureInfo& info) const;
     void board_card(size_t which, float width);
     void controller_features_card(float width);
