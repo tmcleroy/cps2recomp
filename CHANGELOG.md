@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The launcher shows only what is set before a game starts**: the window, how the picture is drawn, the arcade
+  monitor's mode and what a host sets before hosting, on its Settings page (once Features); the board's own settings in
+  a card on each game's page; Keyboard only on the Controllers page. Training, the modes, cheats, shaders, the online
+  readouts and every other option are in the in-game menu, where they can be tried on the picture.
 - **The in-game menu in tabs.** Back, Save state, Load state, Slot, Reset game, Quit game and Resume stay in a row at
   the top; every option is under one of nine tabs, the same in every game: Game, Display, Sound, Online, Training,
   Modes, Stage, Cheats and Capture. LB/RB (or Q/E) change tab, X (or Delete) puts an option back as the Enhanced preset

@@ -149,7 +149,7 @@ Linux, the Steam Deck and Windows can play each other.
   and out with the fighters' distance while the health bars stay put ([more](docs/PICTURE.md)).
 - **Arcade monitors**: a CRT (CRT Emudriver or a custom resolution) gets the board's own 384 x 224 in full screen, or a
   super resolution such as 2560 x 224, on the screen you choose, synced to the screen with a frame delay, and on Windows
-  made at the board's exact 59.637 Hz with Switchres, as GroovyMAME does: set up on the launcher's Features page.
+  made at the board's exact 59.637 Hz with Switchres, as GroovyMAME does: set up on the launcher's Settings page.
 - **Controls**: keyboard, gamepad or arcade stick, every button changeable per player and per game.
 - **An in-game menu**: save states, reset and quit always in its top row, every option under the same tabs in every
   game (Game, Display, Sound, Online, Training, Modes, Stage, Cheats, Capture), rewind and a practice point, speed and

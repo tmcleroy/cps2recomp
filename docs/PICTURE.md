@@ -32,8 +32,7 @@ The picture through one of RetroArch's shaders, by
 a light CRT; scanlines light, strong, as an OSSC draws them, or dark; or xBRZ and ScaleFX to smooth the pixels'
 edges (the Display page's **Shader**). **Your own** takes any RetroArch slang preset (`.slangp`) you put in a
 `shaders` folder beside the game's settings, with the files it names (a few need a newer OpenGL than macOS has; Linux and Windows have it).
-Under Shader on the launcher's Features page, **In the game's menu** → **Choose** keeps the in-game menu's list to
-your favourites. Zoomed in, the camera closes in on the shaded picture, scanlines and all, as on a monitor. The menu is drawn over the picture without the shader. A shader that cannot be made leaves the
+Zoomed in, the camera closes in on the shaded picture, scanlines and all, as on a monitor. The menu is drawn over the picture without the shader. A shader that cannot be made leaves the
 picture as it was.
 
 | | | |
@@ -44,7 +43,7 @@ picture as it was.
 ## Arcade monitor
 
 For a CRT driven at arcade rates (CRT Emudriver on Windows, or a custom resolution elsewhere). Set on the launcher's
-Features page, under **Arcade monitor**; the in-game menu (Display > Arcade monitor) can only turn these back off, so a
+Settings page, under **Arcade monitor**; the in-game menu (Display > Arcade monitor) can only turn these back off, so a
 mode the monitor can't take is never chosen while playing.
 
 - **Full screen resolution**: *384 x 224* switches the screen, in full screen, to exactly the board's resolution and

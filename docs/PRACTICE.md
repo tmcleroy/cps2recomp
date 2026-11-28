@@ -8,7 +8,7 @@ multiplier). Dimahoo's readout has its magic gauge, and its summaries count the 
 **Alternative modes** in the in-game menu has a **Training mode** page: choose where and with what, then **Start**. The game
 is taken there unseen in a moment (the board's start, the choice of fighter and the way to a boss are run as fast as
 they go, your ship out of harm), and you play from there. Its readout and summary are switches on the same page, and
-on the launcher's Features page; they work only in training mode. The hit boxes are on the Cheats page and work in
+on the in-game menu's Training tab; they work only in training mode. The hit boxes are on the Cheats page and work in
 every mode, the board's own game too.
 
 ![The Training mode page of the in-game menu](screenshots/gigawing/practice-menu.png)
@@ -36,7 +36,7 @@ every mode, the board's own game too.
 
 ## Rewind and a practice point
 
-Two switches on the Game page of the in-game menu (and the launcher's Features page), off unless chosen. They are the
+Two switches on the Game page of the in-game menu , off unless chosen. They are the
 port's, so every game in the collection has them, in training mode or anywhere else, but never online.
 
 | Switch | Keys (gamepad) | What it does |
