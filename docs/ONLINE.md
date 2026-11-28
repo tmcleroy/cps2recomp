@@ -156,38 +156,50 @@ who falls too far behind is let go and can choose Watch again. Esc asks **Stop w
 the players. A match that isn't in the lobby can't be watched by code. From a terminal: `--net-spectators` when hosting,
 `--watch CODE` to watch (or `--watch ADDRESS:PORT`, with `--net-service off`, on the same network).
 
+## The match's menu
+
+Esc (or the gamepad's menu button) opens the in-game menu, small, over the game; it opens on its **Online match**
+page. The modes have a page each there, as on the Alternative modes page offline: **Ball battle**, **Tag team
+battle** and **Training mode**, each with its **Start** and its options. The host has them all the time; the other
+player has the page of the mode being played, while it is played. On the Online match page too: the host's **Back to
+Versus** (while a mode is played) and **Swap sides**, either player's **Pick characters again**, a **Network stats**
+page (the network readout, Ping, Show direct link RTT, the input delay readout, Input during network waits), and
+Online HUD opacity, Hide names and Hide online win streak. Back goes to the menu's first page: the Online match page,
+Mute, Resume and **Leave the match**. Watching, or waiting for a player, Esc only asks whether to leave.
+
+The host's menu open pauses the game for both players (in a game with Ball battle or the tag team battle; otherwise
+while a mode is played); the other player's pauses it for both while a mode is played (not in Versus, where it opens
+over the match, which goes on). The other's screen says so (**Bob is changing their settings**) until it closes.
+(Spectators run the players' controls without the match's events: a pause, as a mode's start, is not shown to them.)
+
 ## Training online
 
 In a two-person match of a fighting game, the host can start a **training session** for both players: Esc, then
-**Start Training** on the Online match page (no Ready needed; **Back to Versus** ends it). The board starts again and
-each player chooses their own character, then the fight has no clock and nobody is knocked out. What changes the fight
-is the host's, as the host had it before the match: health and gauge refills, fixed damage and the like (the Training
-mode page). What is drawn over the picture is each player's own, on their Online match page: **Training: Hit boxes**,
-frame data, the frame meter, the input display and the readouts. There is no dummy: player 2 is the other player.
-Either player starts the round over for both with Backspace or a gamepad's left shoulder, at the place their stick
-chooses (left, right: a corner; down: sides swapped; up: the middle; otherwise their own **Start over at**); both
-machines start over on the same frame. Both players need a version with protocol 21. (Spectators, who run the
-players' controls without the match's events, don't follow it.)
+**Training mode**, **Start**, and it starts at once (**Back to Versus** ends it). The board starts again and each player
+chooses their own character, then the fight has no clock and nobody is knocked out. The host drives the session: every
+option of the Training mode page is the host's, for both machines, what changes the fight (health and gauge refills,
+fixed damage and the like) and what is drawn over the picture (hit boxes, frame data, the frame meter, the input
+display, the readouts) alike, as the host had them before the match. The host changes them on that page while
+playing, and both machines take each change on the same frame; the other player's page shows them and can't change
+them. There is no dummy: player 2 is the other player. Either player starts the round over for both with Backspace or a
+gamepad's left shoulder (or **Start over** on the page), at the place their stick chooses (left, right: a corner;
+down: sides swapped; up: the middle; otherwise the host's **Start over at**); both machines start over on the same
+frame. Both players need a version with protocol 22.
 
 ## Ball battle and tag team online
 
 In a two-person match of a fighting game that has them, the host can switch to **Ball battle** or the **Tag team
-battle** and back to **Versus**, at any time. Esc (or the gamepad's menu button) opens the in-game menu, small, over the
-game; it opens on its **Online match** page. The host's pauses the game for both players while it is open, and opens
-the other player's too; the other player's own Esc menu leaves the game going (their own fighter stands still while it
-is open). There the host has **Start Ball battle**, **Start Tag team battle** and **Back to Versus**, and both players
-choose their own fighters (**Ball battle: your fighter**, **Tag team: your first**, second, third): the host for
-player 1's side, the other player for player 2's, Random or anyone. The other player then sets **Ready**, which the
-host's page shows (**The other player**: Choosing or Ready); a fighter changed takes it back. The host's Start waits
-for Ready, the game still paused, and a mode starts only with the other player ready at its frame, on both sides alike.
-Closing the host's menu ends the pause. Back goes to the menu's first page: the Online match page, Mute, Resume and
-**Leave the match**. Watching, or waiting for a player, Esc only asks whether to leave. (Spectators run the players'
-controls without the match's events: a pause, as a mode's start, is not shown to them.)
-What each player picks, and what the host starts, is said on both screens. The rest of each mode's page (first to how
-many, the stage, the team's size and style...) is the host's, as the host had it before the match; online, both sides
-are always people (never the CPU), and the stage is one of the game's own. A joining player's own picks for player 2's
-side (the modes' pages, before joining) come with them. **Versus** ends the mode: the board starts again, and each
-player presses Start to come back in.
+battle** and back to **Versus**, at any time: the mode's page on the Online match page, **Start**. It starts at once for
+both, with the host's options of that page (first to how many, the team's size and style...) and each player's own
+fighter: the host's for player 1's side, the other player's for player 2's, Random or anyone (their rows on the page:
+**Fighter 1 (you)**, **Fighter 2 (the other player)**). Nobody says Ready. To change their fighter, the other player
+opens their menu (the game pauses for both, and the host's screen says they are changing their settings), goes to the
+mode's page and picks; when the menu closes the mode starts again for both with the new fighter (closed with nothing
+changed, the game just goes on). The host's changes to the page while the mode is played start it again too.
+What each player picks, and what the host starts or changes, is said on both screens. Online, both sides are always
+people (never the CPU), and the stage is one of the game's own; Widescreen is as the match began. A joining player's
+own picks for player 2's side (the modes' pages, before joining) come with them. **Back to Versus** ends the mode: the
+board starts again, and each player presses Start to come back in.
 
 How it works (`port/netplay.h`, Netplay::Command): a choice is an event of that player's, sent with their controls for
 the frame it is for (again until the other side has them), so that it never comes without them; both sides run it
@@ -268,7 +280,7 @@ and how many.
   and 4). Each person chooses and plays their own character, as 2 vs 2 does on one machine. The host's Tag team is
   the match's, and so are the modes made for it (Marvel vs. Capcom's Cross Fever). With **Co-op vs. computer** the two
   players are one team against the computer, one at each machine. The rest is as for two: rollback, the checks, the
-  names (each of a side's people under its life bar).
+  names (each of a side's people along the top, on its side).
 - **Rollback**: each machine runs the game with every player's controls, its own players' held back by its own delay
   (0 frames unless chosen; `--net-delay N`, 0 to 8), and the others' guessed until they come. When a guess
   was wrong, the game goes back to that frame and runs on again with the real ones, unseen and unheard, in the time of
@@ -281,7 +293,7 @@ and how many.
   its link to the host and the host's longest link to another guest. **Show direct link RTT** adds the measured
   packet round trip for each connected machine, labelled by its players. Hosts see one reading per guest. Guests
   see their host connection. The input delay can appear beside the ping ("DELAY 2"; "DELAY 0 (2)" when the other player's is not yours). Use **Online → Ping** and **Input delay**,
-  or open the online match menu with Esc to change those readouts while playing. **Hide names** hides the names and streaks together. **Hide online win streak** leaves the names visible. **Names shown → At the top** moves the labels above the life bars. In MVC the names sit below the helper count and the
+  or open the online match menu with Esc (its **Network stats** page) to change those readouts while playing. **Hide names** hides the names and streaks together. **Hide online win streak** leaves the names visible. In MVC the names sit below the helper count and the
   connection readouts sit above the TIME and Hyper gauges.
   **Online HUD opacity** is available under Online and in the match menu. **Soft** is the default, **Faint** shows
   more of the stage, and **High contrast** emphasizes labels. The choice applies to point markers, names, streaks,
@@ -297,10 +309,10 @@ and how many.
   same code, the others go back to it by themselves, and it starts over when four are there again (whoever has the
   code can take the free place).
 - **Win streaks**: in the fighting games, a player who wins two or more matches in a row against the other has it
-  said under their life bar ("STREAK 3"), counted from when both have pressed Start, until the streak ends.
-- **Names**: each player's name, as set on the launcher's Online page, is under their life bar (Hide names, on the
-  Online page, hides them and the streaks; Names shown: At the top puts each side's names and streak on one line along
-  the top edge, clear of a game's second life bars).
+  said by their name at the top ("STREAK 3"), counted from when both have pressed Start, until the streak ends.
+- **Names**: each player's name, as set on the launcher's Online page, is along the top of the picture, each side's
+  names and streak on one line, clear of the life bars and a game's second bars (Hide names, on the Online page, hides
+  them and the streaks).
 - **Chat**: press T on the keyboard, a gamepad's right stick click, or the touch screen's Chat button, type a line and
   press Enter (Esc, or the click again, puts it away). The Steam Deck and phones show their own on-screen keyboard.
   The last few lines show at the bottom left for a few seconds, and under them how to chat (as a match begins) and
@@ -316,7 +328,7 @@ and how many.
   first page's **Leave the match** leaves. Watching, Esc asks **Stop watching?**: Confirm leaves, Back stays.
 - **Off during a match**: the cheats (on both sides, for a fair match), the in-game menu's other pages, save states, pause, the speed, the training mode and the
   other modes (endless battle, ring out, the viewers); in two-person matches, Ball battle and the tag team battle
-  can be started from the menu's Online match page (above). A match ends when any player closes their game.
+  can be started from their pages on the menu's Online match page (above). A match ends when any player closes their game.
 
 ## Checking connections and reconnects
 
