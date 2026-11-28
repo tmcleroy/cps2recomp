@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Hotkeys for the in-game menu's options**: H (or a gamepad's Y) on an option's row asks for a key or button; while
+  playing it then steps that option (run-ahead through its frames, the shader through its list, a switch on and off;
+  Shift with a key goes back), and what it is now shows at the bottom. Keys and buttons that play the game, and the
+  menu's own, can't be one; off during online play, where the match decides. Kept per game in settings.ini.
+- The menu on a stood-up (vertical) picture fits: its top row no longer runs into itself.
 - **A new launcher, in the in-game menu's look**: tabs along the top (Library, Online, Settings, Controllers, Multi game;
   LB/RB go through them) and your games as a grid of pictures, each game's last screen when you quit it, with the one
   chosen beside them: Play, Host online, Full screen, Widescreen, and its own page. Finding your ROM sets, updates and

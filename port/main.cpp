@@ -4559,10 +4559,20 @@ void Port::RunFrame() {
         memcpy(lastRecorded, pad, sizeof(pad));
     }
     // (tests: --menu FRAME:KEYS[:shot.png]: the menu opened at that frame and those buttons pressed in it:
-    // u d l r, a for a button, b for Back, q and e for the tab before and after, x for an option's default)
+    // u d l r, a for a button, b for Back, q and e for the tab before and after, x for an option's default, h for a
+    // hotkey, k to give it F3 then, c to close the menu and press F3 in the game, which says what it did on stderr)
     if (!opt.menuTest.empty() && strtoull(opt.menuTest.c_str(), nullptr, 10) == frame) {
         const auto MenuTestKey = [this](char key) {
+            SDL_Event f3{};
+            f3.type = SDL_EVENT_KEY_DOWN;
+            f3.key.scancode = SDL_SCANCODE_F3;
             switch (key) {
+            case 'h': return menu.Press(recomp::kMenuHotkey);
+            case 'k': menu.HotkeyListen(f3, [](recomp::Hotkey) { return std::string(); }); return Menu::Action::None;
+            case 'c':
+                menu.Close();
+                fprintf(stderr, "hotkey: %s\n", menu.HotkeyPress(f3).c_str());
+                return Menu::Action::None;
             case 'b': return menu.Press(recomp::kMenuBack);
             case 'q': return menu.Press(recomp::kMenuTabPrev);
             case 'e': return menu.Press(recomp::kMenuTabNext);

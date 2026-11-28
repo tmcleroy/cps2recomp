@@ -52,6 +52,12 @@ void Menu::OpenOnline(Online online) {
 void Menu::Open(bool withStates) {
     m_online = false;
     m_onlineMenu.Close();
+    Configure(withStates);
+    m_menu.Open();
+}
+
+void Menu::Configure(bool withStates) {
+    m_withStates = withStates;
     const cps2recomp::Game &game = cps2recomp::TheGame();
     recomp::MenuConfig config;
     // The standard layout (recomp-common/menu_layout.h, taken from this toolkit's, issue #196), as tabs: the command
@@ -108,7 +114,9 @@ void Menu::Open(bool withStates) {
     // (during an online match, the features the match decides for both players are left as it has them: a change on
     // one side alone would leave the two games apart; the host sets them before hosting)
     const std::function<bool(size_t)> decided = matchDecides;
+    m_ids.assign(config.features.size(), "");
     for (size_t i = 0; i < game.features.size(); i++) {
+        m_ids.push_back(game.features[i].name);
         const cps2recomp::Feature &feature = game.features[i];
         std::string description = feature.description;
         if (decided && decided(i)) {
@@ -215,8 +223,47 @@ void Menu::Open(bool withStates) {
     config.closeName = recomp::sdl::kCloseName;
     config.tabsName = recomp::sdl::kTabsName;
     config.backName = recomp::sdl::kBackName;
+    // (each option's hotkey, shown on its row: H or Y there gives it one)
+    LoadHotkeys();
+    config.hotkey = [this](size_t feature) { return feature < m_ids.size() ? m_hotkeys.Of(m_ids[feature]).Name() : std::string(); };
+    config.hotkeyName = recomp::sdl::kHotkeyName;
     m_menu.Configure(std::move(config));
-    m_menu.Open();
+    m_configured = true;
+}
+
+void Menu::LoadHotkeys() {
+    recomp::Ini settings(cps2recomp::SettingsPath());
+    settings.load();
+    m_hotkeys.Load(settings.get("menu", "hotkeys"));
+    m_hotkeysLoaded = true;
+}
+
+bool Menu::HotkeyListen(const SDL_Event &event, const std::function<std::string(recomp::Hotkey)> &taken) {
+    if (m_online || !m_menu.IsOpen()) {
+        return false;
+    }
+    bool changed = false;
+    const bool answered = recomp::sdl::HotkeyListen(event, m_menu, m_hotkeys, m_ids, taken, changed);
+    if (changed) {
+        recomp::Ini settings(cps2recomp::SettingsPath());
+        settings.load();
+        settings.set("menu", "hotkeys", m_hotkeys.Save());
+        settings.save();
+    }
+    return answered;
+}
+
+std::string Menu::HotkeyPress(const SDL_Event &event) {
+    if (!m_hotkeysLoaded) {
+        LoadHotkeys(); // (before the menu is first opened: those kept from before)
+    }
+    if (IsOpen() || m_hotkeys.Find(recomp::sdl::HotkeyOf(event)).empty()) {
+        return "";
+    }
+    if (!m_configured) {
+        Configure(m_withStates); // (the menu's options, for Step, before it is first opened)
+    }
+    return recomp::sdl::HotkeyPress(event, m_menu, m_hotkeys, m_ids);
 }
 
 Menu::Menu() {
