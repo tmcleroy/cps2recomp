@@ -149,7 +149,7 @@ Linux, the Steam Deck and Windows can play each other.
   and out with the fighters' distance while the health bars stay put ([more](docs/PICTURE.md)).
 - **Arcade monitors**: a CRT (CRT Emudriver or a custom resolution) gets the board's own 384 x 224 in full screen, or a
   super resolution such as 2560 x 224, on the screen you choose, synced to the screen with a frame delay, and on Windows
-  made at the board's exact 59.637 Hz with Switchres, as GroovyMAME does: set up on the launcher's Features page.
+  made at the board's exact 59.637 Hz with Switchres, as GroovyMAME does: set up on the launcher's Settings page.
 - **Controls**: keyboard, gamepad or arcade stick, every button changeable per player and per game.
 - **An in-game menu**: save states, reset and quit always in its top row, every option under the same tabs in every
   game (Game, Display, Sound, Online, Training, Modes, Stage, Cheats, Capture), rewind and a practice point, speed and
@@ -165,15 +165,16 @@ Linux, the Steam Deck and Windows can play each other.
 - **A custom soundtrack**: your own music files in place of the board's music ([how](docs/SOUNDTRACK.md)).
 - **Multi game**: play several games one after another, such as an endless battle through every stage of each
   ([more](docs/MODES.md#multi-game)).
-- **Updates** in the launcher, and a **portable mode** that keeps everything on a drive you carry
-  ([the launcher](docs/LAUNCHER.md)).
+- **A launcher in the in-game menu's look**: your games as a grid of their last screens, Play and the few things set
+  before a game starts; LB/RB through its tabs. **Updates** in the launcher, and a **portable mode** that keeps
+  everything on a drive you carry ([the launcher](docs/LAUNCHER.md)).
 
 
 ## Getting started
 
 1. Download the build for your system from the [releases page](https://github.com/tmcleroy/cps2recomp/releases) and
    unpack it.
-2. Open the launcher (`CPS-2 Recomp.app`, `cps2recomp-launcher`). On its Games page, **Choose folder…** and pick the
+2. Open the launcher (`CPS-2 Recomp.app`, `cps2recomp-launcher`). On its Settings tab, **Choose folder…** and pick the
    folder you keep your ROM sets in: it finds each game's set by name (`sfa2u.zip` or a folder of the set's files).
    Your ROM sets are only ever read.
 3. Press **Play** beside a game.
@@ -190,7 +191,7 @@ together).
 
 1. Download `CPS2Recomp-android.apk` from the releases page on your phone or tablet and open it to install it
    (Android 9 or later, 64-bit ARM; allow installs from your browser or file manager when asked).
-2. Open CPS-2 Recomp and press **Add ROM sets…** on its Games page: choose your sets' zips, as many at once as you
+2. Open CPS-2 Recomp and press **Add ROM sets…** on its Settings tab: choose your sets' zips, as many at once as you
    like. They are copied into the app's folder.
 3. Press **Play** beside a game.
 
@@ -202,7 +203,7 @@ place. Back, or the screen's **Menu**, opens the in-game menu.
 1. In Desktop Mode, download `CPS2Recomp-linux-x86_64.tar.gz` from the releases page, extract it, and move the
    `CPS2Recomp` folder somewhere it can stay (a new `Applications` folder in your home folder, say).
 2. Copy your ROM sets into one folder on the Deck.
-3. Open `cps2recomp-launcher`, **Choose folder…** on the Games page, and pick that folder.
+3. Open `cps2recomp-launcher`, **Choose folder…** on the Settings tab, and pick that folder.
 4. On each game's page, press **Add to Steam**. The games then appear in Gaming Mode under **Non-Steam**.
 
 ## What you need

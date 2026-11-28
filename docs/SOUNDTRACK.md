@@ -3,7 +3,7 @@
 Each game can play your own music files in place of the board's music: an arranged soundtrack, say. The sound
 effects and voices stay the board's.
 
-1. Switch on **Custom soundtrack** (the Features page, under Sound; it is on in Enhanced, off in Pure).
+1. Switch on **Custom soundtrack** (the in-game menu's Sound tab; it is on in Enhanced, off in Pure).
 2. On a game's page, under Sound, **Choose…** the folder your music files are in (`.ogg`, `.flac`, `.mp3` or
    `.wav`). With none chosen, the game uses the `soundtrack` folder in its own settings folder
    (`~/Library/Application Support/<Game>/` on macOS, `~/.local/share/<Game>/` on Linux and Steam Deck,

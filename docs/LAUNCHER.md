@@ -2,31 +2,35 @@
 
 ## Its pages
 
-![The launcher's Games page](screenshots/launcher-games.png)
+![The launcher's Library: the games as pictures, the one chosen beside them](screenshots/launcher-games.png)
 
-Each game you have a ROM set for gets a page of its own in the sidebar: its Display switches (full screen,
-widescreen), Play, and the features only it has. The **Features** page has what the games share (free play,
-cheats, run-ahead, the picture, training mode's displays and the dummy, and the rest), set for every game at
-once; a feature changed in a game's own menu is set for the others too when you leave the game. The
-**Controllers** page sets the keys and buttons for all of them; its Layout for chooses a game, and Its own layout
-gives that game keys and buttons apart from the others', under the game's own names for its buttons.
+The launcher has the in-game menu's look: its pages are tabs along the top (Library, Online, Settings, Controllers,
+Multi game; a gamepad's LB and RB go through them). The **Library** has your games as a grid of pictures: each
+game's last screen when you quit it (else your newest screenshot of it, else its name). The game chosen is beside
+them: Play, Host online, Full screen and Widescreen, and **ROM set, board and more**, its own page (its ROM set, the
+board's own settings such as difficulty and continue, set for that game alone, and its place in the list). Press a
+game's picture once to choose it and again (or Play) to play it. Above the grid, **Only mine** leaves out the games you
+have no ROM set for.
+
+The launcher has only what has to be set before a game starts. **Settings** has where the games start (Pure, as the
+arcade, or Enhanced), the window's size, how the picture is drawn, VSync, the arcade monitor's mode, finding your ROM
+sets (**Choose folder…**), updates and the language. **Controllers** sets the keys and buttons for every game (its
+Layout for chooses a game, and Its own layout gives that game its own), and has **Keyboard only** for JoyToKey and
+other keyboard mappers. Everything else (training, the modes, cheats, stages, shaders, the online readouts, capture)
+is in each game's in-game menu, where it can be tried on the picture.
 
 A release that ships its sets beside the launcher — a `roms` folder of zips — has them found when it opens: each
 game whose set is there has it chosen for it, after the game's own check of it, and nothing is moved. A zip that is
 named for no game is found by the files in it.
 
-The games are in your order: drag a game's row in the sidebar up or down to keep the ones you play most at the top
-(with a gamepad or the keyboard, **Move up** and **Move down** on its page, under Play). The Games page lists them
-the same way. Playing only one or two of the games? Switch on **Only the games you have** on the Games page, and the
-others are left out of it and of the Features and Controllers pages (**Choose folder…** still finds them). On a small screen, or with large text, the launcher closes up to fit: a narrower sidebar whose list
-scrolls, and each row's buttons under its words.
+The games are in your order: **Move up** and **Move down** on a game's own page.
 
-![The Features page: what the games share, set for all of them at once](screenshots/launcher-features.png)
+![The Settings tab: what is set before a game starts](screenshots/launcher-features.png)
 
 ## Updates
 
-When the launcher opens it asks GitHub for this project's releases (the Updates card, at the top of the Games
-page, has a switch to stop that, and **Check now**). When there is a newer version it shows at the top of the Games page: **What's new**
+When the launcher opens it asks GitHub for this project's releases (the Updates card, on the Settings tab, has a
+switch to stop that, and **Check now**). When there is a newer version it shows there: **What's new**
 opens its notes, and **Update** downloads the new version's download for your system (the same file as on the
 releases page), checks it and every file that changed against the release's list, and only then
 puts them all in place; if anything goes wrong nothing is changed. The launcher then starts again as the new
@@ -49,7 +53,7 @@ put an empty file named `portable.txt` beside it:
 
 Settings, save states, each board's settings memory, custom colours, the score attack records, a soundtrack in
 the game's own folder and the logs then go in `user/`, a folder for the launcher and one for each game, laid out
-as in your user folder. The launcher's Games page shows where they are under **Your files** (**Show** opens the
+as in your user folder. The launcher's Settings tab shows where they are under **Your files** (**Show** opens the
 folder).
 
 - **The first time**, if your user folder already has the games' things, the launcher asks whether to copy them

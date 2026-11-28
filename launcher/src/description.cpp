@@ -338,6 +338,14 @@ launcher::Description describe_game(const GameInfo& game) {
     const std::string set = sets_named(game);
     d.original = "in the arcade";
     d.file_heading = "ROM SET";
+    // (the launcher shows only what is set before a game starts: port/main.cpp's LauncherFeatureList marks them; the
+    // board's own settings are a card on each game's page, Keyboard only is on the Controllers page, everything else
+    // is the in-game menu's)
+    d.launcher_features_only = true;
+    d.board_category = "Board";
+    d.controller_features = {"keyboard_only"};
+    d.features_name = "Settings";
+    d.layout = launcher::Description::Layout::Tabs;  // (the in-game menu's look: tabs along the top, the games as a grid)
     // (a game that names its own buttons is not a fighting game, and has no training mode; the collection's controls,
     // which its first game's description gives, are for every game, the fighting games among them)
     const bool fighting = !*game.buttons;
