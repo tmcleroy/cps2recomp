@@ -1,5 +1,5 @@
 # A copy of recomp-common's src/ and launcher/, made by tools/sync-common.sh. Do not change it here.
-commit cfcfdf5bdf4b2aaa635291c4add566dbf9f9e7b8
+commit d9df005adee591d9ce9a5001abec2f027c80ffe5
 a943b3183c1e835a6fdc0d7b57c291dc53e84f9287eb84ed1e61eb246d05d86f  arcade_screen.cpp
 46d131fe9dd6d60bf673e51a13253f4377c53285ba6bea7dca2f968e3eba3dfa  arcade_screen.h
 66cfa5fc775133092ced0f53373ea1df1a2f914b2a38fff34c6b7ec2105de33a  arcade_sdl.h
