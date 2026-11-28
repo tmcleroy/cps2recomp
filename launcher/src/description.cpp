@@ -30,7 +30,8 @@ namespace {
 // A game, as its game.cfg tells it
 struct GameInfo {
     const char *id, *name, *rom_set, *rom_parent, *rom_name, *program, *graphics, *sound_program, *samples, *key;
-    // Features whose switch is on the first page, under "Full screen" (game.cfg's `display`): name|Title|What it
+    // Features whose switch is on the launcher's Display card, under "Full screen" (game.cfg's `display`; the collection's
+    // is one setting for every game, on its Games page): name|Title|What it
     // says, with || between two of them (the game leaves these out of the list it gives for the Features page:
     // runtime/game.h, kFeatureFirstPage)
     const char* display;
@@ -455,9 +456,11 @@ launcher::Description describe_game(const GameInfo& game) {
     d.online.delay_argument = "--launcher-net-delay"; // global fallback; an explicit --net-delay still wins
     d.online.delay_own = true; // (each machine its own: Host and Join both pass it, port/netplay.cpp)
     d.online.delay_default = port::Netplay::kDefaultDelay;
-    d.display = {{"fullscreen", "Full screen", "F11 switches while playing.", false, nullptr}};  // (a window unless asked)
+    // (every one is global in the collection: one setting on the Games page for every game, and a game that has no
+    // Widescreen ignores it; recomp-common's Toggle::global)
+    d.display = {{"fullscreen", "Full screen", "F11 switches while playing.", false, nullptr, true}};  // (a window unless asked)
     for (const FeatureSwitch& one : switches) {
-        d.display.push_back({keep(one.name), keep(one.title), keep(one.detail), false, nullptr});
+        d.display.push_back({keep(one.name), keep(one.title), keep(one.detail), false, nullptr, true});
     }
     // (its own table: a collection's game has the one every game shares, Collection::bindings, unless it is given a
     // layout of its own on the Controllers page)
@@ -591,10 +594,10 @@ const launcher::Collection& launcher::describe_collection() {
             {"time", "Each stage for", "Shuffle: how long they fight on a stage before it fades into the next.",
              {"30 seconds", "1 minute", "2 minutes", "3 minutes", "5 minutes"}, 1, "stages", 0},
             {"speed", "Scroll speed", "Scroll: how fast the stages go by.", {"Slow", "Medium", "Fast"}, 1, "stages", 1},
-            {"screen", "Screen", "Every game full screen, or every game in a window, or each as its own Full screen switch has it. For this run only.",
-             {"Full screen", "Window", "As each game is set"}},
-            {"picture", "Picture", "Every game in widescreen, or every game 4:3, or each as its own Widescreen switch has it. For this run only.",
-             {"Widescreen", "4:3", "As each game is set"}},
+            {"screen", "Screen", "Every game full screen, or every game in a window, or as the Display card on the Games page has it. For this run only.",
+             {"Full screen", "Window", "As the Display card has it"}},
+            {"picture", "Picture", "Every game in widescreen, or every game 4:3, or as the Display card on the Games page has it. For this run only.",
+             {"Widescreen", "4:3", "As the Display card has it"}},
             // (the Display page's own, port/main.cpp: every game has them, and every endless battle invisible walls)
             {"walls", "Invisible walls", "With widescreen: every game played exactly as on the board, behind walls that are not seen, or every game "
              "to the wide picture's edges, or each as its own Display page has it. For this run only.",

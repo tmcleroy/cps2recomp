@@ -24,6 +24,8 @@
 #include <jni.h>
 #endif
 
+#include "chime.h"
+#include "video_keys.h"
 #include "folders.h"
 #include "gamepads.h"
 #include "i18n.h"
@@ -228,6 +230,21 @@ std::vector<Target> targets() {
     return list;
 }
 
+// Where a switch is kept: a global one in [video] (the same for every game), another in the game's own section
+const std::string& toggle_section(const std::string& video_section, const launcher::Toggle& toggle) {
+    static const std::string kGlobal = "video";
+    return toggle.global ? kGlobal : video_section;
+}
+
+// A variable of this process, which the games it starts have too
+void set_variable(const char* name, const std::string& value) {
+#ifdef _WIN32
+    _putenv_s(name, value.c_str());
+#else
+    setenv(name, value.c_str(), 1);
+#endif
+}
+
 bool toggle_state(const recomp::Ini& prefs, const std::string& section, const launcher::Toggle& toggle) {
     std::string value = prefs.get(section, toggle.key);
     return toggle.on_by_default ? value != "0" : value == "1";
@@ -243,7 +260,7 @@ std::vector<std::string> arguments_for(const recomp::Ini& prefs, const Target& t
         for (const launcher::Toggle& toggle : about.display) {
             if (std::strcmp(toggle.key, key) == 0) {
                 // (a switch that needs another is only on with it)
-                return toggle_state(prefs, target.video_section, toggle) && (!toggle.needs || launch.on(toggle.needs));
+                return toggle_state(prefs, toggle_section(target.video_section, toggle), toggle) && (!toggle.needs || launch.on(toggle.needs));
             }
         }
         return false;
@@ -257,6 +274,16 @@ std::vector<std::string> arguments_for(const recomp::Ini& prefs, const Target& t
         return std::string();
     };
     std::vector<std::string> arguments = about.arguments(launch);
+    // (where the game finds the switches it may change itself: Toggle::global)
+    std::string global;
+    for (const launcher::Toggle& toggle : about.display) {
+        if (toggle.global) {
+            global += (global.empty() ? "" : ",") + std::string(toggle.key);
+        }
+    }
+    set_variable("RECOMP_LAUNCHER_INI", prefs.path().u8string());
+    set_variable("RECOMP_LAUNCHER_VIDEO", target.video_section);
+    set_variable("RECOMP_LAUNCHER_GLOBAL", global);
     if (about.mute_argument && prefs.get("audio", "muted") == "1") {
         arguments.push_back(about.mute_argument);
     }
@@ -747,6 +774,7 @@ App::App(SDL_Window* window)
         // once the check of a remembered one is done: frame(), which knows whether it turned out usable)
         beside_wanted_ = beside_wanted_ || (one.about->game_page && one.about->find_beside);
     }
+    migrate_global_display();
     find_shared();
     give_shared();
     if (!collection_ && about_.game_page && (about_.open_on_game_page || about_.own_pages_after_game)) {
@@ -1725,17 +1753,18 @@ bool App::toggle_on(const Slot& one, const launcher::Toggle& toggle) const {
             }
         }
     }
-    return toggle_state(prefs_, one.video_section, toggle);
+    return toggle_state(prefs_, toggle_section(one.video_section, toggle), toggle);
 }
 
 void App::set_toggle(Slot& one, const launcher::Toggle& toggle, bool on) {
-    prefs_.set(one.video_section, toggle.key, on ? "1" : "0");
+    launcher::reread_switches(prefs_, one.about->display, one.video_section);  // (a running game may have changed others)
+    prefs_.set(toggle_section(one.video_section, toggle), toggle.key, on ? "1" : "0");
     for (const launcher::Toggle& other : one.about->display) {
         if (on && toggle.needs && std::strcmp(other.key, toggle.needs) == 0) {
-            prefs_.set(one.video_section, other.key, "1");  // (what it needs comes on with it)
+            prefs_.set(toggle_section(one.video_section, other), other.key, "1");  // (what it needs comes on with it)
         }
         if (!on && other.needs && std::strcmp(other.needs, toggle.key) == 0) {
-            prefs_.set(one.video_section, other.key, "0");  // (what needs it goes off with it)
+            prefs_.set(toggle_section(one.video_section, other), other.key, "0");  // (what needs it goes off with it)
         }
     }
     prefs_.save();
@@ -2080,6 +2109,8 @@ void App::frame() {
         Slot& one = *slots_[which];
         if (one.was_running && !one.game.running()) {
             one.settings.load();
+            // (a switch its menu changed, Widescreen: in launcher.ini, which this launcher keeps in memory)
+            launcher::reread_switches(prefs_, one.about->display, one.video_section);
             after_game(one);
             show_focus_ = interactive_ && SDL_HasGamepad();  // (back from the game with a gamepad in hand)
             one.was_running = false;
@@ -2608,13 +2639,18 @@ void App::file_card(size_t which, float width) {
 void App::display_cards(size_t which, float width) {
     const ui::Palette& p = ui::palette();
     Slot& one = *slots_[which];
-    if (!one.about->display.empty()) {
+    // (a collection's global switches are on its Games page: global_display_card)
+    auto shown_here = [&](const launcher::Toggle& toggle) { return !(collection_ && toggle.global); };
+    if (std::any_of(one.about->display.begin(), one.about->display.end(), shown_here)) {
         ui::gap(24);
         ui::text("DISPLAY", Font::Semibold, ui::size::kDetail, p.secondary);
         ui::gap(10);
         Card display(width);
         bool first = true;
         for (const launcher::Toggle& toggle : one.about->display) {
+            if (!shown_here(toggle)) {
+                continue;
+            }
             if (!first) {
                 inset_separator(width);
             }
@@ -2679,6 +2715,84 @@ void App::display_cards(size_t which, float width) {
             ImGui::PopID();
         }
         sound.end();
+    }
+}
+
+// A collection's global Display switches (Toggle::global): the first game's words for each, one card for every game
+std::vector<std::pair<size_t, const launcher::Toggle*>> App::global_toggles() const {
+    std::vector<std::pair<size_t, const launcher::Toggle*>> list;
+    if (!collection_) {
+        return list;
+    }
+    for (size_t which = 0; which < slots_.size(); which++) {
+        for (const launcher::Toggle& toggle : slots_[which]->about->display) {
+            if (toggle.global && std::none_of(list.begin(), list.end(), [&](const auto& have) { return std::strcmp(have.second->key, toggle.key) == 0; })) {
+                list.push_back({which, &toggle});
+            }
+        }
+    }
+    return list;
+}
+
+void App::global_display_card(float width) {
+    const std::vector<std::pair<size_t, const launcher::Toggle*>> list = global_toggles();
+    if (list.empty()) {
+        return;
+    }
+    ui::gap(24);
+    ui::text("DISPLAY", Font::Semibold, ui::size::kDetail, ui::palette().secondary);
+    ui::gap(10);
+    Card card(width);
+    bool first = true;
+    for (const auto& entry : list) {
+        if (!first) {
+            inset_separator(width);
+        }
+        first = false;
+        Slot& one = *slots_[entry.first];
+        const launcher::Toggle& toggle = *entry.second;
+        bool on = toggle_on(one, toggle);
+        std::string id = std::string("##global_") + toggle.key;
+        row(width, toggle.title, toggle.detail, 42.0f, 24.0f, [&] {
+            if (ui::toggle(id.c_str(), on)) {
+                set_toggle(one, toggle, !on);
+            }
+        });
+    }
+    card.end();
+}
+
+// The global switches before this launcher had them were each game's own ([video.<id>]). The one for every game is
+// taken from the game played last that had it set (its log is the latest written), else it is the switch's default.
+void App::migrate_global_display() {
+    for (const auto& entry : global_toggles()) {
+        const launcher::Toggle* toggle = entry.second;
+        if (!prefs_.get("video", toggle->key).empty()) {
+            continue;
+        }
+        std::filesystem::file_time_type latest{};
+        std::string value;
+        bool found = false;
+        for (const auto& slot : slots_) {
+            for (const launcher::Toggle& own : slot->about->display) {
+                const std::string kept = prefs_.get(slot->video_section, toggle->key);
+                if (!own.global || std::strcmp(own.key, toggle->key) != 0 || kept.empty()) {
+                    continue;
+                }
+                std::error_code error;
+                const auto played = std::filesystem::last_write_time(slot->folder / "logs" / "game.log", error);
+                const auto when = error ? std::filesystem::file_time_type::min() : played;
+                if (!found || when > latest) {
+                    found = true;
+                    latest = when;
+                    value = kept;
+                }
+            }
+        }
+        if (found) {
+            prefs_.set("video", toggle->key, value);
+            prefs_.save();
+        }
     }
 }
 
@@ -3512,6 +3626,25 @@ void App::follow_room(bool here) {
                                                                         [&](const auto& i) { return i.code == code; });
                                                 }),
                                  room_answered_.end());
+            // A new invitation: a chime (not for one answered here or one already chimed, and not while the games are
+            // muted: the Sound card's Muted switch). Those no longer listed are forgotten.
+            bool fresh = false;
+            for (const launcher::Invitation& invitation : room.invitations) {
+                if (std::find(room_answered_.begin(), room_answered_.end(), invitation.code) == room_answered_.end() &&
+                    std::find(room_chimed_.begin(), room_chimed_.end(), invitation.code) == room_chimed_.end()) {
+                    room_chimed_.push_back(invitation.code);
+                    fresh = true;
+                }
+            }
+            room_chimed_.erase(std::remove_if(room_chimed_.begin(), room_chimed_.end(),
+                                              [&](const std::string& code) {
+                                                  return std::none_of(room.invitations.begin(), room.invitations.end(),
+                                                                      [&](const auto& i) { return i.code == code; });
+                                              }),
+                               room_chimed_.end());
+            if (fresh && prefs_.get("audio", "muted") != "1") {
+                launcher::play_chime();
+            }
             // (the Online page's lobby list, with it: shown if that page's list is the one followed)
             room_lists_ = room.listed;
             if (room.listed && collection_ && collection_->lobby && lobby_url_ == collection_->lobby) {
@@ -4194,6 +4327,7 @@ void App::library_page(float width) {
         }
     }
     tools_card(width);
+    global_display_card(width);
     language_card(width);
     files_card(width);
 }

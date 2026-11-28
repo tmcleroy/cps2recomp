@@ -42,6 +42,14 @@ struct Toggle {
     bool on_by_default = false;
     // Another switch this one needs: switching this on switches that on, switching that off switches this off
     const char *needs = nullptr;
+    // (a collection's launcher) one setting for every game, kept in launcher.ini under [video] and shown once, on the
+    // Games page, instead of on each game's page and kept for each. A game that has no use for it (its `arguments`
+    // never asks for it, or its program ignores it) is unaffected. Off: the switch is the game's own ([video.<id>]).
+    // A port's launcher of one game has one page of settings already: no difference there.
+    // A game's program that changes the switch itself (in its menu) finds launcher.ini in $RECOMP_LAUNCHER_INI, the
+    // keys that are global, comma separated, in $RECOMP_LAUNCHER_GLOBAL, and the section of the others, which are the
+    // game's own, in $RECOMP_LAUNCHER_VIDEO.
+    bool global = false;
 };
 
 // What Play starts the game with

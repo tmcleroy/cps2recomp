@@ -304,16 +304,28 @@ int FastMotion() {
 }
 
 namespace {
-// A feature whose switch is on the launcher's first page: that switch too, in launcher.ini beside settings.ini, or
-// the launcher would turn it back the next time the game is started
+// A feature whose switch is on the launcher's Display card: that switch too, in launcher.ini, or the launcher would
+// turn it back the next time the game is started. The launcher that started the game says where it is
+// (RECOMP_LAUNCHER_INI), which keys are global, one setting for every game, in [video] (RECOMP_LAUNCHER_GLOBAL, comma
+// separated) and the section of the others, the game's own (RECOMP_LAUNCHER_VIDEO). A game started on its own finds
+// launcher.ini beside settings.ini, as a game with a launcher of its own always had it.
+bool InList(const char *list, const char *name) {
+    const std::string wanted = std::string(",") + name + ",";
+    return (std::string(",") + (list ? list : "") + ",").find(wanted) != std::string::npos;
+}
+
 void KeepFirstPage(const char *name, bool on) {
     for (const Feature &feature : TheGame().features) {
         if ((feature.flags & kFeatureFirstPage) && !strcmp(feature.name, name)) {
-            const std::string launcherIni = (std::filesystem::path(g_settingsPath).parent_path() / "launcher.ini").string();
+            const char *told = getenv("RECOMP_LAUNCHER_INI");
+            const std::string launcherIni =
+                told && *told ? told : (std::filesystem::path(g_settingsPath).parent_path() / "launcher.ini").string();
             if (std::filesystem::exists(launcherIni)) {
+                const char *video = getenv("RECOMP_LAUNCHER_VIDEO");
+                const std::string section = !InList(getenv("RECOMP_LAUNCHER_GLOBAL"), name) && video && *video ? video : "video";
                 recomp::Ini prefs(launcherIni);
                 prefs.load();
-                prefs.set("video", name, on ? "1" : "0");
+                prefs.set(section, name, on ? "1" : "0");
                 prefs.save();
             }
         }
