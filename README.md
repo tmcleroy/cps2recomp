@@ -191,7 +191,7 @@ together).
 
 1. Download `CPS2Recomp-android.apk` from the releases page on your phone or tablet and open it to install it
    (Android 9 or later, 64-bit ARM; allow installs from your browser or file manager when asked).
-2. Open CPS-2 Recomp and press **Add ROM sets…** on its Games page: choose your sets' zips, as many at once as you
+2. Open CPS-2 Recomp and press **Add ROM sets…** on its Settings tab: choose your sets' zips, as many at once as you
    like. They are copied into the app's folder.
 3. Press **Play** beside a game.
 
@@ -203,7 +203,7 @@ place. Back, or the screen's **Menu**, opens the in-game menu.
 1. In Desktop Mode, download `CPS2Recomp-linux-x86_64.tar.gz` from the releases page, extract it, and move the
    `CPS2Recomp` folder somewhere it can stay (a new `Applications` folder in your home folder, say).
 2. Copy your ROM sets into one folder on the Deck.
-3. Open `cps2recomp-launcher`, **Choose folder…** on the Games page, and pick that folder.
+3. Open `cps2recomp-launcher`, **Choose folder…** on the Settings tab, and pick that folder.
 4. On each game's page, press **Add to Steam**. The games then appear in Gaming Mode under **Non-Steam**.
 
 ## What you need
